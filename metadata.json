@@ -1,0 +1,6 @@
+{
+  "name": "Rhythm & Focus",
+  "description": "A calm, mindful companion for daily routines, sleep & health tracking, medication management, and focused study.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
