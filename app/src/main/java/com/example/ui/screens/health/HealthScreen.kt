@@ -81,14 +81,19 @@ fun HealthScreen(
     var selectedTab by remember { mutableIntStateOf(0) }
     val tabTitles = listOf("Daily State", "Sleep", "Hydration", "Medications")
 
+    val selectedDate by viewModel.selectedDate.collectAsStateWithLifecycle()
     val sleepEntry by viewModel.sleepForDate.collectAsStateWithLifecycle()
     val healthCheckin by viewModel.healthForDate.collectAsStateWithLifecycle()
     val waterEntries by viewModel.waterEntriesForDate.collectAsStateWithLifecycle()
-    val allMeds by viewModel.allMedications.collectAsStateWithLifecycle()
+    val activeMeds by viewModel.activeMedications.collectAsStateWithLifecycle()
+    val archivedMeds by viewModel.archivedMedications.collectAsStateWithLifecycle()
     val intakes by viewModel.medicationIntakesForDate.collectAsStateWithLifecycle()
+    val historyIntakes by viewModel.recentMedicationIntakes.collectAsStateWithLifecycle()
+    val distinctNames by viewModel.distinctMedicationNames.collectAsStateWithLifecycle()
 
     var showSleepDialog by remember { mutableStateOf(false) }
-    var showAddMedDialog by remember { mutableStateOf(false) }
+    var medToEdit by remember { mutableStateOf<MedicationEntity?>(null) }
+    var showMedScheduleDialog by remember { mutableStateOf(false) }
 
     Column(
         modifier = modifier
@@ -136,14 +141,29 @@ fun HealthScreen(
                 onAddWater = { viewModel.addWater(it) },
                 onDeleteEntry = { viewModel.removeWaterEntry(it) }
             )
-            3 -> MedicationSection(
-                medications = allMeds,
-                intakes = intakes,
-                onAddMedClick = { showAddMedDialog = true },
-                onRecordIntake = { med, status, notes ->
-                    viewModel.recordMedicationIntake(med, status, notes)
+            3 -> FullMedicationCenter(
+                date = selectedDate,
+                medications = activeMeds,
+                archivedMedications = archivedMeds,
+                intakesForDate = intakes,
+                historyIntakes = historyIntakes,
+                distinctNames = distinctNames,
+                onAddOrEditSchedule = { med ->
+                    medToEdit = med
+                    showMedScheduleDialog = true
                 },
-                onDeleteMed = { viewModel.deleteMedication(it) }
+                onRecordIntake = { med, timeMin, status, notes ->
+                    viewModel.recordMedicationIntake(med, timeMin, status, notes)
+                },
+                onCorrectIntake = { intake, newStatus, newNotes ->
+                    viewModel.correctMedicationIntake(intake, newStatus, newNotes)
+                },
+                onArchiveMedication = { medId, isArchived ->
+                    viewModel.archiveMedication(medId, isArchived)
+                },
+                onDeleteMedication = { medId ->
+                    viewModel.deleteMedication(medId)
+                }
             )
         }
     }
@@ -159,12 +179,31 @@ fun HealthScreen(
         )
     }
 
-    if (showAddMedDialog) {
-        AddMedicationDialog(
-            onDismiss = { showAddMedDialog = false },
-            onConfirm = { name, dose, unit, instructions, schedMin, notes ->
-                viewModel.addMedication(name, dose, unit, instructions, schedMin, false, notes)
-                showAddMedDialog = false
+    if (showMedScheduleDialog) {
+        MedicationScheduleDialog(
+            existing = medToEdit,
+            distinctNames = distinctNames,
+            onDismiss = {
+                showMedScheduleDialog = false
+                medToEdit = null
+            },
+            onSave = { id, name, dose, unit, instructions, schedTimes, form, repeatDays, startD, endD, reminder, notes ->
+                viewModel.saveMedicationSchedule(
+                    id = id,
+                    name = name,
+                    dosage = dose,
+                    unit = unit,
+                    instructions = instructions,
+                    scheduledTimes = schedTimes,
+                    dosageForm = form,
+                    repeatDays = repeatDays,
+                    startDate = startD,
+                    endDate = endD,
+                    reminder = reminder,
+                    notes = notes
+                )
+                showMedScheduleDialog = false
+                medToEdit = null
             }
         )
     }
@@ -742,215 +781,4 @@ fun HydrationSection(
 
         item { Spacer(modifier = Modifier.height(24.dp)) }
     }
-}
-
-@Composable
-fun MedicationSection(
-    medications: List<MedicationEntity>,
-    intakes: List<MedicationIntakeEntity>,
-    onAddMedClick: () -> Unit,
-    onRecordIntake: (MedicationEntity, String, String?) -> Unit,
-    onDeleteMed: (Long) -> Unit
-) {
-    LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        item {
-            Card(
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)),
-                modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
-            ) {
-                Row(
-                    modifier = Modifier.padding(14.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    Icon(Icons.Default.Info, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                    Text(
-                        text = "Medication records are stored strictly locally and privately. Dismissing a reminder does not automatically mark a dose taken.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-        }
-
-        item {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "Scheduled Medications",
-                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Button(
-                    onClick = onAddMedClick,
-                    shape = RoundedCornerShape(10.dp),
-                    modifier = Modifier.testTag("add_medication_button")
-                ) {
-                    Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text("Add Medication")
-                }
-            }
-        }
-
-        if (medications.isEmpty()) {
-            item {
-                CalmEmptyState(
-                    icon = Icons.Default.Medication,
-                    title = "No Medications Configured",
-                    message = "Add your prescribed medications, dosages, and target times to maintain a clear intake history.",
-                    actionLabel = "Add First Medication",
-                    onActionClick = onAddMedClick
-                )
-            }
-        } else {
-            items(medications, key = { it.id }) { med ->
-                val intake = intakes.firstOrNull { it.medicationId == med.id }
-                val status = intake?.status ?: "UNRECORDED"
-
-                Card(
-                    shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = "${med.name} • ${med.dosage} ${med.unit}",
-                                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
-                                    color = MaterialTheme.colorScheme.onSurface
-                                )
-                                Text(
-                                    text = "Scheduled: ${DateTimeUtils.formatMinutesToTime(med.scheduledTimeMinutes)} (${med.instructions})",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                            StatusBadge(status = status)
-                        }
-
-                        Spacer(modifier = Modifier.height(12.dp))
-
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
-                            Button(
-                                onClick = { onRecordIntake(med, "TAKEN", null) },
-                                shape = RoundedCornerShape(8.dp),
-                                modifier = Modifier.weight(1f)
-                            ) {
-                                Text("Taken", style = MaterialTheme.typography.labelSmall)
-                            }
-                            FilledTonalButton(
-                                onClick = { onRecordIntake(med, "SKIPPED", null) },
-                                shape = RoundedCornerShape(8.dp),
-                                modifier = Modifier.weight(1f)
-                            ) {
-                                Text("Skip", style = MaterialTheme.typography.labelSmall)
-                            }
-                            OutlinedButton(
-                                onClick = { onRecordIntake(med, "DELAYED", null) },
-                                shape = RoundedCornerShape(8.dp),
-                                modifier = Modifier.weight(1f)
-                            ) {
-                                Text("Delayed", style = MaterialTheme.typography.labelSmall)
-                            }
-                            IconButton(onClick = { onDeleteMed(med.id) }) {
-                                Icon(Icons.Default.Delete, contentDescription = "Delete", tint = MaterialTheme.colorScheme.outlineVariant)
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        item { Spacer(modifier = Modifier.height(24.dp)) }
-    }
-}
-
-@Composable
-fun AddMedicationDialog(
-    onDismiss: () -> Unit,
-    onConfirm: (String, String, String, String, Int, String?) -> Unit
-) {
-    var name by remember { mutableStateOf("") }
-    var dose by remember { mutableStateOf("") }
-    var unit by remember { mutableStateOf("mg") }
-    var instructions by remember { mutableStateOf("Take with meal") }
-    var hour by remember { mutableIntStateOf(8) }
-    var min by remember { mutableIntStateOf(0) }
-    var notes by remember { mutableStateOf("") }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Add Medication") },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                OutlinedTextField(
-                    value = name,
-                    onValueChange = { name = it },
-                    label = { Text("Medication Name *") },
-                    modifier = Modifier.fillMaxWidth()
-                )
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedTextField(
-                        value = dose,
-                        onValueChange = { dose = it },
-                        label = { Text("Dose") },
-                        modifier = Modifier.weight(1f)
-                    )
-                    OutlinedTextField(
-                        value = unit,
-                        onValueChange = { unit = it },
-                        label = { Text("Unit") },
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-                OutlinedTextField(
-                    value = instructions,
-                    onValueChange = { instructions = it },
-                    label = { Text("Prescribed Instructions") },
-                    modifier = Modifier.fillMaxWidth()
-                )
-                Text(
-                    text = "Scheduled Time: ${DateTimeUtils.formatMinutesToTime(hour * 60 + min)}",
-                    style = MaterialTheme.typography.bodySmall
-                )
-                Slider(
-                    value = hour.toFloat(),
-                    onValueChange = { hour = it.toInt() },
-                    valueRange = 0f..23f,
-                    steps = 22
-                )
-            }
-        },
-        confirmButton = {
-            Button(
-                onClick = {
-                    if (name.isNotBlank()) {
-                        onConfirm(name, dose, unit, instructions, hour * 60 + min, notes.ifBlank { null })
-                    }
-                },
-                enabled = name.isNotBlank()
-            ) {
-                Text("Save Medication")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
-        }
-    )
 }

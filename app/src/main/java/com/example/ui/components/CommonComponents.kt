@@ -18,6 +18,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.CalendarToday
+import androidx.compose.material.icons.filled.Lightbulb
+import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -53,6 +55,8 @@ fun RhythmTopBar(
     onNextDay: () -> Unit,
     onTodayClick: () -> Unit,
     onSettingsClick: () -> Unit,
+    onBrainDumpClick: (() -> Unit)? = null,
+    onRemindersClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val isToday = selectedDate == DateTimeUtils.todayDateString()
@@ -119,6 +123,32 @@ fun RhythmTopBar(
                         contentDescription = "Next Day",
                         tint = if (!isToday) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.outlineVariant
                     )
+                }
+
+                if (onBrainDumpClick != null) {
+                    IconButton(
+                        onClick = onBrainDumpClick,
+                        modifier = Modifier.testTag("top_bar_brain_dump_button")
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Lightbulb,
+                            contentDescription = "Quick Brain Dump",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
+
+                if (onRemindersClick != null) {
+                    IconButton(
+                        onClick = onRemindersClick,
+                        modifier = Modifier.testTag("top_bar_reminders_button")
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.NotificationsActive,
+                            contentDescription = "Reminder Center",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
 
                 IconButton(

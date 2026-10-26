@@ -21,14 +21,19 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Bedtime
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Lightbulb
 import androidx.compose.material.icons.filled.LocalDrink
 import androidx.compose.material.icons.filled.Medication
+import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Psychology
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.SelfImprovement
+import androidx.compose.material.icons.filled.Spa
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.StarOutline
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -41,6 +46,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -62,6 +68,7 @@ import com.example.data.entity.RoutineAnchorEntity
 import com.example.data.entity.RoutineEntryEntity
 import com.example.data.entity.SleepEntryEntity
 import com.example.data.entity.StudyTaskEntity
+import com.example.ui.screens.health.ScheduledDoseSlot
 import com.example.ui.AppDestination
 import com.example.ui.MainViewModel
 import com.example.ui.components.CalmEmptyState
@@ -84,6 +91,9 @@ fun TodayScreen(
     val activeMedications by viewModel.activeMedications.collectAsStateWithLifecycle()
     val medicationIntakes by viewModel.medicationIntakesForDate.collectAsStateWithLifecycle()
     val dailyPriorityTask by viewModel.dailyPriorityTask.collectAsStateWithLifecycle()
+    val brainDumpNotes by viewModel.activeBrainDumpNotes.collectAsStateWithLifecycle()
+
+    var showQuickCaptureDialog by remember { mutableStateOf(false) }
 
     val totalWaterMl = waterEntries.sumOf { it.volumeMl }
     val completedRoutines = routineEntries.count { it.status == "COMPLETED" }
@@ -127,6 +137,16 @@ fun TodayScreen(
                         onLogHealth = { viewModel.navigateTo(AppDestination.HEALTH) }
                     )
                 }
+                item {
+                    TodayMindfulnessCard(
+                        onStartMeditation = { viewModel.navigateTo(AppDestination.MEDITATION) }
+                    )
+                }
+                item {
+                    TodayRemindersQuickCard(
+                        onOpenReminderCenter = { viewModel.navigateTo(AppDestination.REMINDERS) }
+                    )
+                }
                 item { Spacer(modifier = Modifier.height(24.dp)) }
             }
 
@@ -141,9 +161,17 @@ fun TodayScreen(
                         task = dailyPriorityTask,
                         onStartFocus = { task ->
                             viewModel.selectTaskForTimer(task)
+                            viewModel.startTimer()
                             viewModel.navigateTo(AppDestination.STUDY)
                         },
                         onViewTasks = { viewModel.navigateTo(AppDestination.STUDY) }
+                    )
+                }
+                item {
+                    TodayBrainDumpCard(
+                        notes = brainDumpNotes,
+                        onQuickCapture = { showQuickCaptureDialog = true },
+                        onViewAllThoughts = { viewModel.navigateTo(AppDestination.BRAIN_DUMP) }
                     )
                 }
                 item {
@@ -156,10 +184,14 @@ fun TodayScreen(
                 }
                 item {
                     MedicationOverviewCard(
+                        date = selectedDate,
                         medications = activeMedications,
                         intakes = medicationIntakes,
-                        onRecordIntake = { med, status ->
-                            viewModel.recordMedicationIntake(med, status, null)
+                        onRecordIntake = { med, timeMin, status ->
+                            viewModel.recordMedicationIntake(med, timeMin, status, null)
+                        },
+                        onCorrectIntake = { intake, newStatus ->
+                            viewModel.correctMedicationIntake(intake, newStatus, null)
                         },
                         onManageMedications = { viewModel.navigateTo(AppDestination.HEALTH) }
                     )
@@ -193,9 +225,17 @@ fun TodayScreen(
                     task = dailyPriorityTask,
                     onStartFocus = { task ->
                         viewModel.selectTaskForTimer(task)
+                        viewModel.startTimer()
                         viewModel.navigateTo(AppDestination.STUDY)
                     },
                     onViewTasks = { viewModel.navigateTo(AppDestination.STUDY) }
+                )
+            }
+            item {
+                TodayBrainDumpCard(
+                    notes = brainDumpNotes,
+                    onQuickCapture = { showQuickCaptureDialog = true },
+                    onViewAllThoughts = { viewModel.navigateTo(AppDestination.BRAIN_DUMP) }
                 )
             }
             item {
@@ -220,16 +260,45 @@ fun TodayScreen(
             }
             item {
                 MedicationOverviewCard(
+                    date = selectedDate,
                     medications = activeMedications,
                     intakes = medicationIntakes,
-                    onRecordIntake = { med, status ->
-                        viewModel.recordMedicationIntake(med, status, null)
+                    onRecordIntake = { med, timeMin, status ->
+                        viewModel.recordMedicationIntake(med, timeMin, status, null)
+                    },
+                    onCorrectIntake = { intake, newStatus ->
+                        viewModel.correctMedicationIntake(intake, newStatus, null)
                     },
                     onManageMedications = { viewModel.navigateTo(AppDestination.HEALTH) }
                 )
             }
+            item {
+                TodayMindfulnessCard(
+                    onStartMeditation = { viewModel.navigateTo(AppDestination.MEDITATION) }
+                )
+            }
+            item {
+                TodayRemindersQuickCard(
+                    onOpenReminderCenter = { viewModel.navigateTo(AppDestination.REMINDERS) }
+                )
+            }
             item { Spacer(modifier = Modifier.height(24.dp)) }
         }
+    }
+
+    if (showQuickCaptureDialog) {
+        com.example.ui.screens.braindump.QuickCaptureDialog(
+            noteToEdit = null,
+            onDismiss = { showQuickCaptureDialog = false },
+            onSave = { id, title, content, tag, isPinned ->
+                viewModel.saveBrainDumpNote(id, title, content, tag, isPinned)
+                showQuickCaptureDialog = false
+            },
+            onConvertToTaskDirectly = { taskTitle, tag, _ ->
+                viewModel.createStudyTask(taskTitle, if (tag == "Study") "General" else tag, 25, false)
+                showQuickCaptureDialog = false
+            }
+        )
     }
 }
 
@@ -678,23 +747,26 @@ fun MoodEnergySummaryCard(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(14.dp),
-                        horizontalArrangement = Arrangement.SpaceAround
+                            .padding(10.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         MetricRatingIndicator(
                             label = "Mood",
                             value = health.mood,
-                            labels = listOf("Very Low", "Low", "Neutral", "Good", "Great")
+                            labels = listOf("Very Low", "Low", "Neutral", "Good", "Great"),
+                            modifier = Modifier.weight(1f)
                         )
                         MetricRatingIndicator(
                             label = "Energy",
                             value = health.energy,
-                            labels = listOf("Exhausted", "Low", "Moderate", "High", "Very High")
+                            labels = listOf("Exhausted", "Low", "Moderate", "High", "High+"),
+                            modifier = Modifier.weight(1f)
                         )
                         MetricRatingIndicator(
                             label = "Stress",
                             value = health.stress,
-                            labels = listOf("None", "Mild", "Moderate", "High", "Severe")
+                            labels = listOf("None", "Mild", "Moderate", "High", "Severe"),
+                            modifier = Modifier.weight(1f)
                         )
                     }
                 }
@@ -712,25 +784,40 @@ fun MoodEnergySummaryCard(
 }
 
 @Composable
-fun MetricRatingIndicator(label: String, value: Int?, labels: List<String>) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        Spacer(modifier = Modifier.height(4.dp))
-        Text(
-            text = if (value != null && value in 1..labels.size) labels[value - 1] else "—",
-            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
-            color = if (value != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant
-        )
-        if (value != null) {
+fun MetricRatingIndicator(
+    label: String,
+    value: Int?,
+    labels: List<String>,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        shape = RoundedCornerShape(10.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+        modifier = modifier
+    ) {
+        Column(
+            modifier = Modifier.padding(vertical = 10.dp, horizontal = 4.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
             Text(
-                text = "$value/5",
+                text = label,
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = if (value != null && value in 1..labels.size) labels[value - 1] else "—",
+                style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold),
+                color = if (value != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant
+            )
+            if (value != null) {
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = "$value/5",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
         }
     }
 }
@@ -831,11 +918,28 @@ fun WaterTrackingCard(
 
 @Composable
 fun MedicationOverviewCard(
+    date: String,
     medications: List<MedicationEntity>,
     intakes: List<MedicationIntakeEntity>,
-    onRecordIntake: (MedicationEntity, String) -> Unit,
+    onRecordIntake: (MedicationEntity, Int, String) -> Unit,
+    onCorrectIntake: (MedicationIntakeEntity, String) -> Unit,
     onManageMedications: () -> Unit
 ) {
+    val dayAbbr = DateTimeUtils.getDayOfWeekAbbreviation(date)
+    val applicableMeds = medications.filter { it.isEffectiveOnDate(date) && it.isScheduledForDayOfWeek(dayAbbr) }
+
+    // Map all scheduled times for today
+    val doseSlots = applicableMeds.flatMap { med ->
+        med.getScheduledTimes().map { timeMinutes ->
+            val matchingIntake = intakes.firstOrNull {
+                it.medicationId == med.id && it.scheduledTimeMinutes == timeMinutes
+            }
+            ScheduledDoseSlot(med, timeMinutes, matchingIntake)
+        }
+    }.sortedBy { it.scheduledTimeMinutes }
+
+    var intakeToQuickCorrect by remember { mutableStateOf<MedicationIntakeEntity?>(null) }
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -853,7 +957,8 @@ fun MedicationOverviewCard(
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.weight(1f)
                 ) {
                     Icon(
                         imageVector = Icons.Default.Medication,
@@ -861,11 +966,20 @@ fun MedicationOverviewCard(
                         tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(20.dp)
                     )
-                    Text(
-                        text = "Medications Schedule",
-                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
+                    Column {
+                        Text(
+                            text = "Medications Schedule",
+                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        if (doseSlots.isNotEmpty()) {
+                            Text(
+                                text = "${doseSlots.count { it.intake?.status == "TAKEN" }}/${doseSlots.size} taken today",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
                 }
 
                 OutlinedButton(
@@ -877,72 +991,140 @@ fun MedicationOverviewCard(
                 }
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(14.dp))
 
-            if (medications.isEmpty()) {
+            if (doseSlots.isEmpty()) {
                 CalmEmptyState(
                     icon = Icons.Default.Medication,
-                    title = "No Medications Added",
+                    title = "No Doses Scheduled for Today",
                     message = "Optional medication tracking helps you log intake timestamps privately on this device.",
                     actionLabel = "Add Medication",
                     onActionClick = onManageMedications
                 )
             } else {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    medications.take(3).forEach { med ->
-                        val intake = intakes.firstOrNull { it.medicationId == med.id }
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    doseSlots.take(5).forEach { slot ->
+                        val med = slot.medication
+                        val intake = slot.intake
                         val status = intake?.status ?: "UNRECORDED"
 
                         Surface(
-                            shape = RoundedCornerShape(12.dp),
+                            shape = RoundedCornerShape(14.dp),
                             color = MaterialTheme.colorScheme.surface,
                             modifier = Modifier.fillMaxWidth()
                         ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(12.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Column(modifier = Modifier.weight(1f)) {
+                            Column(modifier = Modifier.padding(14.dp)) {
+                                // Header: Time & Status
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                    ) {
+                                        Surface(
+                                            shape = RoundedCornerShape(6.dp),
+                                            color = MaterialTheme.colorScheme.primaryContainer
+                                        ) {
+                                            Text(
+                                                text = DateTimeUtils.formatMinutesToTime(slot.scheduledTimeMinutes),
+                                                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                                                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                            )
+                                        }
+                                        if (!med.dosageForm.isNullOrBlank()) {
+                                            Text(
+                                                text = med.dosageForm,
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+                                    }
+
+                                    StatusBadge(status = status)
+                                }
+
+                                Spacer(modifier = Modifier.height(6.dp))
+
+                                // Med info
+                                Text(
+                                    text = "${med.name} • ${med.dosage} ${med.unit}",
+                                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+
+                                if (med.instructions.isNotBlank()) {
                                     Text(
-                                        text = "${med.name} (${med.dosage} ${med.unit})",
-                                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
-                                        color = MaterialTheme.colorScheme.onSurface
-                                    )
-                                    Text(
-                                        text = "Scheduled: ${DateTimeUtils.formatMinutesToTime(med.scheduledTimeMinutes)} • ${med.instructions}",
+                                        text = med.instructions,
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                 }
 
+                                Spacer(modifier = Modifier.height(10.dp))
+
+                                // Actions (Unrecorded -> Take & Skip buttons; Recorded -> Timestamp & quick correct button)
                                 if (status == "UNRECORDED") {
-                                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                                        IconButton(
-                                            onClick = { onRecordIntake(med, "TAKEN") },
-                                            modifier = Modifier.size(36.dp)
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        Button(
+                                            onClick = { onRecordIntake(med, slot.scheduledTimeMinutes, "TAKEN") },
+                                            shape = RoundedCornerShape(8.dp),
+                                            modifier = Modifier.weight(1f).height(44.dp)
                                         ) {
                                             Icon(
                                                 Icons.Default.Check,
                                                 contentDescription = "Mark Taken",
-                                                tint = MaterialTheme.colorScheme.primary
+                                                modifier = Modifier.size(16.dp)
                                             )
+                                            Spacer(modifier = Modifier.width(6.dp))
+                                            Text("Take", style = MaterialTheme.typography.labelSmall)
                                         }
-                                        IconButton(
-                                            onClick = { onRecordIntake(med, "SKIPPED") },
-                                            modifier = Modifier.size(36.dp)
+
+                                        FilledTonalButton(
+                                            onClick = { onRecordIntake(med, slot.scheduledTimeMinutes, "SKIPPED") },
+                                            shape = RoundedCornerShape(8.dp),
+                                            modifier = Modifier.weight(1f).height(44.dp)
                                         ) {
-                                            Icon(
-                                                Icons.Default.Close,
-                                                contentDescription = "Mark Skipped",
-                                                tint = MaterialTheme.colorScheme.outline
-                                            )
+                                            Text("Skip", style = MaterialTheme.typography.labelSmall)
+                                        }
+
+                                        OutlinedButton(
+                                            onClick = { onRecordIntake(med, slot.scheduledTimeMinutes, "DELAYED") },
+                                            shape = RoundedCornerShape(8.dp),
+                                            modifier = Modifier.weight(1f).height(44.dp)
+                                        ) {
+                                            Text("Delay", style = MaterialTheme.typography.labelSmall)
                                         }
                                     }
                                 } else {
-                                    StatusBadge(status = status)
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        val recordedTime = intake?.actualActionTime?.let { DateTimeUtils.formatTimeOnly(it) } ?: ""
+                                        Text(
+                                            text = if (recordedTime.isNotBlank()) "Logged at $recordedTime" else "Logged",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.outline
+                                        )
+
+                                        TextButton(
+                                            onClick = {
+                                                if (intake != null) intakeToQuickCorrect = intake
+                                            }
+                                        ) {
+                                            Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(14.dp))
+                                            Spacer(modifier = Modifier.width(4.dp))
+                                            Text("Correct", style = MaterialTheme.typography.labelSmall)
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -951,4 +1133,303 @@ fun MedicationOverviewCard(
             }
         }
     }
+
+    if (intakeToQuickCorrect != null) {
+        val intake = intakeToQuickCorrect!!
+        AlertDialog(
+            onDismissRequest = { intakeToQuickCorrect = null },
+            title = { Text("Correct Logged Entry") },
+            text = {
+                Text("Change status for ${intake.medicationName.ifBlank { "Medication" }} (${DateTimeUtils.formatMinutesToTime(intake.scheduledTimeMinutes)})?")
+            },
+            confirmButton = {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    if (intake.status != "TAKEN") {
+                        Button(onClick = {
+                            onCorrectIntake(intake, "TAKEN")
+                            intakeToQuickCorrect = null
+                        }) {
+                            Text("Mark Taken")
+                        }
+                    }
+                    if (intake.status != "SKIPPED") {
+                        FilledTonalButton(onClick = {
+                            onCorrectIntake(intake, "SKIPPED")
+                            intakeToQuickCorrect = null
+                        }) {
+                            Text("Mark Skipped")
+                        }
+                    }
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { intakeToQuickCorrect = null }) { Text("Cancel") }
+            }
+        )
+    }
 }
+
+@Composable
+fun TodayBrainDumpCard(
+    notes: List<com.example.data.entity.BrainDumpNoteEntity>,
+    onQuickCapture: () -> Unit,
+    onViewAllThoughts: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag("today_brain_dump_card"),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)
+        )
+    ) {
+        Column(modifier = Modifier.padding(20.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Lightbulb,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Text(
+                        text = "Brain Dump & Thought Parking",
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+
+                Text(
+                    text = "${notes.size} thoughts",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            val featuredNote = notes.firstOrNull { it.isPinned } ?: notes.firstOrNull()
+
+            if (featuredNote != null) {
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = MaterialTheme.colorScheme.surface,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(modifier = Modifier.padding(14.dp)) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Surface(
+                                shape = RoundedCornerShape(6.dp),
+                                color = MaterialTheme.colorScheme.primaryContainer
+                            ) {
+                                Text(
+                                    text = featuredNote.tag ?: "General",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                )
+                            }
+                            if (featuredNote.isPinned) {
+                                Text(
+                                    text = "Pinned",
+                                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+                                    color = MaterialTheme.colorScheme.tertiary
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(6.dp))
+
+                        Text(
+                            text = featuredNote.displayTitle(),
+                            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+
+                        Spacer(modifier = Modifier.height(4.dp))
+
+                        Text(
+                            text = featuredNote.content,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 2
+                        )
+                    }
+                }
+            } else {
+                Text(
+                    text = "No thoughts parked right now. Unload distracting thoughts anytime.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            Spacer(modifier = Modifier.height(14.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Button(
+                    onClick = onQuickCapture,
+                    shape = RoundedCornerShape(10.dp),
+                    modifier = Modifier
+                        .weight(1f)
+                        .testTag("today_quick_capture_button")
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Capture Thought")
+                }
+
+                OutlinedButton(
+                    onClick = onViewAllThoughts,
+                    shape = RoundedCornerShape(10.dp),
+                    modifier = Modifier
+                        .weight(1f)
+                        .testTag("today_view_all_thoughts_button")
+                ) {
+                    Text("View All (${notes.size})")
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun TodayRemindersQuickCard(
+    onOpenReminderCenter: () -> Unit
+) {
+    Card(
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)),
+        modifier = Modifier.fillMaxWidth().testTag("today_reminders_card")
+    ) {
+        Column(modifier = Modifier.padding(18.dp)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Surface(
+                    shape = RoundedCornerShape(10.dp),
+                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f),
+                    modifier = Modifier.size(38.dp)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = Icons.Default.NotificationsActive,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                }
+
+                Column {
+                    Text(
+                        text = "Rhythm Reminders & Quiet Hours",
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = "Exact alarms for wake-up, bedtime, meals, and meds",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            OutlinedButton(
+                onClick = onOpenReminderCenter,
+                shape = RoundedCornerShape(10.dp),
+                modifier = Modifier.fillMaxWidth().testTag("today_open_reminder_center_btn")
+            ) {
+                Icon(Icons.Default.NotificationsActive, contentDescription = null, modifier = Modifier.size(16.dp))
+                Spacer(modifier = Modifier.width(6.dp))
+                Text("Manage Reminder Center")
+            }
+        }
+    }
+}
+
+@Composable
+fun TodayMindfulnessCard(
+    onStartMeditation: () -> Unit
+) {
+    Card(
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)),
+        modifier = Modifier.fillMaxWidth().testTag("today_mindfulness_card")
+    ) {
+        Column(modifier = Modifier.padding(20.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Spa,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Text(
+                        text = "Mindfulness & Grounding",
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
+                ) {
+                    Text(
+                        text = "Offline",
+                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            Text(
+                text = "Take 3 to 5 mindful minutes to reset with gentle breathing, sensory grounding, or body awareness.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            Spacer(modifier = Modifier.height(14.dp))
+
+            Button(
+                onClick = onStartMeditation,
+                shape = RoundedCornerShape(10.dp),
+                modifier = Modifier.fillMaxWidth().testTag("today_start_mindfulness_btn")
+            ) {
+                Icon(Icons.Default.Spa, contentDescription = null, modifier = Modifier.size(16.dp))
+                Spacer(modifier = Modifier.width(6.dp))
+                Text("Open Guided Meditation")
+            }
+        }
+    }
+}
+

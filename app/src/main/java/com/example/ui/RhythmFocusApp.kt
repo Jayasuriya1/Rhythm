@@ -13,10 +13,12 @@ import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Analytics
+import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.Psychology
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.SelfImprovement
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Spa
 import androidx.compose.material.icons.filled.Today
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -31,7 +33,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
@@ -76,11 +80,14 @@ fun RhythmFocusApp(viewModel: MainViewModel) {
         viewModel.navigateTo(AppDestination.TODAY)
     }
 
+    var showGlobalQuickCapture by remember { mutableStateOf(false) }
+
     val navItems = listOf(
         NavigationItem(AppDestination.TODAY, Icons.Default.Today, "Today"),
         NavigationItem(AppDestination.ROUTINE, Icons.Default.Schedule, "Routine"),
         NavigationItem(AppDestination.HEALTH, Icons.Default.SelfImprovement, "Health"),
         NavigationItem(AppDestination.STUDY, Icons.Default.Psychology, "Study"),
+        NavigationItem(AppDestination.MEDITATION, Icons.Default.Spa, "Meditation"),
         NavigationItem(AppDestination.INSIGHTS, Icons.Default.Analytics, "Insights")
     )
 
@@ -106,6 +113,20 @@ fun RhythmFocusApp(viewModel: MainViewModel) {
                         )
                     }
                     NavigationRailItem(
+                        selected = currentDestination == AppDestination.BRAIN_DUMP,
+                        onClick = { viewModel.navigateTo(AppDestination.BRAIN_DUMP) },
+                        icon = { Icon(Icons.Default.Psychology, contentDescription = "Brain Dump") },
+                        label = { Text("Brain Dump") },
+                        modifier = Modifier.testTag("nav_rail_braindump")
+                    )
+                    NavigationRailItem(
+                        selected = currentDestination == AppDestination.REMINDERS,
+                        onClick = { viewModel.navigateTo(AppDestination.REMINDERS) },
+                        icon = { Icon(Icons.Default.NotificationsActive, contentDescription = "Reminders") },
+                        label = { Text("Reminders") },
+                        modifier = Modifier.testTag("nav_rail_reminders")
+                    )
+                    NavigationRailItem(
                         selected = currentDestination == AppDestination.SETTINGS,
                         onClick = { viewModel.navigateTo(AppDestination.SETTINGS) },
                         icon = { Icon(Icons.Default.Settings, contentDescription = "Settings") },
@@ -128,7 +149,9 @@ fun RhythmFocusApp(viewModel: MainViewModel) {
                                 viewModel.setSelectedDate(nextDate)
                             },
                             onTodayClick = { viewModel.selectToday() },
-                            onSettingsClick = { viewModel.navigateTo(AppDestination.SETTINGS) }
+                            onSettingsClick = { viewModel.navigateTo(AppDestination.SETTINGS) },
+                            onBrainDumpClick = { showGlobalQuickCapture = true },
+                            onRemindersClick = { viewModel.navigateTo(AppDestination.REMINDERS) }
                         )
                     },
                     snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -159,7 +182,9 @@ fun RhythmFocusApp(viewModel: MainViewModel) {
                             viewModel.setSelectedDate(nextDate)
                         },
                         onTodayClick = { viewModel.selectToday() },
-                        onSettingsClick = { viewModel.navigateTo(AppDestination.SETTINGS) }
+                        onSettingsClick = { viewModel.navigateTo(AppDestination.SETTINGS) },
+                        onBrainDumpClick = { showGlobalQuickCapture = true },
+                        onRemindersClick = { viewModel.navigateTo(AppDestination.REMINDERS) }
                     )
                 },
                 bottomBar = {
@@ -195,6 +220,21 @@ fun RhythmFocusApp(viewModel: MainViewModel) {
             }
         }
     }
+
+    if (showGlobalQuickCapture) {
+        com.example.ui.screens.braindump.QuickCaptureDialog(
+            noteToEdit = null,
+            onDismiss = { showGlobalQuickCapture = false },
+            onSave = { id, title, content, tag, isPinned ->
+                viewModel.saveBrainDumpNote(id, title, content, tag, isPinned)
+                showGlobalQuickCapture = false
+            },
+            onConvertToTaskDirectly = { taskTitle, tag, _ ->
+                viewModel.createStudyTask(taskTitle, if (tag == "Study") "General" else tag, 25, false)
+                showGlobalQuickCapture = false
+            }
+        )
+    }
 }
 
 @Composable
@@ -208,6 +248,9 @@ fun AppScreenContent(
         AppDestination.ROUTINE -> RoutineScreen(viewModel = viewModel)
         AppDestination.HEALTH -> HealthScreen(viewModel = viewModel)
         AppDestination.STUDY -> StudyScreen(viewModel = viewModel)
+        AppDestination.MEDITATION -> com.example.ui.screens.meditation.MeditationScreen(viewModel = viewModel)
+        AppDestination.BRAIN_DUMP -> com.example.ui.screens.braindump.BrainDumpScreen(viewModel = viewModel)
+        AppDestination.REMINDERS -> com.example.ui.screens.reminders.ReminderCenterScreen(viewModel = viewModel)
         AppDestination.INSIGHTS -> InsightsScreen(viewModel = viewModel)
         AppDestination.SETTINGS -> SettingsScreen(viewModel = viewModel)
     }

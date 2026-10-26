@@ -29,10 +29,22 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        handleIntent(intent)
         setContent {
             RhythmFocusTheme {
                 RhythmFocusApp(viewModel = viewModel)
             }
+        }
+    }
+
+    override fun onNewIntent(intent: android.content.Intent) {
+        super.onNewIntent(intent)
+        handleIntent(intent)
+    }
+
+    private fun handleIntent(intent: android.content.Intent?) {
+        if (intent?.getStringExtra("EXTRA_ACTION") == "QUICK_BRAIN_DUMP") {
+            viewModel.navigateTo(com.example.ui.AppDestination.BRAIN_DUMP)
         }
     }
 }

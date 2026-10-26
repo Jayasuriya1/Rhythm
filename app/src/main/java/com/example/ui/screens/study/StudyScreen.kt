@@ -1,6 +1,7 @@
 package com.example.ui.screens.study
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -20,18 +21,26 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Archive
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.HelpOutline
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Folder
+import androidx.compose.material.icons.filled.Lightbulb
+import androidx.compose.material.icons.automirrored.filled.HelpOutline
+import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Psychology
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Timer
+import androidx.compose.material.icons.filled.Unarchive
 import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilledTonalButton
@@ -41,7 +50,9 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -53,13 +64,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.data.entity.StudyCategoryEntity
 import com.example.data.entity.StudySessionEntity
 import com.example.data.entity.StudyTaskEntity
 import com.example.ui.MainViewModel
@@ -73,37 +85,84 @@ fun StudyScreen(
     viewModel: MainViewModel,
     modifier: Modifier = Modifier
 ) {
+    val context = androidx.compose.ui.platform.LocalContext.current
     val tasks by viewModel.studyTasks.collectAsStateWithLifecycle()
     val dailyPriority by viewModel.dailyPriorityTask.collectAsStateWithLifecycle()
     val timerState by viewModel.timerState.collectAsStateWithLifecycle()
     val recentSessions by viewModel.recentStudySessions.collectAsStateWithLifecycle()
+    val categories by viewModel.allCategories.collectAsStateWithLifecycle()
+    val activeCategories by viewModel.activeCategories.collectAsStateWithLifecycle()
+    val studyStartSoundEnabled by viewModel.studyStartSoundEnabled.collectAsStateWithLifecycle()
+    val studyEndSoundEnabled by viewModel.studyEndSoundEnabled.collectAsStateWithLifecycle()
 
     var selectedCategoryFilter by remember { mutableStateOf("All") }
-    val categories = listOf("All", "DSA", "JavaScript", "React", "Backend", "Interview Prep", "General")
 
     var showAddTaskDialog by remember { mutableStateOf(false) }
+    var taskToEdit by remember { mutableStateOf<StudyTaskEntity?>(null) }
     var taskForStuckHelper by remember { mutableStateOf<StudyTaskEntity?>(null) }
+    var showCategoryManagerDialog by remember { mutableStateOf(false) }
+    var showCustomTimerDurationDialog by remember { mutableStateOf(false) }
     var showSessionCompleteDialog by remember { mutableStateOf(false) }
+    var showInterruptedSessionDialog by remember { mutableStateOf(false) }
+    var showBrainDumpCaptureDialog by remember { mutableStateOf(false) }
+    var showSoundSettingsDialog by remember { mutableStateOf(false) }
 
-    LazyColumn(
-        modifier = modifier
-            .fillMaxSize()
-            .padding(horizontal = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        // Focus Timer Card
-        item {
-            FocusTimerCard(
-                timerState = timerState,
-                onStart = { viewModel.startTimer() },
-                onPause = { viewModel.pauseTimer() },
-                onReset = { viewModel.stopTimer() },
-                onModeChange = { mode, customMins -> viewModel.setTimerConfig(mode, customMins) },
-                onCompleteSession = { showSessionCompleteDialog = true }
-            )
+    // Auto-trigger session completion sound and dialog safely when timer finishes countdown
+    androidx.compose.runtime.LaunchedEffect(timerState.isCompleted) {
+        if (timerState.isCompleted) {
+            if (studyEndSoundEnabled) {
+                com.example.util.StudySoundHelper.playEndSound(context)
+            }
+            if (!showSessionCompleteDialog) {
+                showSessionCompleteDialog = true
+            }
         }
+    }
 
-        // Daily Priority Section
+    var isFullScreenFocusActive by remember { mutableStateOf(false) }
+
+    if (isFullScreenFocusActive) {
+        FullScreenFocusTimerScreen(
+            timerState = timerState,
+            viewModel = viewModel,
+            onExitFullScreen = { isFullScreenFocusActive = false },
+            onParkDistraction = { showBrainDumpCaptureDialog = true }
+        )
+    } else {
+        LazyColumn(
+            modifier = modifier
+                .fillMaxSize()
+                .padding(horizontal = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            // Focus Timer Card
+            item {
+                FocusTimerCard(
+                    timerState = timerState,
+                    onStart = { viewModel.startTimer(context) },
+                    onPause = { viewModel.pauseTimer() },
+                    onReset = {
+                        if (timerState.elapsedSeconds > 60) {
+                            showInterruptedSessionDialog = true
+                        } else {
+                            viewModel.stopTimer()
+                        }
+                    },
+                    onModeChange = { mode, defaultMins ->
+                        if (mode == TimerMode.CUSTOM) {
+                            showCustomTimerDurationDialog = true
+                        } else {
+                            viewModel.setTimerConfig(mode, defaultMins)
+                        }
+                    },
+                    onCompleteSession = { showSessionCompleteDialog = true },
+                    onParkDistraction = { showBrainDumpCaptureDialog = true },
+                    onOpenFullScreen = { isFullScreenFocusActive = true },
+                    onOpenSoundSettings = { showSoundSettingsDialog = true }
+                )
+            }
+
+        // Section Header with Add Task and Manage Categories
         item {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -115,26 +174,53 @@ fun StudyScreen(
                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                     color = MaterialTheme.colorScheme.onSurface
                 )
-                Button(
-                    onClick = { showAddTaskDialog = true },
-                    shape = RoundedCornerShape(10.dp),
-                    modifier = Modifier.testTag("add_study_task_button")
-                ) {
-                    Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text("New Task")
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FilledTonalButton(
+                        onClick = { showCategoryManagerDialog = true },
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier.testTag("manage_categories_button")
+                    ) {
+                        Icon(Icons.Default.Folder, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Categories", style = MaterialTheme.typography.labelSmall)
+                    }
+
+                    Button(
+                        onClick = { showAddTaskDialog = true },
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier.testTag("add_study_task_button")
+                    ) {
+                        Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("New Task")
+                    }
                 }
             }
         }
 
         // Category Filter Chips
         item {
+            val filterOptions = listOf("All") + activeCategories.map { it.name }
             LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                items(categories) { cat ->
+                items(filterOptions) { catName ->
+                    val isSelected = selectedCategoryFilter == catName
+                    val catEntity = activeCategories.firstOrNull { it.name == catName }
+                    val colorMarker = catEntity?.colorHex?.let { parseHexColor(it) } ?: MaterialTheme.colorScheme.primary
+
                     FilterChip(
-                        selected = selectedCategoryFilter == cat,
-                        onClick = { selectedCategoryFilter = cat },
-                        label = { Text(cat) }
+                        selected = isSelected,
+                        onClick = { selectedCategoryFilter = catName },
+                        label = { Text(catName) },
+                        leadingIcon = if (catName != "All") {
+                            {
+                                Box(
+                                    modifier = Modifier
+                                        .size(10.dp)
+                                        .clip(CircleShape)
+                                        .background(colorMarker)
+                                )
+                            }
+                        } else null
                     )
                 }
             }
@@ -156,12 +242,19 @@ fun StudyScreen(
                 )
             }
         } else {
-            items(filteredTasks, key = { it.id }) { task ->
+            items(filteredTasks, key = { "task_${it.id}" }) { task ->
+                val categoryEntity = categories.firstOrNull { it.name.equals(task.category, ignoreCase = true) }
+
                 StudyTaskItemCard(
                     task = task,
+                    categoryEntity = categoryEntity,
                     onStatusChange = { newStatus -> viewModel.updateTaskStatus(task, newStatus) },
                     onTogglePriority = { viewModel.toggleDailyPriority(task) },
-                    onSelectForTimer = { viewModel.selectTaskForTimer(task) },
+                    onSelectForTimer = {
+                        viewModel.selectTaskForTimer(task)
+                        viewModel.startTimer()
+                    },
+                    onEditTask = { taskToEdit = task },
                     onStuckClick = { taskForStuckHelper = task },
                     onDelete = { viewModel.deleteStudyTask(task.id) }
                 )
@@ -179,7 +272,7 @@ fun StudyScreen(
                 )
             }
 
-            items(recentSessions.take(5), key = { it.id }) { session ->
+            items(recentSessions.take(5), key = { "session_${it.id}" }) { session ->
                 Surface(
                     shape = RoundedCornerShape(12.dp),
                     color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
@@ -192,14 +285,14 @@ fun StudyScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Column {
+                        Column(modifier = Modifier.weight(1f)) {
                             Text(
                                 text = session.taskTitle,
                                 style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
                                 color = MaterialTheme.colorScheme.onSurface
                             )
                             Text(
-                                text = "${session.category} • ${DateTimeUtils.formatDisplayDate(session.date)}",
+                                text = "${session.category} • ${DateTimeUtils.formatDisplayDate(session.date)} • ${session.completionStatus}",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -224,14 +317,60 @@ fun StudyScreen(
 
         item { Spacer(modifier = Modifier.height(28.dp)) }
     }
+    }
 
     // Add Task Dialog
     if (showAddTaskDialog) {
         AddStudyTaskDialog(
+            activeCategories = activeCategories,
             onDismiss = { showAddTaskDialog = false },
             onConfirm = { title, cat, mins, priority ->
                 viewModel.createStudyTask(title, cat, mins, priority)
                 showAddTaskDialog = false
+            }
+        )
+    }
+
+    // Edit Task Dialog
+    taskToEdit?.let { task ->
+        EditStudyTaskDialog(
+            task = task,
+            activeCategories = activeCategories,
+            onDismiss = { taskToEdit = null },
+            onConfirm = { id, title, cat, mins, priority ->
+                viewModel.editStudyTask(id, title, cat, mins, priority)
+                taskToEdit = null
+            }
+        )
+    }
+
+    // Category Manager Dialog
+    if (showCategoryManagerDialog) {
+        CategoryManagerDialog(
+            categories = categories,
+            onDismiss = { showCategoryManagerDialog = false },
+            onCreateCategory = { name, desc, color, icon ->
+                viewModel.createStudyCategory(name, desc, color, icon)
+            },
+            onUpdateCategory = { cat ->
+                viewModel.updateStudyCategory(cat)
+            },
+            onArchiveCategory = { id, isArchived ->
+                viewModel.archiveStudyCategory(id, isArchived)
+            },
+            onDeleteCategory = { id, name, fallback ->
+                viewModel.deleteStudyCategory(id, name, fallback)
+            }
+        )
+    }
+
+    // Custom Timer Duration Dialog
+    if (showCustomTimerDurationDialog) {
+        CustomTimerDurationDialog(
+            onDismiss = { showCustomTimerDurationDialog = false },
+            onConfirm = { minutes ->
+                viewModel.setTimerConfig(TimerMode.CUSTOM, minutes)
+                showCustomTimerDurationDialog = false
             }
         )
     }
@@ -248,17 +387,168 @@ fun StudyScreen(
         )
     }
 
-    // Complete Session Dialog
+    // Completed Session Dialog
     if (showSessionCompleteDialog) {
         RecordSessionDialog(
+            title = "Focus Session Completed!",
             timerState = timerState,
-            onDismiss = { showSessionCompleteDialog = false },
+            status = "COMPLETED",
+            onDismiss = {
+                viewModel.stopTimer()
+                showSessionCompleteDialog = false
+            },
             onConfirm = { notes ->
-                viewModel.saveCompletedSession(notes)
+                viewModel.saveCompletedSession(notes, "COMPLETED")
                 showSessionCompleteDialog = false
             }
         )
     }
+
+    // Interrupted / Stopped Early Session Dialog
+    if (showInterruptedSessionDialog) {
+        RecordSessionDialog(
+            title = "Session Paused or Reset",
+            timerState = timerState,
+            status = "INTERRUPTED",
+            onDismiss = {
+                viewModel.stopTimer()
+                showInterruptedSessionDialog = false
+            },
+            onConfirm = { notes ->
+                viewModel.saveCompletedSession(notes, "INTERRUPTED")
+                showInterruptedSessionDialog = false
+            }
+        )
+    }
+
+    // Brain Dump / Park Thought Dialog during study
+    if (showBrainDumpCaptureDialog) {
+        com.example.ui.screens.braindump.QuickCaptureDialog(
+            noteToEdit = null,
+            onDismiss = { showBrainDumpCaptureDialog = false },
+            onSave = { id, title, content, tag, isPinned ->
+                viewModel.saveBrainDumpNote(id, title, content, if (tag == "Idea") "Distraction" else tag, isPinned)
+                showBrainDumpCaptureDialog = false
+            },
+            onConvertToTaskDirectly = { taskTitle, tag, _ ->
+                viewModel.createStudyTask(taskTitle, if (tag == "Study") "General" else tag, 25, false)
+                showBrainDumpCaptureDialog = false
+            }
+        )
+    }
+
+    if (showSoundSettingsDialog) {
+        StudyTimerSoundSettingsDialog(
+            startSoundEnabled = studyStartSoundEnabled,
+            endSoundEnabled = studyEndSoundEnabled,
+            onToggleStartSound = { viewModel.setStudyStartSoundEnabled(it) },
+            onToggleEndSound = { viewModel.setStudyEndSoundEnabled(it) },
+            onPreviewStartSound = { com.example.util.StudySoundHelper.playStartSound(context) },
+            onPreviewEndSound = { com.example.util.StudySoundHelper.playEndSound(context) },
+            onDismiss = { showSoundSettingsDialog = false }
+        )
+    }
+}
+
+@Composable
+fun StudyTimerSoundSettingsDialog(
+    startSoundEnabled: Boolean,
+    endSoundEnabled: Boolean,
+    onToggleStartSound: (Boolean) -> Unit,
+    onToggleEndSound: (Boolean) -> Unit,
+    onPreviewStartSound: () -> Unit,
+    onPreviewEndSound: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Icon(Icons.AutoMirrored.Filled.VolumeUp, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                Text("Focus Timer Signals")
+            }
+        },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                Text(
+                    "Calm audio cues provide an acoustic anchor so you know when sessions start and finish without staring at the screen.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
+                // Start Sound Card
+                Card(
+                    shape = RoundedCornerShape(12.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                ) {
+                    Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text("Play Start Sound", style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold))
+                                Text("Gentle acoustic rising chime when focus begins", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                            Switch(
+                                checked = startSoundEnabled,
+                                onCheckedChange = onToggleStartSound,
+                                modifier = Modifier.testTag("study_start_sound_switch")
+                            )
+                        }
+
+                        OutlinedButton(
+                            onClick = onPreviewStartSound,
+                            modifier = Modifier.fillMaxWidth().testTag("preview_start_sound_button")
+                        ) {
+                            Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Preview Start Sound")
+                        }
+                    }
+                }
+
+                // End Sound Card
+                Card(
+                    shape = RoundedCornerShape(12.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                ) {
+                    Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text("Play End Sound", style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold))
+                                Text("Resonant singing bowl tone when session finishes", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                            Switch(
+                                checked = endSoundEnabled,
+                                onCheckedChange = onToggleEndSound,
+                                modifier = Modifier.testTag("study_end_sound_switch")
+                            )
+                        }
+
+                        OutlinedButton(
+                            onClick = onPreviewEndSound,
+                            modifier = Modifier.fillMaxWidth().testTag("preview_end_sound_button")
+                        ) {
+                            Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Preview End Sound")
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Done")
+            }
+        }
+    )
 }
 
 @Composable
@@ -268,7 +558,10 @@ fun FocusTimerCard(
     onPause: () -> Unit,
     onReset: () -> Unit,
     onModeChange: (TimerMode, Int) -> Unit,
-    onCompleteSession: () -> Unit
+    onCompleteSession: () -> Unit,
+    onParkDistraction: () -> Unit,
+    onOpenFullScreen: () -> Unit = {},
+    onOpenSoundSettings: () -> Unit = {}
 ) {
     Card(
         shape = RoundedCornerShape(22.dp),
@@ -300,7 +593,7 @@ fun FocusTimerCard(
                             text = when (mode) {
                                 TimerMode.POMODORO -> "25m"
                                 TimerMode.DEEP_WORK -> "50m"
-                                TimerMode.CUSTOM -> "30m"
+                                TimerMode.CUSTOM -> "Custom"
                                 TimerMode.STOPWATCH -> "Stopwatch"
                             },
                             style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
@@ -331,7 +624,7 @@ fun FocusTimerCard(
                         modifier = Modifier.size(16.dp)
                     )
                     Text(
-                        text = "Focus: ${timerState.selectedTaskTitle}",
+                        text = "Focus: ${timerState.selectedTaskTitle} (${timerState.selectedCategory})",
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurface
                     )
@@ -340,14 +633,41 @@ fun FocusTimerCard(
 
             Spacer(modifier = Modifier.height(14.dp))
 
+            // State Badge: Running, Paused, Completed, Idle
+            val stateText = when {
+                timerState.isCompleted -> "COMPLETED"
+                timerState.isRunning -> "RUNNING"
+                timerState.isPaused -> "PAUSED"
+                else -> "READY"
+            }
+            Surface(
+                shape = RoundedCornerShape(6.dp),
+                color = when {
+                    timerState.isCompleted -> MaterialTheme.colorScheme.primary
+                    timerState.isRunning -> MaterialTheme.colorScheme.tertiary
+                    timerState.isPaused -> MaterialTheme.colorScheme.secondary
+                    else -> MaterialTheme.colorScheme.surfaceVariant
+                }
+            ) {
+                Text(
+                    text = stateText,
+                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, letterSpacing = 1.sp),
+                    color = if (timerState.isCompleted || timerState.isRunning) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
             // Large Digital Timer Readout
             val displaySeconds = if (timerState.mode == TimerMode.STOPWATCH) {
                 timerState.elapsedSeconds
             } else {
-                maxOf(0, timerState.targetSeconds - timerState.elapsedSeconds)
+                timerState.remainingSeconds
             }
-            val minutes = displaySeconds / 60
-            val seconds = displaySeconds % 60
+            val safeSeconds = maxOf(0, displaySeconds)
+            val minutes = safeSeconds / 60
+            val seconds = safeSeconds % 60
             val timeString = String.format(java.util.Locale.getDefault(), "%02d:%02d", minutes, seconds)
 
             Text(
@@ -399,7 +719,7 @@ fun FocusTimerCard(
                     Text("Reset")
                 }
 
-                if (timerState.elapsedSeconds > 30) {
+                if (timerState.elapsedSeconds > 30 || timerState.isCompleted) {
                     Button(
                         onClick = onCompleteSession,
                         shape = RoundedCornerShape(14.dp),
@@ -411,6 +731,45 @@ fun FocusTimerCard(
                     }
                 }
             }
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                TextButton(
+                    onClick = onParkDistraction,
+                    modifier = Modifier.testTag("park_distraction_button")
+                ) {
+                    Icon(Icons.Default.Lightbulb, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Park Thought", style = MaterialTheme.typography.labelSmall)
+                }
+
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FilledTonalButton(
+                        onClick = onOpenSoundSettings,
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier.testTag("study_sound_settings_button")
+                    ) {
+                        Icon(Icons.AutoMirrored.Filled.VolumeUp, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Signals", style = MaterialTheme.typography.labelSmall)
+                    }
+
+                    FilledTonalButton(
+                        onClick = onOpenFullScreen,
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier.testTag("open_fullscreen_timer_button")
+                    ) {
+                        Icon(Icons.Default.Timer, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Full-Screen", style = MaterialTheme.typography.labelSmall)
+                    }
+                }
+            }
         }
     }
 }
@@ -418,12 +777,16 @@ fun FocusTimerCard(
 @Composable
 fun StudyTaskItemCard(
     task: StudyTaskEntity,
+    categoryEntity: StudyCategoryEntity?,
     onStatusChange: (String) -> Unit,
     onTogglePriority: () -> Unit,
     onSelectForTimer: () -> Unit,
+    onEditTask: () -> Unit,
     onStuckClick: () -> Unit,
     onDelete: () -> Unit
 ) {
+    val categoryColor = categoryEntity?.colorHex?.let { parseHexColor(it) } ?: MaterialTheme.colorScheme.primary
+
     Card(
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
@@ -458,17 +821,31 @@ fun StudyTaskItemCard(
                     }
 
                     Column {
-                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
                             Surface(
                                 shape = RoundedCornerShape(6.dp),
                                 color = MaterialTheme.colorScheme.surface
                             ) {
-                                Text(
-                                    text = task.category,
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                                )
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(8.dp)
+                                            .clip(CircleShape)
+                                            .background(categoryColor)
+                                    )
+                                    Text(
+                                        text = task.category,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                }
                             }
                             Text(
                                 text = "${task.estimatedMinutes}m target",
@@ -487,10 +864,14 @@ fun StudyTaskItemCard(
                     }
                 }
 
-                StatusBadge(status = task.status)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    StatusBadge(status = task.status)
+                    IconButton(onClick = onEditTask, modifier = Modifier.size(32.dp)) {
+                        Icon(Icons.Default.Edit, contentDescription = "Edit Task", modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
             }
 
-            // Show broken down small step if user used "I'm stuck"
             if (!task.nextSmallStep.isNullOrBlank()) {
                 Spacer(modifier = Modifier.height(8.dp))
                 Surface(
@@ -504,7 +885,7 @@ fun StudyTaskItemCard(
                         horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
                         Icon(
-                            Icons.Default.HelpOutline,
+                            Icons.AutoMirrored.Filled.HelpOutline,
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.tertiary,
                             modifier = Modifier.size(16.dp)
@@ -520,7 +901,7 @@ fun StudyTaskItemCard(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Actions row: Timer, I'm Stuck, Status
+            // Action row
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -579,15 +960,14 @@ fun StudyTaskItemCard(
 
 @Composable
 fun AddStudyTaskDialog(
+    activeCategories: List<StudyCategoryEntity>,
     onDismiss: () -> Unit,
     onConfirm: (String, String, Int, Boolean) -> Unit
 ) {
     var title by remember { mutableStateOf("") }
-    var category by remember { mutableStateOf("DSA") }
+    var selectedCategory by remember { mutableStateOf(activeCategories.firstOrNull()?.name ?: "General") }
     var estimatedMinutes by remember { mutableIntStateOf(30) }
     var isPriority by remember { mutableStateOf(false) }
-
-    val categories = listOf("DSA", "JavaScript", "React", "Backend", "Interview Prep", "General")
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -604,11 +984,11 @@ fun AddStudyTaskDialog(
 
                 Text("Category", style = MaterialTheme.typography.labelSmall)
                 LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    items(categories) { cat ->
+                    items(activeCategories) { cat ->
                         FilterChip(
-                            selected = category == cat,
-                            onClick = { category = cat },
-                            label = { Text(cat, style = MaterialTheme.typography.labelSmall) }
+                            selected = selectedCategory == cat.name,
+                            onClick = { selectedCategory = cat.name },
+                            label = { Text(cat.name, style = MaterialTheme.typography.labelSmall) }
                         )
                     }
                 }
@@ -642,13 +1022,404 @@ fun AddStudyTaskDialog(
             Button(
                 onClick = {
                     if (title.isNotBlank()) {
-                        onConfirm(title, category, estimatedMinutes, isPriority)
+                        onConfirm(title, selectedCategory, estimatedMinutes, isPriority)
                     }
                 },
                 enabled = title.isNotBlank()
             ) {
                 Text("Create Task")
             }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
+        }
+    )
+}
+
+@Composable
+fun EditStudyTaskDialog(
+    task: StudyTaskEntity,
+    activeCategories: List<StudyCategoryEntity>,
+    onDismiss: () -> Unit,
+    onConfirm: (Long, String, String, Int, Boolean) -> Unit
+) {
+    var title by remember(task) { mutableStateOf(task.title) }
+    var selectedCategory by remember(task) { mutableStateOf(task.category) }
+    var estimatedMinutes by remember(task) { mutableIntStateOf(task.estimatedMinutes) }
+    var isPriority by remember(task) { mutableStateOf(task.isDailyPriority) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Edit Study Task") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                OutlinedTextField(
+                    value = title,
+                    onValueChange = { title = it },
+                    label = { Text("Task Title *") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Text("Category", style = MaterialTheme.typography.labelSmall)
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    items(activeCategories) { cat ->
+                        FilterChip(
+                            selected = selectedCategory == cat.name,
+                            onClick = { selectedCategory = cat.name },
+                            label = { Text(cat.name, style = MaterialTheme.typography.labelSmall) }
+                        )
+                    }
+                }
+
+                Text("Estimated Duration: $estimatedMinutes mins", style = MaterialTheme.typography.labelSmall)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    listOf(15, 25, 45, 60, 90).forEach { mins ->
+                        FilterChip(
+                            selected = estimatedMinutes == mins,
+                            onClick = { estimatedMinutes = mins },
+                            label = { Text("${mins}m") }
+                        )
+                    }
+                }
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.clickable { isPriority = !isPriority }
+                ) {
+                    Icon(
+                        imageVector = if (isPriority) Icons.Default.Star else Icons.Outlined.StarBorder,
+                        contentDescription = null,
+                        tint = if (isPriority) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.outline
+                    )
+                    Text("Daily Main Priority", style = MaterialTheme.typography.bodyMedium)
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    if (title.isNotBlank()) {
+                        onConfirm(task.id, title, selectedCategory, estimatedMinutes, isPriority)
+                    }
+                },
+                enabled = title.isNotBlank()
+            ) {
+                Text("Save Changes")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
+        }
+    )
+}
+
+@Composable
+fun CategoryManagerDialog(
+    categories: List<StudyCategoryEntity>,
+    onDismiss: () -> Unit,
+    onCreateCategory: (String, String?, String, String) -> Boolean,
+    onUpdateCategory: (StudyCategoryEntity) -> Boolean,
+    onArchiveCategory: (Long, Boolean) -> Unit,
+    onDeleteCategory: (Long, String, String) -> Unit
+) {
+    var showCreateForm by remember { mutableStateOf(false) }
+    var categoryToEdit by remember { mutableStateOf<StudyCategoryEntity?>(null) }
+    var categoryToDelete by remember { mutableStateOf<StudyCategoryEntity?>(null) }
+
+    // Colors available for selection
+    val availableColors = listOf(
+        "#3F5E48", "#D4A373", "#3B82F6", "#7C3AED", "#EA580C", "#0D9488", "#E11D48", "#6B7280"
+    )
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text("Study Categories")
+                if (!showCreateForm) {
+                    FilledTonalButton(
+                        onClick = { showCreateForm = true },
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(14.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Add", style = MaterialTheme.typography.labelSmall)
+                    }
+                }
+            }
+        },
+        text = {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                if (showCreateForm) {
+                    var newName by remember { mutableStateOf("") }
+                    var newDesc by remember { mutableStateOf("") }
+                    var selectedColor by remember { mutableStateOf(availableColors[0]) }
+
+                    Card(
+                        shape = RoundedCornerShape(12.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                    ) {
+                        Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Text("New Category", style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold))
+                            OutlinedTextField(
+                                value = newName,
+                                onValueChange = { newName = it },
+                                label = { Text("Name *") },
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                            OutlinedTextField(
+                                value = newDesc,
+                                onValueChange = { newDesc = it },
+                                label = { Text("Optional Description") },
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                            Text("Color Marker", style = MaterialTheme.typography.labelSmall)
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                availableColors.forEach { hex ->
+                                    val color = parseHexColor(hex)
+                                    Box(
+                                        modifier = Modifier
+                                            .size(24.dp)
+                                            .clip(CircleShape)
+                                            .background(color)
+                                            .border(
+                                                width = if (selectedColor == hex) 2.dp else 0.dp,
+                                                color = if (selectedColor == hex) MaterialTheme.colorScheme.onSurface else Color.Transparent,
+                                                shape = CircleShape
+                                            )
+                                            .clickable { selectedColor = hex }
+                                    )
+                                }
+                            }
+                            Row(horizontalArrangement = Arrangement.End, modifier = Modifier.fillMaxWidth()) {
+                                TextButton(onClick = { showCreateForm = false }) { Text("Cancel") }
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Button(
+                                    onClick = {
+                                        val success = onCreateCategory(newName, newDesc.ifBlank { null }, selectedColor, "category")
+                                        if (success) showCreateForm = false
+                                    },
+                                    enabled = newName.isNotBlank()
+                                ) {
+                                    Text("Create")
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // List of existing categories
+                LazyColumn(modifier = Modifier.height(280.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    items(categories, key = { "cat_${it.id}_${it.name}" }) { cat ->
+                        Surface(
+                            shape = RoundedCornerShape(10.dp),
+                            color = MaterialTheme.colorScheme.surface,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(14.dp)
+                                            .clip(CircleShape)
+                                            .background(parseHexColor(cat.colorHex))
+                                    )
+                                    Column {
+                                        Text(
+                                            text = cat.name + if (cat.isArchived) " (Archived)" else "",
+                                            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                                            color = if (cat.isArchived) MaterialTheme.colorScheme.outlineVariant else MaterialTheme.colorScheme.onSurface
+                                        )
+                                        if (!cat.description.isNullOrBlank()) {
+                                            Text(
+                                                text = cat.description,
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+                                    }
+                                }
+
+                                Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+                                    IconButton(onClick = { categoryToEdit = cat }, modifier = Modifier.size(32.dp)) {
+                                        Icon(Icons.Default.Edit, contentDescription = "Edit", modifier = Modifier.size(16.dp))
+                                    }
+                                    IconButton(
+                                        onClick = { onArchiveCategory(cat.id, !cat.isArchived) },
+                                        modifier = Modifier.size(32.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = if (cat.isArchived) Icons.Default.Unarchive else Icons.Default.Archive,
+                                            contentDescription = if (cat.isArchived) "Restore" else "Archive",
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    }
+                                    // Prevent deleting General fallback directly
+                                    if (!cat.name.equals("General", ignoreCase = true)) {
+                                        IconButton(onClick = { categoryToDelete = cat }, modifier = Modifier.size(32.dp)) {
+                                            Icon(Icons.Default.Delete, contentDescription = "Delete", tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(16.dp))
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(onClick = onDismiss) { Text("Done") }
+        }
+    )
+
+    // Edit Category Dialog
+    categoryToEdit?.let { cat ->
+        var editName by remember(cat) { mutableStateOf(cat.name) }
+        var editDesc by remember(cat) { mutableStateOf(cat.description ?: "") }
+        var editColor by remember(cat) { mutableStateOf(cat.colorHex) }
+
+        AlertDialog(
+            onDismissRequest = { categoryToEdit = null },
+            title = { Text("Edit Category") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    OutlinedTextField(
+                        value = editName,
+                        onValueChange = { editName = it },
+                        label = { Text("Name *") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    OutlinedTextField(
+                        value = editDesc,
+                        onValueChange = { editDesc = it },
+                        label = { Text("Description") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Text("Color Marker", style = MaterialTheme.typography.labelSmall)
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        availableColors.forEach { hex ->
+                            val color = parseHexColor(hex)
+                            Box(
+                                modifier = Modifier
+                                    .size(24.dp)
+                                    .clip(CircleShape)
+                                    .background(color)
+                                    .border(
+                                        width = if (editColor == hex) 2.dp else 0.dp,
+                                        color = if (editColor == hex) MaterialTheme.colorScheme.onSurface else Color.Transparent,
+                                        shape = CircleShape
+                                    )
+                                    .clickable { editColor = hex }
+                            )
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val success = onUpdateCategory(cat.copy(name = editName, description = editDesc.ifBlank { null }, colorHex = editColor))
+                        if (success) categoryToEdit = null
+                    },
+                    enabled = editName.isNotBlank()
+                ) {
+                    Text("Save")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { categoryToEdit = null }) { Text("Cancel") }
+            }
+        )
+    }
+
+    // Delete Confirmation Dialog with Fallback Reassignment
+    categoryToDelete?.let { cat ->
+        val otherCategories = categories.filter { it.id != cat.id && !it.isArchived }
+        var selectedFallback by remember { mutableStateOf(otherCategories.firstOrNull { it.name.equals("General", ignoreCase = true) }?.name ?: "General") }
+
+        AlertDialog(
+            onDismissRequest = { categoryToDelete = null },
+            title = { Text("Delete Category '${cat.name}'?") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text(
+                        text = "Existing tasks in '${cat.name}' will never be silently deleted. Select a category to reassign them to:",
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                    LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        items(otherCategories) { fallbackCat ->
+                            FilterChip(
+                                selected = selectedFallback == fallbackCat.name,
+                                onClick = { selectedFallback = fallbackCat.name },
+                                label = { Text(fallbackCat.name) }
+                            )
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        onDeleteCategory(cat.id, cat.name, selectedFallback)
+                        categoryToDelete = null
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text("Reassign & Delete")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { categoryToDelete = null }) { Text("Cancel") }
+            }
+        )
+    }
+}
+
+@Composable
+fun CustomTimerDurationDialog(
+    onDismiss: () -> Unit,
+    onConfirm: (Int) -> Unit
+) {
+    var selectedMins by remember { mutableIntStateOf(30) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Custom Focus Interval") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(
+                    text = "$selectedMins minutes",
+                    style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Slider(
+                    value = selectedMins.toFloat(),
+                    onValueChange = { selectedMins = it.toInt() },
+                    valueRange = 5f..120f,
+                    steps = 22
+                )
+            }
+        },
+        confirmButton = {
+            Button(onClick = { onConfirm(selectedMins) }) { Text("Set Duration") }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) { Text("Cancel") }
@@ -733,7 +1504,9 @@ fun ImStuckDialog(
 
 @Composable
 fun RecordSessionDialog(
+    title: String,
     timerState: com.example.ui.TimerState,
+    status: String,
     onDismiss: () -> Unit,
     onConfirm: (String?) -> Unit
 ) {
@@ -742,11 +1515,11 @@ fun RecordSessionDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Record Study Session") },
+        title = { Text(title) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text(
-                    text = "Logged Duration: $durationMin minutes",
+                    text = "Logged Duration: $durationMin minutes ($status)",
                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                     color = MaterialTheme.colorScheme.primary
                 )
@@ -777,4 +1550,12 @@ fun RecordSessionDialog(
             TextButton(onClick = onDismiss) { Text("Discard") }
         }
     )
+}
+
+private fun parseHexColor(hex: String): Color {
+    return try {
+        Color(android.graphics.Color.parseColor(hex))
+    } catch (_: Exception) {
+        Color(0xFF4D6B53)
+    }
 }

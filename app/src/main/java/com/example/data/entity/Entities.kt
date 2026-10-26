@@ -74,13 +74,41 @@ data class MedicationEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val name: String,
     val dosage: String,
-    val unit: String, // e.g. "mg", "tablets", "capsule", "ml"
+    val unit: String, // e.g. "mg", "mcg", "g", "mL", "tablet", "capsule", "drops", "puff", "other"
     val instructions: String, // e.g. "Take with food"
-    val scheduledTimeMinutes: Int, // e.g. 08:00 -> 480
+    val scheduledTimeMinutes: Int, // primary scheduled time (e.g. 08:00 -> 480)
     val reminderEnabled: Boolean = false,
     val isActive: Boolean = true,
-    val notes: String? = null
-)
+    val notes: String? = null,
+    val dosageForm: String? = null, // e.g. "Tablet", "Capsule", "Liquid", "Inhaler", "Drops", "Injection", "Patch", "Topical", "Other"
+    val scheduledTimesJson: String = "", // comma-separated minutes e.g. "480,1200". If empty, fallback to [scheduledTimeMinutes]
+    val repeatDays: String = "DAILY", // "DAILY", or comma-separated "MON,TUE,WED,THU,FRI,SAT,SUN"
+    val startDate: String = "", // YYYY-MM-DD
+    val endDate: String? = null, // YYYY-MM-DD
+    val isArchived: Boolean = false
+) {
+    fun getScheduledTimes(): List<Int> {
+        if (scheduledTimesJson.isNotBlank()) {
+            val parsed = scheduledTimesJson.split(",")
+                .mapNotNull { it.trim().toIntOrNull() }
+                .filter { it in 0..1439 }
+            if (parsed.isNotEmpty()) return parsed.sorted()
+        }
+        return listOf(scheduledTimeMinutes)
+    }
+
+    fun isScheduledForDayOfWeek(dayAbbr: String): Boolean {
+        if (repeatDays.equals("DAILY", ignoreCase = true) || repeatDays.isBlank()) return true
+        val days = repeatDays.split(",").map { it.trim().uppercase() }
+        return days.contains(dayAbbr.uppercase())
+    }
+
+    fun isEffectiveOnDate(dateString: String): Boolean {
+        if (startDate.isNotBlank() && dateString < startDate) return false
+        if (!endDate.isNullOrBlank() && dateString > endDate) return false
+        return true
+    }
+}
 
 @Entity(
     tableName = "medication_intakes",
@@ -93,14 +121,29 @@ data class MedicationIntakeEntity(
     val scheduledTimeMinutes: Int,
     val actualActionTime: Long? = null, // timestamp when user tapped
     val status: String, // "TAKEN", "SKIPPED", "DELAYED", "MISSED", "UNRECORDED"
-    val notes: String? = null
+    val notes: String? = null,
+    val medicationName: String = "", // snapshot so history is preserved if med is deleted/edited
+    val dosageSnapshot: String = "", // e.g. "50 mg"
+    val isCorrected: Boolean = false,
+    val correctedAt: Long? = null
+)
+
+@Entity(tableName = "study_categories")
+data class StudyCategoryEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val name: String,
+    val description: String? = null,
+    val colorHex: String = "#4D6B53",
+    val iconName: String = "category",
+    val sortOrder: Int = 0,
+    val isArchived: Boolean = false
 )
 
 @Entity(tableName = "study_tasks")
 data class StudyTaskEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val title: String,
-    val category: String, // "DSA", "JavaScript", "React", "Backend", "Interview Prep", "General"
+    val category: String, // Backed by StudyCategoryEntity.name
     val status: String = "NOT_STARTED", // "NOT_STARTED", "IN_PROGRESS", "COMPLETED", "SKIPPED"
     val isDailyPriority: Boolean = false,
     val estimatedMinutes: Int = 30,
@@ -120,11 +163,142 @@ data class StudySessionEntity(
     val sessionType: String, // "POMODORO", "DEEP_WORK", "STOPWATCH", "CUSTOM"
     val date: String,
     val timestamp: Long = System.currentTimeMillis(),
+    val startTimeMillis: Long? = null,
+    val endTimeMillis: Long? = null,
+    val completionStatus: String = "COMPLETED", // "COMPLETED", "INTERRUPTED", "PARTIAL"
     val learnedNotes: String? = null
 )
+
+@Entity(tableName = "active_timer_draft")
+data class ActiveTimerDraftEntity(
+    @PrimaryKey val id: Int = 1, // Single active timer state record
+    val taskId: Long? = null,
+    val taskTitle: String = "Focused Study",
+    val category: String = "General",
+    val mode: String = "POMODORO", // "POMODORO", "DEEP_WORK", "CUSTOM", "STOPWATCH"
+    val targetSeconds: Int = 25 * 60,
+    val startWallClockMillis: Long = 0L,
+    val accumulatedElapsedSeconds: Int = 0,
+    val isRunning: Boolean = false,
+    val isPaused: Boolean = false,
+    val isCompleted: Boolean = false,
+    val lastUpdatedMillis: Long = System.currentTimeMillis()
+)
+
+@Entity(tableName = "brain_dump_notes")
+data class BrainDumpNoteEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val title: String? = null,
+    val content: String,
+    val tag: String? = null, // e.g. "Idea", "Study", "Todo", "Health", "Personal"
+    val isPinned: Boolean = false,
+    val isArchived: Boolean = false,
+    val createdAt: Long = System.currentTimeMillis(),
+    val updatedAt: Long = System.currentTimeMillis()
+) {
+    fun displayTitle(): String {
+        if (!title.isNullOrBlank()) return title
+        val firstLine = content.lines().firstOrNull { it.isNotBlank() } ?: "Untitled Thought"
+        return if (firstLine.length > 35) firstLine.take(32) + "..." else firstLine
+    }
+}
 
 @Entity(tableName = "app_settings")
 data class AppSettingEntity(
     @PrimaryKey val key: String,
     val value: String
+)
+
+@Entity(tableName = "reminders")
+data class ReminderEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val title: String,
+    val category: String, // "WAKE_UP", "BEDTIME", "WIND_DOWN", "MEAL", "MEDICATION", "ROUTINE_ANCHOR", "STUDY_BREAK", "HYDRATION", "CUSTOM"
+    val timeMinutes: Int, // 0..1439
+    val repeatDays: String = "DAILY", // "DAILY", or "MON,TUE,WED,THU,FRI,SAT,SUN"
+    val isEnabled: Boolean = true,
+    val soundEnabled: Boolean = true,
+    val vibrateEnabled: Boolean = true,
+    val isUrgent: Boolean = false, // Bypasses quiet hours
+    val referenceId: String? = null, // e.g. "anchor:out_of_bed" or "med:3"
+    val customMessage: String? = null,
+    val voiceAnnouncementEnabled: Boolean = false, // Optional TTS announcement
+    val spokenAnnouncementText: String? = null, // Custom voice message, e.g. "It's time for your medication"
+    val customAudioUri: String? = null, // Persisted content:// URI for custom alarm audio file
+    val customAudioTitle: String? = null, // User-friendly filename e.g. "Morning Sunlight.mp3"
+    val customAudioCollectionJson: String? = null, // JSON array of [{"uri": "...", "title": "..."}] for random collection
+    val audioPlaybackMode: String = "DEFAULT", // "DEFAULT", "CUSTOM_SINGLE", "CUSTOM_RANDOM"
+    val lastPlayedAudioUri: String? = null, // Prevents consecutive duplicate plays in random collection
+    val createdAt: Long = System.currentTimeMillis()
+) {
+    fun isScheduledForDayOfWeek(dayAbbr: String): Boolean {
+        if (repeatDays.equals("DAILY", ignoreCase = true) || repeatDays.isBlank()) return true
+        if (repeatDays.equals("WEEKDAYS", ignoreCase = true)) {
+            return listOf("MON", "TUE", "WED", "THU", "FRI").contains(dayAbbr.uppercase())
+        }
+        if (repeatDays.equals("WEEKENDS", ignoreCase = true)) {
+            return listOf("SAT", "SUN").contains(dayAbbr.uppercase())
+        }
+        val days = repeatDays.split(",").map { it.trim().uppercase() }
+        return days.contains(dayAbbr.uppercase())
+    }
+
+    fun formattedSchedule(): String {
+        return when {
+            repeatDays.equals("DAILY", ignoreCase = true) || repeatDays.isBlank() -> "Every day"
+            repeatDays.equals("WEEKDAYS", ignoreCase = true) -> "Weekdays (Mon–Fri)"
+            repeatDays.equals("WEEKENDS", ignoreCase = true) -> "Weekends (Sat–Sun)"
+            else -> repeatDays.split(",").joinToString(", ") { it.trim().capitalizeUS() }
+        }
+    }
+
+    fun getAudioCollection(): List<Pair<String, String>> {
+        if (customAudioCollectionJson.isNullOrBlank()) return emptyList()
+        return try {
+            val list = mutableListOf<Pair<String, String>>()
+            val jsonArray = org.json.JSONArray(customAudioCollectionJson)
+            for (i in 0 until jsonArray.length()) {
+                val obj = jsonArray.getJSONObject(i)
+                list.add(obj.getString("uri") to obj.optString("title", "Track ${i + 1}"))
+            }
+            list
+        } catch (_: Exception) {
+            emptyList()
+        }
+    }
+
+    fun formattedTime(): String {
+        val hours = timeMinutes / 60
+        val minutes = timeMinutes % 60
+        val isPm = hours >= 12
+        val displayHour = when {
+            hours == 0 -> 12
+            hours > 12 -> hours - 12
+            else -> hours
+        }
+        val amPm = if (isPm) "PM" else "AM"
+        return String.format(java.util.Locale.US, "%d:%02d %s", displayHour, minutes, amPm)
+    }
+
+    fun effectiveVoiceAnnouncement(): String {
+        if (!spokenAnnouncementText.isNullOrBlank()) {
+            return spokenAnnouncementText
+        }
+        return "It's time for your $title reminder."
+    }
+}
+
+private fun String.capitalizeUS(): String {
+    return this.lowercase().replaceFirstChar { if (it.isLowerCase()) it.titlecase(java.util.Locale.US) else it.toString() }
+}
+
+@Entity(tableName = "meditation_sessions")
+data class MeditationSessionEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val techniqueId: String, // "mindful_breathing", "body_scan", "grounding_senses", "mindful_observation", "study_break"
+    val title: String,
+    val durationMinutes: Int,
+    val completedAt: Long = System.currentTimeMillis(),
+    val reflectionNotes: String? = null,
+    val status: String = "COMPLETED" // "COMPLETED", "STOPPED_EARLY"
 )

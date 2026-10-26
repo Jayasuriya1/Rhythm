@@ -9,14 +9,27 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Backup
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.CloudQueue
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.DeleteSweep
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FileUpload
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Lightbulb
 import androidx.compose.material.icons.filled.NotificationsActive
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material3.AlertDialog
@@ -26,8 +39,10 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -41,6 +56,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.ui.MainViewModel
 
 @Composable
@@ -49,6 +65,19 @@ fun SettingsScreen(
     modifier: Modifier = Modifier
 ) {
     var showResetConfirmDialog by remember { mutableStateOf(false) }
+    var showExportDialog by remember { mutableStateOf(false) }
+    var exportedJsonText by remember { mutableStateOf("") }
+    var showImportDialog by remember { mutableStateOf(false) }
+    var importJsonInput by remember { mutableStateOf("") }
+    var importValidationSummary by remember { mutableStateOf<com.example.util.BackupSummary?>(null) }
+    var importErrorMessage by remember { mutableStateOf<String?>(null) }
+    var copyFeedbackMessage by remember { mutableStateOf<String?>(null) }
+
+    val integrityStats by viewModel.databaseIntegrityStats.collectAsStateWithLifecycle()
+
+    val context = androidx.compose.ui.platform.LocalContext.current
+    var isOverlayRunning by remember { mutableStateOf(com.example.service.FloatingBrainDumpService.isRunning) }
+    val hasOverlayPermission = android.provider.Settings.canDrawOverlays(context)
 
     LazyColumn(
         modifier = modifier
@@ -84,6 +113,108 @@ fun SettingsScreen(
             }
         }
 
+        // Floating Thought Bubble (Quick Capture Overlay)
+        item {
+            Card(
+                shape = RoundedCornerShape(18.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)),
+                modifier = Modifier.fillMaxWidth().testTag("floating_overlay_settings_card")
+            ) {
+                Column(modifier = Modifier.padding(18.dp)) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Lightbulb,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                        Text(
+                            text = "Floating Thought Bubble (Quick Capture)",
+                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "Opt-in floating pill to quickly park distracting thoughts while reading PDFs or watching study lectures. Strict privacy guarantee: Rhythm & Focus never collects screenshots or reads other apps' data.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    if (!hasOverlayPermission) {
+                        Surface(
+                            shape = RoundedCornerShape(10.dp),
+                            color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.4f),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(
+                                text = "Permission Required: 'Display over other apps' is needed to show the floating thought pill.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onTertiaryContainer,
+                                modifier = Modifier.padding(12.dp)
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        Button(
+                            onClick = {
+                                val intent = android.content.Intent(
+                                    android.provider.Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                                    android.net.Uri.parse("package:${context.packageName}")
+                                )
+                                context.startActivity(intent)
+                            },
+                            shape = RoundedCornerShape(10.dp),
+                            modifier = Modifier.testTag("request_overlay_permission_button")
+                        ) {
+                            Text("Grant Overlay Permission")
+                        }
+                    } else {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = if (isOverlayRunning) "Overlay Status: Active" else "Overlay Status: Stopped",
+                                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
+                                color = if (isOverlayRunning) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+
+                            Button(
+                                onClick = {
+                                    if (isOverlayRunning) {
+                                        val stopIntent = android.content.Intent(context, com.example.service.FloatingBrainDumpService::class.java).apply {
+                                            action = com.example.service.FloatingBrainDumpService.ACTION_STOP
+                                        }
+                                        context.startService(stopIntent)
+                                        isOverlayRunning = false
+                                        viewModel.saveSetting("floating_overlay_enabled", "false")
+                                    } else {
+                                        val startIntent = android.content.Intent(context, com.example.service.FloatingBrainDumpService::class.java).apply {
+                                            action = com.example.service.FloatingBrainDumpService.ACTION_START
+                                        }
+                                        androidx.core.content.ContextCompat.startForegroundService(context, startIntent)
+                                        isOverlayRunning = true
+                                        viewModel.saveSetting("floating_overlay_enabled", "true")
+                                    }
+                                },
+                                shape = RoundedCornerShape(10.dp),
+                                modifier = Modifier.testTag("toggle_floating_overlay_button")
+                            ) {
+                                Text(if (isOverlayRunning) "Stop Bubble" else "Start Bubble")
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         item {
             Card(
                 shape = RoundedCornerShape(18.dp),
@@ -101,10 +232,208 @@ fun SettingsScreen(
                     }
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "Optional reminders for routine anchors, medications, and study sessions are scheduled via native Android AlarmManager. In Milestone 1, notifications are non-intrusive and never automatically mark actions complete.",
+                        text = "Native Android AlarmManager schedules alarms for wake-up, bedtime, meals, hydration, routine anchors, and medications. Respects quiet hours with optional bypass for critical medications.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
+                    Spacer(modifier = Modifier.height(14.dp))
+                    Button(
+                        onClick = { viewModel.navigateTo(com.example.ui.AppDestination.REMINDERS) },
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier.testTag("open_reminder_center_button")
+                    ) {
+                        Icon(Icons.Default.NotificationsActive, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Open Reminder Center")
+                    }
+                }
+            }
+        }
+
+        // Data Backup & Restore (JSON)
+        item {
+            Card(
+                shape = RoundedCornerShape(18.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)),
+                modifier = Modifier.fillMaxWidth().testTag("backup_restore_card")
+            ) {
+                Column(modifier = Modifier.padding(18.dp)) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Backup,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                        Text(
+                            text = "Data Backup & Restore (JSON)",
+                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "Export your entire local SQLite database to structured JSON for safe offline backup or migrating between devices. Restoring validates schema and entity integrity with zero telemetry.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(14.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        FilledTonalButton(
+                            onClick = {
+                                viewModel.exportBackupJson { json ->
+                                    exportedJsonText = json
+                                    copyFeedbackMessage = null
+                                    showExportDialog = true
+                                }
+                            },
+                            shape = RoundedCornerShape(10.dp),
+                            modifier = Modifier.weight(1f).testTag("export_backup_button")
+                        ) {
+                            Icon(Icons.Default.Download, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Export Backup")
+                        }
+
+                        OutlinedButton(
+                            onClick = {
+                                importJsonInput = ""
+                                importValidationSummary = null
+                                importErrorMessage = null
+                                showImportDialog = true
+                            },
+                            shape = RoundedCornerShape(10.dp),
+                            modifier = Modifier.weight(1f).testTag("restore_backup_button")
+                        ) {
+                            Icon(Icons.Default.FileUpload, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Restore JSON")
+                        }
+                    }
+                }
+            }
+        }
+
+        // Database Integrity & Table Health
+        item {
+            Card(
+                shape = RoundedCornerShape(18.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)),
+                modifier = Modifier.fillMaxWidth().testTag("database_integrity_card")
+            ) {
+                Column(modifier = Modifier.padding(18.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Storage,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                            Text(
+                                text = "Database Health & Stats",
+                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+
+                        IconButton(
+                            onClick = { viewModel.refreshDatabaseIntegrityStats() },
+                            modifier = Modifier.size(36.dp).testTag("refresh_integrity_button")
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Refresh,
+                                contentDescription = "Refresh Stats",
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    val stats = integrityStats
+                    if (stats != null) {
+                        Surface(
+                            shape = RoundedCornerShape(10.dp),
+                            color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.CheckCircle,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Text(
+                                    text = if (stats.isConsistent) "SQLite Integrity: Verified & Consistent" else "SQLite Check: Warning",
+                                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        // Table stats badges
+                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                StatBadge(label = "Routine Logs", value = "${stats.totalRoutines}", modifier = Modifier.weight(1f))
+                                StatBadge(label = "Sleep Nights", value = "${stats.totalSleep}", modifier = Modifier.weight(1f))
+                            }
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                StatBadge(label = "Health Check-ins", value = "${stats.totalHealth}", modifier = Modifier.weight(1f))
+                                StatBadge(label = "Water Entries", value = "${stats.totalWater}", modifier = Modifier.weight(1f))
+                            }
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                StatBadge(label = "Medications", value = "${stats.totalMedications} (${stats.totalIntakes} logs)", modifier = Modifier.weight(1f))
+                                StatBadge(label = "Study Tasks", value = "${stats.totalTasks} (${stats.totalSessions} sessions)", modifier = Modifier.weight(1f))
+                            }
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                StatBadge(label = "Brain Dump Notes", value = "${stats.totalBrainDump}", modifier = Modifier.weight(1f))
+                                StatBadge(label = "Active Alarms", value = "${stats.enabledReminders} of ${stats.totalReminders} stored", modifier = Modifier.weight(1f))
+                            }
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                StatBadge(label = "Mindfulness Sessions", value = "${stats.totalMeditationSessions}", modifier = Modifier.weight(1f))
+                            }
+                        }
+                    } else {
+                        Text(
+                            text = "Loading database statistics...",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
             }
         }
@@ -228,6 +557,241 @@ fun SettingsScreen(
                 }
             }
         )
+    }
+
+    // Export Backup Dialog
+    if (showExportDialog) {
+        AlertDialog(
+            onDismissRequest = { showExportDialog = false },
+            title = { Text("Export Local Data Backup") },
+            text = {
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    Text(
+                        text = "Your entire database has been serialized into structured JSON. You can copy it to clipboard to store in a safe text file or transfer it to another device.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(200.dp)
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .padding(10.dp)
+                                .verticalScroll(rememberScrollState())
+                        ) {
+                            Text(
+                                text = exportedJsonText,
+                                style = MaterialTheme.typography.labelSmall.copy(fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+
+                    if (copyFeedbackMessage != null) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = copyFeedbackMessage!!,
+                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                        val clip = ClipData.newPlainText("RhythmFocusBackup", exportedJsonText)
+                        clipboard.setPrimaryClip(clip)
+                        copyFeedbackMessage = "Copied to clipboard!"
+                    },
+                    modifier = Modifier.testTag("copy_backup_clipboard_button")
+                ) {
+                    Icon(Icons.Default.ContentCopy, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("Copy to Clipboard")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showExportDialog = false }) {
+                    Text("Done")
+                }
+            }
+        )
+    }
+
+    // Import / Restore Backup Dialog
+    if (showImportDialog) {
+        AlertDialog(
+            onDismissRequest = { showImportDialog = false },
+            title = { Text("Restore Data from Backup") },
+            text = {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .verticalScroll(rememberScrollState())
+                ) {
+                    Text(
+                        text = "Paste a previously exported Rhythm & Focus JSON backup. The file will be strictly validated for schema structure and entity counts before restoring.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    OutlinedTextField(
+                        value = importJsonInput,
+                        onValueChange = {
+                            importJsonInput = it
+                            importValidationSummary = null
+                            importErrorMessage = null
+                        },
+                        label = { Text("Paste JSON Backup") },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(140.dp)
+                            .testTag("import_json_input_field"),
+                        textStyle = MaterialTheme.typography.labelSmall.copy(fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace),
+                        maxLines = 8
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.End
+                    ) {
+                        OutlinedButton(
+                            onClick = {
+                                if (importJsonInput.isBlank()) {
+                                    importErrorMessage = "Please paste JSON text first"
+                                    return@OutlinedButton
+                                }
+                                val result = com.example.util.DataBackupManager.validateBackup(importJsonInput)
+                                if (result.isSuccess) {
+                                    importValidationSummary = result.getOrNull()
+                                    importErrorMessage = null
+                                } else {
+                                    importErrorMessage = result.exceptionOrNull()?.message ?: "Invalid JSON backup"
+                                    importValidationSummary = null
+                                }
+                            },
+                            modifier = Modifier.testTag("validate_backup_button")
+                        ) {
+                            Text("Validate Backup")
+                        }
+                    }
+
+                    if (importValidationSummary != null) {
+                        Spacer(modifier = Modifier.height(10.dp))
+                        val summary = importValidationSummary!!
+                        Surface(
+                            shape = RoundedCornerShape(10.dp),
+                            color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(modifier = Modifier.padding(12.dp)) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    Icon(
+                                        Icons.Default.CheckCircle,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                    Text(
+                                        text = "Valid Backup File",
+                                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                                    )
+                                }
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = "Contains: ${summary.routineEntriesCount} routines, ${summary.sleepCount} sleep nights, ${summary.medicationsCount} meds, ${summary.studySessionsCount} focus sessions, ${summary.brainDumpCount} brain dump notes.",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                            }
+                        }
+                    }
+
+                    if (importErrorMessage != null) {
+                        Spacer(modifier = Modifier.height(10.dp))
+                        Surface(
+                            shape = RoundedCornerShape(10.dp),
+                            color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.5f),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(
+                                text = "Validation Failed: ${importErrorMessage!!}",
+                                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Medium),
+                                color = MaterialTheme.colorScheme.onErrorContainer,
+                                modifier = Modifier.padding(12.dp)
+                            )
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                if (importValidationSummary != null) {
+                    Button(
+                        onClick = {
+                            viewModel.restoreBackupJson(importJsonInput, context) { success, _ ->
+                                if (success) {
+                                    showImportDialog = false
+                                }
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                        modifier = Modifier.testTag("confirm_restore_backup_button")
+                    ) {
+                        Text("Confirm & Restore")
+                    }
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showImportDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+}
+
+@Composable
+fun StatBadge(
+    label: String,
+    value: String,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        shape = RoundedCornerShape(8.dp),
+        color = MaterialTheme.colorScheme.surface,
+        modifier = modifier
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Text(
+                text = value,
+                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                color = MaterialTheme.colorScheme.onSurface
+            )
+        }
     }
 }
 

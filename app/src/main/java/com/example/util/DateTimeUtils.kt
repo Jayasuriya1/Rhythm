@@ -88,4 +88,26 @@ object DateTimeUtils {
             else -> "Restful night"
         }
     }
+
+    fun formatTimestamp(timestamp: Long): String {
+        return try {
+            val format = SimpleDateFormat("MMM d, h:mm a", Locale.getDefault())
+            format.format(Date(timestamp))
+        } catch (_: Exception) {
+            ""
+        }
+    }
+
+    fun formatTimeOnly(timestamp: Long): String {
+        return try {
+            val format = SimpleDateFormat("h:mm a", Locale.getDefault())
+            format.format(Date(timestamp))
+        } catch (_: Exception) {
+            ""
+        }
+    }
+
+    fun getDayOfWeekAbbreviation(dateStr: String): String {
+        return formatShortDay(dateStr).uppercase()
+    }
 }
