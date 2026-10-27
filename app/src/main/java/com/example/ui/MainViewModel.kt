@@ -1,6 +1,7 @@
 package com.example.ui
 
 import android.content.Context
+import android.content.Intent
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.data.entity.ActiveTimerDraftEntity
@@ -38,6 +39,7 @@ enum class AppDestination(val label: String) {
     MEDITATION("Meditation"),
     BRAIN_DUMP("Brain Dump"),
     REMINDERS("Reminders"),
+    ALARMS("Alarms"),
     INSIGHTS("Insights"),
     SETTINGS("Settings")
 }
@@ -199,6 +201,10 @@ class MainViewModel(private val repository: AppRepository) : ViewModel() {
     val recentMeditationSessions: StateFlow<List<com.example.data.entity.MeditationSessionEntity>> = repository.recentMeditationSessions
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
+    // Dedicated Custom Alarms
+    val allAlarms: StateFlow<List<com.example.data.entity.CustomAlarmEntity>> = repository.allAlarms
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
     // Message Toast / Feedback
     private val _userFeedbackMessage = MutableStateFlow<String?>(null)
     val userFeedbackMessage: StateFlow<String?> = _userFeedbackMessage.asStateFlow()
@@ -208,6 +214,7 @@ class MainViewModel(private val repository: AppRepository) : ViewModel() {
             repository.ensureDefaultAnchors()
             repository.ensureDefaultCategories()
             repository.ensureDefaultReminders()
+            repository.ensureDefaultAlarms()
             repository.cleanupDuplicateReminders()
             restoreTimerStateFromDraft()
             refreshDatabaseIntegrityStats()
@@ -1094,6 +1101,74 @@ class MainViewModel(private val repository: AppRepository) : ViewModel() {
             }
             _userFeedbackMessage.value = "Reminder '${reminder.title}' deleted"
         }
+    }
+
+    // --- Dedicated Custom Alarm Operations ---
+    fun saveCustomAlarm(
+        context: Context,
+        alarm: com.example.data.entity.CustomAlarmEntity
+    ) {
+        viewModelScope.launch {
+            val id = repository.saveAlarm(alarm)
+            val savedAlarm = if (alarm.id == 0L) alarm.copy(id = id) else alarm
+            if (savedAlarm.isEnabled) {
+                com.example.util.CustomAlarmScheduler.scheduleAlarm(context, savedAlarm)
+            } else {
+                com.example.util.CustomAlarmScheduler.cancelAlarm(context, savedAlarm.id)
+            }
+            _userFeedbackMessage.value = "Alarm '${alarm.title}' saved (${alarm.formattedTime()})"
+        }
+    }
+
+    fun toggleAlarm(
+        context: Context,
+        alarm: com.example.data.entity.CustomAlarmEntity,
+        isEnabled: Boolean
+    ) {
+        viewModelScope.launch {
+            repository.setAlarmEnabled(alarm.id, isEnabled)
+            if (isEnabled) {
+                com.example.util.CustomAlarmScheduler.scheduleAlarm(context, alarm.copy(isEnabled = true))
+            } else {
+                com.example.util.CustomAlarmScheduler.cancelAlarm(context, alarm.id)
+            }
+            _userFeedbackMessage.value = if (isEnabled) "Alarm enabled" else "Alarm disabled"
+        }
+    }
+
+    fun deleteCustomAlarm(
+        context: Context,
+        alarm: com.example.data.entity.CustomAlarmEntity
+    ) {
+        viewModelScope.launch {
+            repository.deleteAlarm(alarm)
+            com.example.util.CustomAlarmScheduler.cancelAlarm(context, alarm.id)
+            _userFeedbackMessage.value = "Alarm '${alarm.title}' deleted"
+        }
+    }
+
+    fun testAlarmNow(
+        context: Context,
+        alarm: com.example.data.entity.CustomAlarmEntity
+    ) {
+        val serviceIntent = Intent(context, com.example.service.CustomAlarmPlaybackService::class.java).apply {
+            action = com.example.service.CustomAlarmPlaybackService.ACTION_START
+            putExtra(com.example.service.CustomAlarmPlaybackService.EXTRA_ALARM_ID, alarm.id)
+            putExtra(com.example.service.CustomAlarmPlaybackService.EXTRA_TITLE, alarm.title)
+            putExtra(com.example.service.CustomAlarmPlaybackService.EXTRA_AUDIO_URI, alarm.customAudioUri)
+            putExtra(com.example.service.CustomAlarmPlaybackService.EXTRA_CRESCENDO_SECONDS, alarm.crescendoDurationSeconds)
+            putExtra(com.example.service.CustomAlarmPlaybackService.EXTRA_IS_LOOPING, alarm.isLooping)
+            putExtra(com.example.service.CustomAlarmPlaybackService.EXTRA_VIBRATE, alarm.vibrateEnabled)
+            putExtra(com.example.service.CustomAlarmPlaybackService.EXTRA_IS_BACKUP, false)
+        }
+        androidx.core.content.ContextCompat.startForegroundService(context, serviceIntent)
+
+        val activityIntent = Intent(context, com.example.ui.screens.alarm.ActiveAlarmActivity::class.java).apply {
+            putExtra(com.example.ui.screens.alarm.ActiveAlarmActivity.EXTRA_ALARM_ID, alarm.id)
+            putExtra(com.example.ui.screens.alarm.ActiveAlarmActivity.EXTRA_IS_BACKUP, false)
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+        }
+        context.startActivity(activityIntent)
     }
 
     fun setRemindersMasterEnabled(enabled: Boolean, context: Context? = null) {

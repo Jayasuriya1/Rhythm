@@ -28,6 +28,12 @@ class BootReceiver : BroadcastReceiver() {
                         AlarmScheduler.scheduleAllEnabledAlarms(context, enabledReminders)
                     }
 
+                    // Restore all enabled dedicated custom alarms
+                    val enabledAlarms = db.customAlarmDao().getAllAlarmsSync().filter { it.isEnabled }
+                    for (alarm in enabledAlarms) {
+                        com.example.util.CustomAlarmScheduler.scheduleAlarm(context, alarm)
+                    }
+
                     // Restore floating Brain Dump bubble if opted in by user and permission granted
                     val overlayEnabledSetting = db.settingsDao().getSetting("floating_overlay_enabled").firstOrNull()
                     val overlayEnabled = overlayEnabledSetting?.value?.toBooleanStrictOrNull() ?: false

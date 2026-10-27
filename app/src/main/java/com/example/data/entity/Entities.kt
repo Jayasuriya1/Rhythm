@@ -302,3 +302,62 @@ data class MeditationSessionEntity(
     val reflectionNotes: String? = null,
     val status: String = "COMPLETED" // "COMPLETED", "STOPPED_EARLY"
 )
+
+@Entity(tableName = "custom_alarms")
+data class CustomAlarmEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val title: String,
+    val timeMinutes: Int, // 0..1439
+    val repeatDays: String = "WEEKDAYS",
+    val isEnabled: Boolean = true,
+    val vibrateEnabled: Boolean = true,
+    val customAudioUri: String? = null,
+    val customAudioTitle: String? = "Default Alarm Tone",
+    val crescendoDurationSeconds: Int = 60,
+    val isLooping: Boolean = true,
+    val wallpaperUri: String? = null,
+    val wallpaperPresetColor: String = "MIDNIGHT_INDIGO",
+    val timeClockFont: String = "MODERN_DIGITAL",
+    val missionType: String = "NONE", // "NONE", "BARCODE"
+    val targetBarcode: String? = null,
+    val targetBarcodeLabel: String? = null,
+    val chainedBackupAlarmEnabled: Boolean = true,
+    val createdAt: Long = System.currentTimeMillis()
+) {
+    fun formattedTime(): String {
+        val hour24 = timeMinutes / 60
+        val minute = timeMinutes % 60
+        val isPm = hour24 >= 12
+        val hour12 = when (hour24) {
+            0 -> 12
+            in 1..12 -> hour24
+            else -> hour24 - 12
+        }
+        val amPm = if (isPm) "PM" else "AM"
+        return String.format(java.util.Locale.US, "%02d:%02d %s", hour12, minute, amPm)
+    }
+
+    fun formattedSchedule(): String {
+        return when {
+            repeatDays.equals("DAILY", ignoreCase = true) || repeatDays.isBlank() -> "Every day"
+            repeatDays.equals("WEEKDAYS", ignoreCase = true) -> "Weekdays (Mon–Fri)"
+            repeatDays.equals("WEEKENDS", ignoreCase = true) -> "Weekends (Sat–Sun)"
+            else -> {
+                val days = repeatDays.split(",").map { it.trim() }
+                if (days.size == 7) "Every day" else days.joinToString(", ") { it.capitalizeUS() }
+            }
+        }
+    }
+
+    fun isScheduledForDay(dayAbbr: String): Boolean {
+        if (repeatDays.equals("DAILY", ignoreCase = true) || repeatDays.isBlank()) return true
+        if (repeatDays.equals("WEEKDAYS", ignoreCase = true)) {
+            return listOf("MON", "TUE", "WED", "THU", "FRI").contains(dayAbbr.uppercase())
+        }
+        if (repeatDays.equals("WEEKENDS", ignoreCase = true)) {
+            return listOf("SAT", "SUN").contains(dayAbbr.uppercase())
+        }
+        val days = repeatDays.split(",").map { it.trim().uppercase() }
+        return days.contains(dayAbbr.uppercase())
+    }
+}

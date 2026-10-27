@@ -32,6 +32,7 @@ class AppRepository(private val database: AppDatabase) {
     private val settingsDao = database.settingsDao()
     val reminderDao = database.reminderDao()
     private val meditationDao = database.meditationDao()
+    val customAlarmDao = database.customAlarmDao()
 
     // Routine
     val routineAnchors: Flow<List<RoutineAnchorEntity>> = routineDao.getAllAnchors()
@@ -499,12 +500,55 @@ class AppRepository(private val database: AppDatabase) {
         }
     }
 
+    // Custom Alarms
+    val allAlarms: Flow<List<com.example.data.entity.CustomAlarmEntity>> = customAlarmDao.getAllAlarms()
+
+    suspend fun getAllAlarmsSync(): List<com.example.data.entity.CustomAlarmEntity> {
+        return customAlarmDao.getAllAlarmsSync()
+    }
+
+    fun getAlarmById(id: Long): Flow<com.example.data.entity.CustomAlarmEntity?> {
+        return customAlarmDao.getAlarmById(id)
+    }
+
+    suspend fun getAlarmByIdSync(id: Long): com.example.data.entity.CustomAlarmEntity? {
+        return customAlarmDao.getAlarmByIdSync(id)
+    }
+
+    suspend fun saveAlarm(alarm: com.example.data.entity.CustomAlarmEntity): Long {
+        return if (alarm.id == 0L) {
+            customAlarmDao.insertAlarm(alarm)
+        } else {
+            customAlarmDao.updateAlarm(alarm)
+            alarm.id
+        }
+    }
+
+    suspend fun deleteAlarm(alarm: com.example.data.entity.CustomAlarmEntity) {
+        customAlarmDao.deleteAlarm(alarm)
+    }
+
+    suspend fun deleteAlarmById(id: Long) {
+        customAlarmDao.deleteAlarmById(id)
+    }
+
+    suspend fun setAlarmEnabled(id: Long, isEnabled: Boolean) {
+        customAlarmDao.setAlarmEnabled(id, isEnabled)
+    }
+
+    suspend fun ensureDefaultAlarms() {
+        if (customAlarmDao.getAlarmsCount() == 0) {
+            customAlarmDao.insertDefaultAlarms(AppDatabase.DEFAULT_ALARMS)
+        }
+    }
+
     // Database Reset / Management for Settings
     suspend fun clearAllData() {
         database.clearAllTables()
         ensureDefaultAnchors()
         ensureDefaultCategories()
         ensureDefaultReminders()
+        ensureDefaultAlarms()
     }
 
     suspend fun exportDataBackup(): String {

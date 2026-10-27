@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Analytics
+import androidx.compose.material.icons.filled.Alarm
 import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.Psychology
 import androidx.compose.material.icons.filled.Schedule
@@ -127,6 +128,13 @@ fun RhythmFocusApp(viewModel: MainViewModel) {
                         modifier = Modifier.testTag("nav_rail_reminders")
                     )
                     NavigationRailItem(
+                        selected = currentDestination == AppDestination.ALARMS,
+                        onClick = { viewModel.navigateTo(AppDestination.ALARMS) },
+                        icon = { Icon(Icons.Default.Alarm, contentDescription = "Alarms") },
+                        label = { Text("Alarms") },
+                        modifier = Modifier.testTag("nav_rail_alarms")
+                    )
+                    NavigationRailItem(
                         selected = currentDestination == AppDestination.SETTINGS,
                         onClick = { viewModel.navigateTo(AppDestination.SETTINGS) },
                         icon = { Icon(Icons.Default.Settings, contentDescription = "Settings") },
@@ -151,7 +159,8 @@ fun RhythmFocusApp(viewModel: MainViewModel) {
                             onTodayClick = { viewModel.selectToday() },
                             onSettingsClick = { viewModel.navigateTo(AppDestination.SETTINGS) },
                             onBrainDumpClick = { showGlobalQuickCapture = true },
-                            onRemindersClick = { viewModel.navigateTo(AppDestination.REMINDERS) }
+                            onRemindersClick = { viewModel.navigateTo(AppDestination.REMINDERS) },
+                            onAlarmsClick = { viewModel.navigateTo(AppDestination.ALARMS) }
                         )
                     },
                     snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -184,7 +193,8 @@ fun RhythmFocusApp(viewModel: MainViewModel) {
                         onTodayClick = { viewModel.selectToday() },
                         onSettingsClick = { viewModel.navigateTo(AppDestination.SETTINGS) },
                         onBrainDumpClick = { showGlobalQuickCapture = true },
-                        onRemindersClick = { viewModel.navigateTo(AppDestination.REMINDERS) }
+                        onRemindersClick = { viewModel.navigateTo(AppDestination.REMINDERS) },
+                        onAlarmsClick = { viewModel.navigateTo(AppDestination.ALARMS) }
                     )
                 },
                 bottomBar = {
@@ -251,6 +261,7 @@ fun AppScreenContent(
         AppDestination.MEDITATION -> com.example.ui.screens.meditation.MeditationScreen(viewModel = viewModel)
         AppDestination.BRAIN_DUMP -> com.example.ui.screens.braindump.BrainDumpScreen(viewModel = viewModel)
         AppDestination.REMINDERS -> com.example.ui.screens.reminders.ReminderCenterScreen(viewModel = viewModel)
+        AppDestination.ALARMS -> com.example.ui.screens.alarm.AlarmSectionScreen(viewModel = viewModel)
         AppDestination.INSIGHTS -> InsightsScreen(viewModel = viewModel)
         AppDestination.SETTINGS -> SettingsScreen(viewModel = viewModel)
     }

@@ -1,6 +1,7 @@
 package com.example.data.dao
 
 import androidx.room.Dao
+import androidx.room.Delete
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
@@ -453,4 +454,44 @@ interface MeditationDao {
     @Query("SELECT COUNT(*) FROM meditation_sessions")
     suspend fun getSessionsCount(): Int
 }
+
+@Dao
+interface CustomAlarmDao {
+    @Query("SELECT * FROM custom_alarms ORDER BY timeMinutes ASC")
+    fun getAllAlarms(): Flow<List<com.example.data.entity.CustomAlarmEntity>>
+
+    @Query("SELECT * FROM custom_alarms ORDER BY timeMinutes ASC")
+    suspend fun getAllAlarmsSync(): List<com.example.data.entity.CustomAlarmEntity>
+
+    @Query("SELECT * FROM custom_alarms WHERE id = :id LIMIT 1")
+    fun getAlarmById(id: Long): Flow<com.example.data.entity.CustomAlarmEntity?>
+
+    @Query("SELECT * FROM custom_alarms WHERE id = :id LIMIT 1")
+    suspend fun getAlarmByIdSync(id: Long): com.example.data.entity.CustomAlarmEntity?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAlarm(alarm: com.example.data.entity.CustomAlarmEntity): Long
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertDefaultAlarms(alarms: List<com.example.data.entity.CustomAlarmEntity>)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAlarmsList(alarms: List<com.example.data.entity.CustomAlarmEntity>)
+
+    @Update
+    suspend fun updateAlarm(alarm: com.example.data.entity.CustomAlarmEntity)
+
+    @Delete
+    suspend fun deleteAlarm(alarm: com.example.data.entity.CustomAlarmEntity)
+
+    @Query("DELETE FROM custom_alarms WHERE id = :id")
+    suspend fun deleteAlarmById(id: Long)
+
+    @Query("UPDATE custom_alarms SET isEnabled = :isEnabled WHERE id = :id")
+    suspend fun setAlarmEnabled(id: Long, isEnabled: Boolean)
+
+    @Query("SELECT COUNT(*) FROM custom_alarms")
+    suspend fun getAlarmsCount(): Int
+}
+
 

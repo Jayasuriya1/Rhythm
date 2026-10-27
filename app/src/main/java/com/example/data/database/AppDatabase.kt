@@ -53,9 +53,10 @@ import kotlinx.coroutines.launch
         BrainDumpNoteEntity::class,
         AppSettingEntity::class,
         ReminderEntity::class,
-        MeditationSessionEntity::class
+        MeditationSessionEntity::class,
+        com.example.data.entity.CustomAlarmEntity::class
     ],
-    version = 7,
+    version = 8,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -72,6 +73,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun settingsDao(): SettingsDao
     abstract fun reminderDao(): ReminderDao
     abstract fun meditationDao(): MeditationDao
+    abstract fun customAlarmDao(): com.example.data.dao.CustomAlarmDao
 
     companion object {
         @Volatile
@@ -206,6 +208,35 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        val MIGRATION_7_8 = object : Migration(7, 8) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `custom_alarms` (
+                        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `title` TEXT NOT NULL,
+                        `timeMinutes` INTEGER NOT NULL,
+                        `repeatDays` TEXT NOT NULL DEFAULT 'WEEKDAYS',
+                        `isEnabled` INTEGER NOT NULL DEFAULT 1,
+                        `vibrateEnabled` INTEGER NOT NULL DEFAULT 1,
+                        `customAudioUri` TEXT,
+                        `customAudioTitle` TEXT,
+                        `crescendoDurationSeconds` INTEGER NOT NULL DEFAULT 60,
+                        `isLooping` INTEGER NOT NULL DEFAULT 1,
+                        `wallpaperUri` TEXT,
+                        `wallpaperPresetColor` TEXT NOT NULL DEFAULT 'MIDNIGHT_INDIGO',
+                        `timeClockFont` TEXT NOT NULL DEFAULT 'MODERN_DIGITAL',
+                        `missionType` TEXT NOT NULL DEFAULT 'NONE',
+                        `targetBarcode` TEXT,
+                        `targetBarcodeLabel` TEXT,
+                        `chainedBackupAlarmEnabled` INTEGER NOT NULL DEFAULT 1,
+                        `createdAt` INTEGER NOT NULL DEFAULT 0
+                    )
+                    """.trimIndent()
+                )
+            }
+        }
+
         fun getDatabase(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -213,7 +244,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "rhythm_focus_database"
                 )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8)
                     .fallbackToDestructiveMigrationOnDowngrade()
                     .addCallback(DatabaseCallback())
                     .build()
@@ -403,6 +434,37 @@ abstract class AppDatabase : RoomDatabase() {
                 customMessage = "Restful sleep restores tomorrow's focus"
             )
         )
+
+        val DEFAULT_ALARMS = listOf(
+            com.example.data.entity.CustomAlarmEntity(
+                title = "Morning Wake-Up",
+                timeMinutes = 420, // 07:00 AM
+                repeatDays = "WEEKDAYS",
+                isEnabled = true,
+                vibrateEnabled = true,
+                customAudioTitle = "Gentle Sunrise Chime",
+                crescendoDurationSeconds = 60,
+                isLooping = true,
+                wallpaperPresetColor = "SUNRISE_GOLD",
+                timeClockFont = "MODERN_DIGITAL",
+                missionType = "NONE",
+                chainedBackupAlarmEnabled = true
+            ),
+            com.example.data.entity.CustomAlarmEntity(
+                title = "Deep Focus Kickoff",
+                timeMinutes = 540, // 09:00 AM
+                repeatDays = "WEEKDAYS",
+                isEnabled = false,
+                vibrateEnabled = true,
+                customAudioTitle = "Mindful Focus Bell",
+                crescendoDurationSeconds = 30,
+                isLooping = true,
+                wallpaperPresetColor = "FOREST_EMERALD",
+                timeClockFont = "MONOSPACE",
+                missionType = "NONE",
+                chainedBackupAlarmEnabled = true
+            )
+        )
     }
 
     private class DatabaseCallback : RoomDatabase.Callback() {
@@ -413,6 +475,7 @@ abstract class AppDatabase : RoomDatabase() {
                     database.routineDao().insertDefaultAnchors(DEFAULT_ANCHORS)
                     database.studyCategoryDao().insertDefaultCategories(DEFAULT_CATEGORIES)
                     database.reminderDao().insertDefaultReminders(DEFAULT_REMINDERS)
+                    database.customAlarmDao().insertDefaultAlarms(DEFAULT_ALARMS)
                 }
             }
         }

@@ -30,7 +30,8 @@ data class BackupSummary(
     val studySessionsCount: Int,
     val brainDumpCount: Int,
     val remindersCount: Int,
-    val meditationSessionsCount: Int = 0
+    val meditationSessionsCount: Int = 0,
+    val customAlarmsCount: Int = 0
 )
 
 data class DatabaseIntegrityStats(
@@ -47,6 +48,7 @@ data class DatabaseIntegrityStats(
     val totalReminders: Int,
     val enabledReminders: Int,
     val totalMeditationSessions: Int,
+    val totalCustomAlarms: Int = 0,
     val isConsistent: Boolean
 )
 
@@ -294,6 +296,32 @@ object DataBackupManager {
         }
         root.put("appSettings", settingsArr)
 
+        // 11. Custom Alarms
+        val alarmsArr = JSONArray()
+        database.customAlarmDao().getAllAlarmsSync().forEach { a ->
+            val o = JSONObject()
+            o.put("id", a.id)
+            o.put("title", a.title)
+            o.put("timeMinutes", a.timeMinutes)
+            o.put("repeatDays", a.repeatDays)
+            o.put("isEnabled", a.isEnabled)
+            o.put("vibrateEnabled", a.vibrateEnabled)
+            if (a.customAudioUri != null) o.put("customAudioUri", a.customAudioUri)
+            if (a.customAudioTitle != null) o.put("customAudioTitle", a.customAudioTitle)
+            o.put("crescendoDurationSeconds", a.crescendoDurationSeconds)
+            o.put("isLooping", a.isLooping)
+            if (a.wallpaperUri != null) o.put("wallpaperUri", a.wallpaperUri)
+            o.put("wallpaperPresetColor", a.wallpaperPresetColor)
+            o.put("timeClockFont", a.timeClockFont)
+            o.put("missionType", a.missionType)
+            if (a.targetBarcode != null) o.put("targetBarcode", a.targetBarcode)
+            if (a.targetBarcodeLabel != null) o.put("targetBarcodeLabel", a.targetBarcodeLabel)
+            o.put("chainedBackupAlarmEnabled", a.chainedBackupAlarmEnabled)
+            o.put("createdAt", a.createdAt)
+            alarmsArr.put(o)
+        }
+        root.put("customAlarms", alarmsArr)
+
         return root.toString(2)
     }
 
@@ -316,7 +344,8 @@ object DataBackupManager {
                 studySessionsCount = root.optJSONArray("studySessions")?.length() ?: 0,
                 brainDumpCount = root.optJSONArray("brainDumpNotes")?.length() ?: 0,
                 remindersCount = root.optJSONArray("reminders")?.length() ?: 0,
-                meditationSessionsCount = root.optJSONArray("meditationSessions")?.length() ?: 0
+                meditationSessionsCount = root.optJSONArray("meditationSessions")?.length() ?: 0,
+                customAlarmsCount = root.optJSONArray("customAlarms")?.length() ?: 0
             )
             Result.success(summary)
         } catch (e: Exception) {
@@ -626,6 +655,36 @@ object DataBackupManager {
                 }
             }
 
+            // Parse Custom Alarms
+            val alarmsList = mutableListOf<com.example.data.entity.CustomAlarmEntity>()
+            root.optJSONArray("customAlarms")?.let { arr ->
+                for (i in 0 until arr.length()) {
+                    val o = arr.getJSONObject(i)
+                    alarmsList.add(
+                        com.example.data.entity.CustomAlarmEntity(
+                            id = o.optLong("id", 0L),
+                            title = o.getString("title"),
+                            timeMinutes = o.getInt("timeMinutes"),
+                            repeatDays = o.optString("repeatDays", "WEEKDAYS"),
+                            isEnabled = o.optBoolean("isEnabled", true),
+                            vibrateEnabled = o.optBoolean("vibrateEnabled", true),
+                            customAudioUri = if (o.has("customAudioUri")) o.getString("customAudioUri") else null,
+                            customAudioTitle = if (o.has("customAudioTitle")) o.getString("customAudioTitle") else "Default Alarm Tone",
+                            crescendoDurationSeconds = o.optInt("crescendoDurationSeconds", 60),
+                            isLooping = o.optBoolean("isLooping", true),
+                            wallpaperUri = if (o.has("wallpaperUri")) o.getString("wallpaperUri") else null,
+                            wallpaperPresetColor = o.optString("wallpaperPresetColor", "MIDNIGHT_INDIGO"),
+                            timeClockFont = o.optString("timeClockFont", "MODERN_DIGITAL"),
+                            missionType = o.optString("missionType", "NONE"),
+                            targetBarcode = if (o.has("targetBarcode")) o.getString("targetBarcode") else null,
+                            targetBarcodeLabel = if (o.has("targetBarcodeLabel")) o.getString("targetBarcodeLabel") else null,
+                            chainedBackupAlarmEnabled = o.optBoolean("chainedBackupAlarmEnabled", true),
+                            createdAt = o.optLong("createdAt", System.currentTimeMillis())
+                        )
+                    )
+                }
+            }
+
             // Atomic insertion
             if (anchorsList.isNotEmpty()) database.routineDao().insertAnchorsList(anchorsList)
             if (entriesList.isNotEmpty()) database.routineDao().insertEntriesList(entriesList)
@@ -640,6 +699,7 @@ object DataBackupManager {
             if (notesList.isNotEmpty()) database.brainDumpDao().insertNotesList(notesList)
             if (remindersList.isNotEmpty()) database.reminderDao().insertRemindersList(remindersList)
             if (meditationList.isNotEmpty()) database.meditationDao().insertSessionsList(meditationList)
+            if (alarmsList.isNotEmpty()) database.customAlarmDao().insertAlarmsList(alarmsList)
             if (settingsList.isNotEmpty()) database.settingsDao().insertSettingsList(settingsList)
 
             // Re-ensure basic defaults if list was empty
@@ -667,6 +727,7 @@ object DataBackupManager {
         val totalReminders = database.reminderDao().getRemindersCount()
         val enabledReminders = database.reminderDao().getEnabledRemindersCount()
         val totalMeditationSessions = database.meditationDao().getSessionsCount()
+        val totalCustomAlarms = database.customAlarmDao().getAlarmsCount()
 
         // Integrity check: Categories > 0, Anchors > 0
         val isConsistent = totalCategories > 0 && AppDatabase.DEFAULT_ANCHORS.isNotEmpty()
@@ -685,6 +746,7 @@ object DataBackupManager {
             totalReminders = totalReminders,
             enabledReminders = enabledReminders,
             totalMeditationSessions = totalMeditationSessions,
+            totalCustomAlarms = totalCustomAlarms,
             isConsistent = isConsistent
         )
     }
