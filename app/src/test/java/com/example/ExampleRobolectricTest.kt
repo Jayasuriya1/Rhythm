@@ -944,5 +944,115 @@ class ExampleRobolectricTest {
             assertTrue("Technique should have at least 3 calming instructions", steps.size >= 3)
         }
     }
+
+    @Test
+    fun `custom alarm entity default values and formatting methods work as expected`() {
+        val alarm = com.example.data.entity.CustomAlarmEntity(
+            title = "Morning Awakening",
+            timeMinutes = 420, // 07:00 AM
+            repeatDays = "WEEKDAYS",
+            timeClockFont = "MODERN_DIGITAL",
+            wallpaperPresetColor = "MIDNIGHT_INDIGO",
+            missionType = "BARCODE",
+            targetBarcode = "9780132350884",
+            crescendoDurationSeconds = 60,
+            chainedBackupAlarmEnabled = true
+        )
+
+        assertEquals("07:00 AM", alarm.formattedTime())
+        assertEquals("Weekdays (Mon–Fri)", alarm.formattedSchedule())
+        assertTrue(alarm.isScheduledForDay("MON"))
+        assertTrue(alarm.isScheduledForDay("FRI"))
+        assertFalse(alarm.isScheduledForDay("SAT"))
+        assertFalse(alarm.isScheduledForDay("SUN"))
+        assertEquals("BARCODE", alarm.missionType)
+        assertTrue(alarm.chainedBackupAlarmEnabled)
+        assertEquals(60, alarm.crescendoDurationSeconds)
+    }
+
+    @Test
+    fun `custom alarm next trigger calculation yields valid future timestamp`() {
+        val now = System.currentTimeMillis()
+
+        // Daily alarm at 06:30 AM (390 min)
+        val nextDaily = com.example.util.CustomAlarmScheduler.calculateNextTriggerMillis(390, "DAILY")
+        assertTrue("Daily alarm next trigger must be in the future", nextDaily > now)
+
+        // Weekend alarm at 09:00 AM (540 min)
+        val nextWeekend = com.example.util.CustomAlarmScheduler.calculateNextTriggerMillis(540, "WEEKENDS")
+        assertTrue("Weekend alarm next trigger must be in the future", nextWeekend > now)
+
+        // Custom day combination (MON, WED, FRI)
+        val nextCustom = com.example.util.CustomAlarmScheduler.calculateNextTriggerMillis(480, "MON,WED,FRI")
+        assertTrue("Custom day alarm next trigger must be in the future", nextCustom > now)
+    }
+
+    @Test
+    fun `custom alarm room dao insert, update, toggle and delete operations`() = runTest {
+        val dao = db.customAlarmDao()
+
+        val alarm = com.example.data.entity.CustomAlarmEntity(
+            title = "Deep Work Awakening",
+            timeMinutes = 360, // 6:00 AM
+            repeatDays = "DAILY",
+            isEnabled = true,
+            missionType = "NONE",
+            chainedBackupAlarmEnabled = true
+        )
+
+        val id = dao.insertAlarm(alarm)
+        assertTrue("Alarm ID should be generated", id > 0)
+
+        val fetched = dao.getAlarmByIdSync(id)
+        assertNotNull(fetched)
+        assertEquals("Deep Work Awakening", fetched!!.title)
+        assertEquals(360, fetched.timeMinutes)
+        assertEquals("NONE", fetched.missionType)
+        assertTrue(fetched.isEnabled)
+
+        // Toggle disabled
+        dao.setAlarmEnabled(id, false)
+        val updated = dao.getAlarmByIdSync(id)
+        assertNotNull(updated)
+        assertFalse(updated!!.isEnabled)
+
+        // Delete alarm
+        dao.deleteAlarmById(id)
+        val deleted = dao.getAlarmByIdSync(id)
+        org.junit.Assert.assertNull(deleted)
+    }
+
+    @Test
+    fun `dataBackupManager exports and restores custom alarms`() = runTest {
+        val alarm = com.example.data.entity.CustomAlarmEntity(
+            title = "Early Sunrise",
+            timeMinutes = 360,
+            repeatDays = "WEEKDAYS",
+            timeClockFont = "ELEGANT_MINIMAL",
+            wallpaperPresetColor = "AURORA_BOREALIS",
+            missionType = "BARCODE",
+            targetBarcode = "1234567890",
+            crescendoDurationSeconds = 60,
+            chainedBackupAlarmEnabled = true
+        )
+        db.customAlarmDao().insertAlarm(alarm)
+
+        val exportedJson = com.example.util.DataBackupManager.exportBackup(db)
+        assertTrue(exportedJson.contains("Early Sunrise"))
+        assertTrue(exportedJson.contains("ELEGANT_MINIMAL"))
+        assertTrue(exportedJson.contains("1234567890"))
+
+        // Clear and restore
+        db.clearAllTables()
+        val restoreResult = com.example.util.DataBackupManager.restoreBackup(db, exportedJson)
+        assertTrue(restoreResult.isSuccess)
+
+        val restoredAlarms = db.customAlarmDao().getAllAlarmsSync()
+        assertEquals(1, restoredAlarms.size)
+        assertEquals("Early Sunrise", restoredAlarms[0].title)
+        assertEquals("ELEGANT_MINIMAL", restoredAlarms[0].timeClockFont)
+        assertEquals("BARCODE", restoredAlarms[0].missionType)
+        assertTrue(restoredAlarms[0].chainedBackupAlarmEnabled)
+    }
 }
 
