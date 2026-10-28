@@ -56,7 +56,7 @@ import kotlinx.coroutines.launch
         MeditationSessionEntity::class,
         com.example.data.entity.CustomAlarmEntity::class
     ],
-    version = 8,
+    version = 9,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -237,6 +237,17 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        val MIGRATION_8_9 = object : Migration(8, 9) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE `active_timer_draft` ADD COLUMN `currentPhase` TEXT NOT NULL DEFAULT 'FOCUS'")
+                db.execSQL("ALTER TABLE `active_timer_draft` ADD COLUMN `phaseElapsedSeconds` INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE `active_timer_draft` ADD COLUMN `phaseTargetSeconds` INTEGER NOT NULL DEFAULT 1500")
+                db.execSQL("ALTER TABLE `active_timer_draft` ADD COLUMN `protocolJson` TEXT")
+                db.execSQL("ALTER TABLE `active_timer_draft` ADD COLUMN `passedBreakPointIds` TEXT NOT NULL DEFAULT ''")
+                db.execSQL("ALTER TABLE `active_timer_draft` ADD COLUMN `activeBreakExtensionSeconds` INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+
         fun getDatabase(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -244,7 +255,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "rhythm_focus_database"
                 )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9)
                     .fallbackToDestructiveMigrationOnDowngrade()
                     .addCallback(DatabaseCallback())
                     .build()

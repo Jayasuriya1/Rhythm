@@ -53,11 +53,19 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.ui.MainViewModel
+
+import androidx.compose.foundation.clickable
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.Palette
+import androidx.compose.material3.RadioButton
+import com.example.ui.theme.AppThemeMode
 
 @Composable
 fun SettingsScreen(
@@ -72,7 +80,9 @@ fun SettingsScreen(
     var importValidationSummary by remember { mutableStateOf<com.example.util.BackupSummary?>(null) }
     var importErrorMessage by remember { mutableStateOf<String?>(null) }
     var copyFeedbackMessage by remember { mutableStateOf<String?>(null) }
+    var advancedExpanded by remember { mutableStateOf(false) }
 
+    val currentThemeMode by viewModel.appThemeMode.collectAsStateWithLifecycle()
     val integrityStats by viewModel.databaseIntegrityStats.collectAsStateWithLifecycle()
 
     val context = androidx.compose.ui.platform.LocalContext.current
@@ -109,6 +119,72 @@ fun SettingsScreen(
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
+                }
+            }
+        }
+
+        // Appearance & Display Theme
+        item {
+            Card(
+                shape = RoundedCornerShape(18.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)),
+                modifier = Modifier.fillMaxWidth().testTag("appearance_theme_card")
+            ) {
+                Column(modifier = Modifier.padding(18.dp)) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Palette,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                        Text(
+                            text = "Display Theme & Battery Efficiency",
+                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "OLED Pitch Black powers down screen subpixels to absolute #000000 on AMOLED / OLED displays (tablets, phones), reducing battery draw during long study and meditation sessions.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    val themeOptions = listOf(
+                        AppThemeMode.OLED_DARK to "OLED Pitch Black (#000000 - Max Battery Efficiency)",
+                        AppThemeMode.DARK to "Standard Dark Theme (Charcoal)",
+                        AppThemeMode.LIGHT to "Light Theme",
+                        AppThemeMode.SYSTEM to "Follow System"
+                    )
+
+                    themeOptions.forEach { (mode, label) ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(10.dp))
+                                .clickable { viewModel.setAppThemeMode(mode) }
+                                .padding(vertical = 6.dp, horizontal = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            RadioButton(
+                                selected = (currentThemeMode == mode),
+                                onClick = { viewModel.setAppThemeMode(mode) },
+                                modifier = Modifier.testTag("theme_radio_${mode.name.lowercase()}")
+                            )
+                            Text(
+                                text = label,
+                                style = MaterialTheme.typography.bodyMedium.copy(
+                                    fontWeight = if (currentThemeMode == mode) FontWeight.SemiBold else FontWeight.Normal
+                                ),
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -250,13 +326,61 @@ fun SettingsScreen(
             }
         }
 
-        // Data Backup & Restore (JSON)
+        // Advanced System & Database Utilities Header (Collapsible)
         item {
             Card(
                 shape = RoundedCornerShape(18.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)),
-                modifier = Modifier.fillMaxWidth().testTag("backup_restore_card")
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { advancedExpanded = !advancedExpanded }
+                    .testTag("advanced_settings_toggle_card")
             ) {
+                Row(
+                    modifier = Modifier.padding(18.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Row(
+                        modifier = Modifier.weight(1f),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Storage,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                        Column {
+                            Text(
+                                text = "Advanced Storage & Diagnostics",
+                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Text(
+                                text = if (advancedExpanded) "Tap to collapse diagnostic tools" else "Tap to view backup, restore & database health",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                    Icon(
+                        imageVector = if (advancedExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                        contentDescription = if (advancedExpanded) "Collapse" else "Expand",
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
+        }
+
+        if (advancedExpanded) {
+            // Data Backup & Restore (JSON)
+            item {
+                Card(
+                    shape = RoundedCornerShape(18.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)),
+                    modifier = Modifier.fillMaxWidth().testTag("backup_restore_card")
+                ) {
                 Column(modifier = Modifier.padding(18.dp)) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
@@ -508,6 +632,7 @@ fun SettingsScreen(
                 }
             }
         }
+        } // end if (advancedExpanded)
 
         item {
             Card(

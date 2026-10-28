@@ -69,6 +69,13 @@ fun RhythmFocusApp(viewModel: MainViewModel) {
 
     val snackbarHostState = remember { SnackbarHostState() }
 
+    val context = androidx.compose.ui.platform.LocalContext.current
+    LaunchedEffect(Unit) {
+        viewModel.studySoundEvents.collect { soundType ->
+            com.example.util.StudySoundHelper.previewSound(context, soundType)
+        }
+    }
+
     LaunchedEffect(userFeedbackMessage) {
         userFeedbackMessage?.let { msg ->
             snackbarHostState.showSnackbar(msg)

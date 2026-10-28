@@ -94,6 +94,10 @@ fun StudyScreen(
     val activeCategories by viewModel.activeCategories.collectAsStateWithLifecycle()
     val studyStartSoundEnabled by viewModel.studyStartSoundEnabled.collectAsStateWithLifecycle()
     val studyEndSoundEnabled by viewModel.studyEndSoundEnabled.collectAsStateWithLifecycle()
+    val studyBreakStartSoundEnabled by viewModel.studyBreakStartSoundEnabled.collectAsStateWithLifecycle()
+    val studyBreakEndSoundEnabled by viewModel.studyBreakEndSoundEnabled.collectAsStateWithLifecycle()
+    val studyKeepScreenOnEnabled by viewModel.studyKeepScreenOnEnabled.collectAsStateWithLifecycle()
+    val studyProtocol by viewModel.studyProtocol.collectAsStateWithLifecycle()
 
     var selectedCategoryFilter by remember { mutableStateOf("All") }
 
@@ -102,17 +106,21 @@ fun StudyScreen(
     var taskForStuckHelper by remember { mutableStateOf<StudyTaskEntity?>(null) }
     var showCategoryManagerDialog by remember { mutableStateOf(false) }
     var showCustomTimerDurationDialog by remember { mutableStateOf(false) }
+    var showProtocolConfigDialog by remember { mutableStateOf(false) }
     var showSessionCompleteDialog by remember { mutableStateOf(false) }
     var showInterruptedSessionDialog by remember { mutableStateOf(false) }
     var showBrainDumpCaptureDialog by remember { mutableStateOf(false) }
     var showSoundSettingsDialog by remember { mutableStateOf(false) }
 
-    // Auto-trigger session completion sound and dialog safely when timer finishes countdown
+    // Screen awake effect: prevents display sleep during active focus when enabled
+    com.example.util.KeepScreenOnEffect(
+        enabled = studyKeepScreenOnEnabled,
+        isTimerActive = timerState.isRunning
+    )
+
+    // Auto-trigger session completion dialog safely when timer finishes countdown
     androidx.compose.runtime.LaunchedEffect(timerState.isCompleted) {
         if (timerState.isCompleted) {
-            if (studyEndSoundEnabled) {
-                com.example.util.StudySoundHelper.playEndSound(context)
-            }
             if (!showSessionCompleteDialog) {
                 showSessionCompleteDialog = true
             }
@@ -151,6 +159,9 @@ fun StudyScreen(
                     onModeChange = { mode, defaultMins ->
                         if (mode == TimerMode.CUSTOM) {
                             showCustomTimerDurationDialog = true
+                        } else if (mode == TimerMode.PROTOCOL) {
+                            viewModel.setTimerConfig(mode, defaultMins)
+                            showProtocolConfigDialog = true
                         } else {
                             viewModel.setTimerConfig(mode, defaultMins)
                         }
@@ -158,7 +169,10 @@ fun StudyScreen(
                     onCompleteSession = { showSessionCompleteDialog = true },
                     onParkDistraction = { showBrainDumpCaptureDialog = true },
                     onOpenFullScreen = { isFullScreenFocusActive = true },
-                    onOpenSoundSettings = { showSoundSettingsDialog = true }
+                    onOpenSoundSettings = { showSoundSettingsDialog = true },
+                    onOpenProtocolConfig = { showProtocolConfigDialog = true },
+                    onSkipBreak = { viewModel.skipBreak() },
+                    onExtendBreak = { seconds -> viewModel.extendBreak(seconds) }
                 )
             }
 
@@ -439,25 +453,46 @@ fun StudyScreen(
 
     if (showSoundSettingsDialog) {
         StudyTimerSoundSettingsDialog(
+            keepScreenOnEnabled = studyKeepScreenOnEnabled,
+            onToggleKeepScreenOn = { viewModel.setStudyKeepScreenOn(it) },
             startSoundEnabled = studyStartSoundEnabled,
+            breakStartSoundEnabled = studyBreakStartSoundEnabled,
+            breakEndSoundEnabled = studyBreakEndSoundEnabled,
             endSoundEnabled = studyEndSoundEnabled,
             onToggleStartSound = { viewModel.setStudyStartSoundEnabled(it) },
+            onToggleBreakStartSound = { viewModel.setStudyBreakStartSoundEnabled(it) },
+            onToggleBreakEndSound = { viewModel.setStudyBreakEndSoundEnabled(it) },
             onToggleEndSound = { viewModel.setStudyEndSoundEnabled(it) },
-            onPreviewStartSound = { com.example.util.StudySoundHelper.playStartSound(context) },
-            onPreviewEndSound = { com.example.util.StudySoundHelper.playEndSound(context) },
+            onPreviewSound = { type -> com.example.util.StudySoundHelper.previewSound(context, type) },
             onDismiss = { showSoundSettingsDialog = false }
+        )
+    }
+
+    if (showProtocolConfigDialog) {
+        StudyProtocolConfigDialog(
+            initialProtocol = studyProtocol,
+            onSaveProtocol = { protocol ->
+                viewModel.saveStudyProtocol(protocol)
+                showProtocolConfigDialog = false
+            },
+            onDismiss = { showProtocolConfigDialog = false }
         )
     }
 }
 
 @Composable
 fun StudyTimerSoundSettingsDialog(
+    keepScreenOnEnabled: Boolean,
+    onToggleKeepScreenOn: (Boolean) -> Unit,
     startSoundEnabled: Boolean,
+    breakStartSoundEnabled: Boolean,
+    breakEndSoundEnabled: Boolean,
     endSoundEnabled: Boolean,
     onToggleStartSound: (Boolean) -> Unit,
+    onToggleBreakStartSound: (Boolean) -> Unit,
+    onToggleBreakEndSound: (Boolean) -> Unit,
     onToggleEndSound: (Boolean) -> Unit,
-    onPreviewStartSound: () -> Unit,
-    onPreviewEndSound: () -> Unit,
+    onPreviewSound: (com.example.util.StudySoundType) -> Unit,
     onDismiss: () -> Unit
 ) {
     AlertDialog(
@@ -465,81 +500,109 @@ fun StudyTimerSoundSettingsDialog(
         title = {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Icon(Icons.AutoMirrored.Filled.VolumeUp, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                Text("Focus Timer Signals")
+                Text("Focus Environment & Signals")
             }
         },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                Text(
-                    "Calm audio cues provide an acoustic anchor so you know when sessions start and finish without staring at the screen.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+            LazyColumn(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                item {
+                    Text(
+                        "Configure display wakefulness and gentle acoustic cues so you can stay in flow without checking the clock.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
 
-                // Start Sound Card
-                Card(
-                    shape = RoundedCornerShape(12.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
-                ) {
-                    Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text("Play Start Sound", style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold))
-                                Text("Gentle acoustic rising chime when focus begins", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                // Keep Screen Awake Card
+                item {
+                    Card(
+                        shape = RoundedCornerShape(12.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                    ) {
+                        Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text("Keep Screen Awake During Focus", style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold))
+                                    Text("Prevents display timeout only while a timer is active", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
+                                Switch(
+                                    checked = keepScreenOnEnabled,
+                                    onCheckedChange = onToggleKeepScreenOn,
+                                    modifier = Modifier.testTag("study_keep_screen_on_switch")
+                                )
                             }
-                            Switch(
-                                checked = startSoundEnabled,
-                                onCheckedChange = onToggleStartSound,
-                                modifier = Modifier.testTag("study_start_sound_switch")
+                            Text(
+                                "Battery impact: Keeping the screen lit increases battery usage. The awake flag clears immediately when paused, stopped, or backgrounded.",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.secondary
                             )
-                        }
-
-                        OutlinedButton(
-                            onClick = onPreviewStartSound,
-                            modifier = Modifier.fillMaxWidth().testTag("preview_start_sound_button")
-                        ) {
-                            Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(16.dp))
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text("Preview Start Sound")
                         }
                     }
                 }
 
-                // End Sound Card
-                Card(
-                    shape = RoundedCornerShape(12.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
-                ) {
-                    Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text("Play End Sound", style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold))
-                                Text("Resonant singing bowl tone when session finishes", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            }
-                            Switch(
-                                checked = endSoundEnabled,
-                                onCheckedChange = onToggleEndSound,
-                                modifier = Modifier.testTag("study_end_sound_switch")
-                            )
-                        }
+                // Sound Cues Header
+                item {
+                    Text(
+                        "Audio Cues",
+                        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
 
-                        OutlinedButton(
-                            onClick = onPreviewEndSound,
-                            modifier = Modifier.fillMaxWidth().testTag("preview_end_sound_button")
-                        ) {
-                            Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(16.dp))
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text("Preview End Sound")
-                        }
-                    }
+                // Start Sound Card
+                item {
+                    SoundSettingCard(
+                        title = "Session Start Sound",
+                        description = "Gentle rising two-tone chime when focus begins",
+                        enabled = startSoundEnabled,
+                        onToggle = onToggleStartSound,
+                        onPreview = { onPreviewSound(com.example.util.StudySoundType.SESSION_START) },
+                        switchTag = "study_start_sound_switch",
+                        buttonTag = "preview_start_sound_button"
+                    )
+                }
+
+                // Break Start Sound Card
+                item {
+                    SoundSettingCard(
+                        title = "Break Start Sound",
+                        description = "Soothing descent cue when it's time to pause and rest",
+                        enabled = breakStartSoundEnabled,
+                        onToggle = onToggleBreakStartSound,
+                        onPreview = { onPreviewSound(com.example.util.StudySoundType.BREAK_START) },
+                        switchTag = "study_break_start_sound_switch",
+                        buttonTag = "preview_break_start_sound_button"
+                    )
+                }
+
+                // Break End Sound Card
+                item {
+                    SoundSettingCard(
+                        title = "Break End Sound",
+                        description = "Refreshing ascending alert to return to study",
+                        enabled = breakEndSoundEnabled,
+                        onToggle = onToggleBreakEndSound,
+                        onPreview = { onPreviewSound(com.example.util.StudySoundType.BREAK_END) },
+                        switchTag = "study_break_end_sound_switch",
+                        buttonTag = "preview_break_end_sound_button"
+                    )
+                }
+
+                // Session End Sound Card
+                item {
+                    SoundSettingCard(
+                        title = "Session Complete Sound",
+                        description = "Resonant singing bowl tone when protocol finishes",
+                        enabled = endSoundEnabled,
+                        onToggle = onToggleEndSound,
+                        onPreview = { onPreviewSound(com.example.util.StudySoundType.SESSION_END) },
+                        switchTag = "study_end_sound_switch",
+                        buttonTag = "preview_end_sound_button"
+                    )
                 }
             }
         },
@@ -552,6 +615,49 @@ fun StudyTimerSoundSettingsDialog(
 }
 
 @Composable
+private fun SoundSettingCard(
+    title: String,
+    description: String,
+    enabled: Boolean,
+    onToggle: (Boolean) -> Unit,
+    onPreview: () -> Unit,
+    switchTag: String,
+    buttonTag: String
+) {
+    Card(
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+    ) {
+        Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(title, style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold))
+                    Text(description, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                Switch(
+                    checked = enabled,
+                    onCheckedChange = onToggle,
+                    modifier = Modifier.testTag(switchTag)
+                )
+            }
+
+            OutlinedButton(
+                onClick = onPreview,
+                modifier = Modifier.fillMaxWidth().testTag(buttonTag)
+            ) {
+                Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(16.dp))
+                Spacer(modifier = Modifier.width(6.dp))
+                Text("Preview $title")
+            }
+        }
+    }
+}
+
+@Composable
 fun FocusTimerCard(
     timerState: com.example.ui.TimerState,
     onStart: () -> Unit,
@@ -561,7 +667,10 @@ fun FocusTimerCard(
     onCompleteSession: () -> Unit,
     onParkDistraction: () -> Unit,
     onOpenFullScreen: () -> Unit = {},
-    onOpenSoundSettings: () -> Unit = {}
+    onOpenSoundSettings: () -> Unit = {},
+    onOpenProtocolConfig: () -> Unit = {},
+    onSkipBreak: () -> Unit = {},
+    onExtendBreak: (Int) -> Unit = {}
 ) {
     Card(
         shape = RoundedCornerShape(22.dp),
@@ -587,13 +696,20 @@ fun FocusTimerCard(
                     Surface(
                         shape = RoundedCornerShape(12.dp),
                         color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface.copy(alpha = 0.7f),
-                        modifier = Modifier.clickable { onModeChange(mode, mode.defaultMinutes) }
+                        modifier = Modifier.clickable {
+                            if (mode == TimerMode.PROTOCOL && isSelected) {
+                                onOpenProtocolConfig()
+                            } else {
+                                onModeChange(mode, mode.defaultMinutes)
+                            }
+                        }
                     ) {
                         Text(
                             text = when (mode) {
                                 TimerMode.POMODORO -> "25m"
                                 TimerMode.DEEP_WORK -> "50m"
                                 TimerMode.CUSTOM -> "Custom"
+                                TimerMode.PROTOCOL -> "Protocol"
                                 TimerMode.STOPWATCH -> "Stopwatch"
                             },
                             style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
@@ -604,7 +720,29 @@ fun FocusTimerCard(
                 }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            if (timerState.mode == TimerMode.PROTOCOL) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        text = "${timerState.protocol.totalFocusMinutes}m Protocol (${timerState.protocol.scheduleMethod.title})",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    OutlinedButton(
+                        onClick = onOpenProtocolConfig,
+                        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+                        shape = RoundedCornerShape(8.dp),
+                        modifier = Modifier.testTag("configure_protocol_button")
+                    ) {
+                        Text("Edit Protocol", style = MaterialTheme.typography.labelSmall)
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(14.dp))
 
             // Active Task Target
             Surface(
@@ -633,10 +771,66 @@ fun FocusTimerCard(
 
             Spacer(modifier = Modifier.height(14.dp))
 
+            // Active Micro-Break Banner
+            val isBreakActive = timerState.currentPhase == com.example.data.model.TimerPhase.SHORT_BREAK ||
+                    timerState.currentPhase == com.example.data.model.TimerPhase.LONG_BREAK
+            if (isBreakActive) {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 12.dp),
+                    shape = RoundedCornerShape(14.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(12.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            text = "🌿 ${timerState.currentPhase.displayName} in Progress",
+                            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                            color = MaterialTheme.colorScheme.onTertiaryContainer
+                        )
+                        val breakRem = maxOf(0, timerState.currentPhaseTargetSeconds - timerState.currentPhaseElapsedSeconds)
+                        val bMin = breakRem / 60
+                        val bSec = breakRem % 60
+                        Text(
+                            text = String.format(java.util.Locale.getDefault(), "Break Remaining: %02d:%02d", bMin, bSec),
+                            style = MaterialTheme.typography.bodyMedium.copy(fontFamily = FontFamily.Monospace),
+                            color = MaterialTheme.colorScheme.onTertiaryContainer
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            OutlinedButton(
+                                onClick = onSkipBreak,
+                                shape = RoundedCornerShape(8.dp),
+                                modifier = Modifier.testTag("skip_break_button")
+                            ) {
+                                Text("Skip Break", style = MaterialTheme.typography.labelSmall)
+                            }
+                            FilledTonalButton(
+                                onClick = { onExtendBreak(60) },
+                                shape = RoundedCornerShape(8.dp),
+                                modifier = Modifier.testTag("extend_break_1m_button")
+                            ) {
+                                Text("+1m", style = MaterialTheme.typography.labelSmall)
+                            }
+                            FilledTonalButton(
+                                onClick = { onExtendBreak(300) },
+                                shape = RoundedCornerShape(8.dp),
+                                modifier = Modifier.testTag("extend_break_5m_button")
+                            ) {
+                                Text("+5m", style = MaterialTheme.typography.labelSmall)
+                            }
+                        }
+                    }
+                }
+            }
+
             // State Badge: Running, Paused, Completed, Idle
             val stateText = when {
                 timerState.isCompleted -> "COMPLETED"
-                timerState.isRunning -> "RUNNING"
+                timerState.isRunning -> if (isBreakActive) "RESTING" else "RUNNING"
                 timerState.isPaused -> "PAUSED"
                 else -> "READY"
             }
@@ -644,7 +838,7 @@ fun FocusTimerCard(
                 shape = RoundedCornerShape(6.dp),
                 color = when {
                     timerState.isCompleted -> MaterialTheme.colorScheme.primary
-                    timerState.isRunning -> MaterialTheme.colorScheme.tertiary
+                    timerState.isRunning -> if (isBreakActive) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.tertiary
                     timerState.isPaused -> MaterialTheme.colorScheme.secondary
                     else -> MaterialTheme.colorScheme.surfaceVariant
                 }

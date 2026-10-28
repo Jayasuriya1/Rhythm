@@ -1054,5 +1054,125 @@ class ExampleRobolectricTest {
         assertEquals("BARCODE", restoredAlarms[0].missionType)
         assertTrue(restoredAlarms[0].chainedBackupAlarmEnabled)
     }
+
+    @Test
+    fun `studyProtocol validation, sorting and interval generation`() {
+        val intervalProtocol = com.example.data.model.StudyProtocol(
+            totalFocusMinutes = 60,
+            scheduleMethod = com.example.data.model.BreakScheduleMethod.INTERVAL,
+            intervalMinutes = 25,
+            defaultBreakMinutes = 5,
+            longBreakIntervalCount = 2,
+            longBreakMinutes = 15
+        )
+
+        val computedBreaks = intervalProtocol.resolvedBreakPoints()
+        assertEquals(2, computedBreaks.size)
+        assertEquals(25, computedBreaks[0].triggerElapsedMinute)
+        assertEquals(5, computedBreaks[0].breakDurationMinutes)
+        assertEquals(50, computedBreaks[1].triggerElapsedMinute)
+        assertEquals(15, computedBreaks[1].breakDurationMinutes) // 2nd cycle is long break
+
+        // Custom timeline protocol
+        val timelineProtocol = com.example.data.model.StudyProtocol(
+            totalFocusMinutes = 90,
+            scheduleMethod = com.example.data.model.BreakScheduleMethod.CUSTOM_TIMELINE,
+            customBreakPoints = listOf(
+                com.example.data.model.BreakPoint(triggerElapsedMinute = 45, breakDurationMinutes = 10, label = "Rest 1"),
+                com.example.data.model.BreakPoint(triggerElapsedMinute = 20, breakDurationMinutes = 5, label = "Micro Rest")
+            )
+        )
+
+        val timelineBreaks = timelineProtocol.resolvedBreakPoints()
+        assertEquals(2, timelineBreaks.size)
+        // Must be deterministically sorted
+        assertEquals(20, timelineBreaks[0].triggerElapsedMinute)
+        assertEquals(45, timelineBreaks[1].triggerElapsedMinute)
+
+        // JSON roundtrip
+        val json = intervalProtocol.toJson()
+        val parsed = com.example.data.model.StudyProtocol.fromJson(json)
+        assertNotNull(parsed)
+        assertEquals(intervalProtocol.totalFocusMinutes, parsed.totalFocusMinutes)
+        assertEquals(intervalProtocol.intervalMinutes, parsed.intervalMinutes)
+    }
+
+    @Test
+    fun `activeTimerDraft room persistence preserves protocol and micro break state`() = runTest {
+        val dao = db.timerDraftDao()
+        val draft = ActiveTimerDraftEntity(
+            mode = "PROTOCOL",
+            targetSeconds = 3600,
+            accumulatedElapsedSeconds = 1800,
+            isRunning = true,
+            isPaused = false,
+            startWallClockMillis = System.currentTimeMillis() - 1800000,
+            currentPhase = "SHORT_BREAK",
+            phaseElapsedSeconds = 60,
+            phaseTargetSeconds = 300,
+            protocolJson = "{\"totalFocusMinutes\":60}",
+            passedBreakPointIds = "bp_1",
+            activeBreakExtensionSeconds = 60
+        )
+
+        dao.saveDraft(draft)
+        val loaded = dao.getDraftSync()
+        assertNotNull(loaded)
+        assertEquals("PROTOCOL", loaded!!.mode)
+        assertEquals(3600, loaded.targetSeconds)
+        assertEquals(1800, loaded.accumulatedElapsedSeconds)
+        assertEquals("SHORT_BREAK", loaded.currentPhase)
+        assertEquals(60, loaded.phaseElapsedSeconds)
+        assertEquals(300, loaded.phaseTargetSeconds)
+        assertEquals("bp_1", loaded.passedBreakPointIds)
+        assertEquals(60, loaded.activeBreakExtensionSeconds)
+        assertTrue(loaded.protocolJson?.contains("totalFocusMinutes") == true)
+    }
+
+    @Test
+    fun `viewModel persists app theme mode, meditation settings and study sound toggles`() = runTest {
+        // Direct repository persistence and retrieval verified through ViewModel
+        repository.saveSetting("app_theme_mode", com.example.ui.theme.AppThemeMode.OLED_DARK.name)
+        repository.saveSetting("meditation_audio_mode", com.example.util.MeditationAudioMode.BREATHING_CUES.name)
+        repository.saveSetting("meditation_inhale_sec", "5")
+        repository.saveSetting("meditation_hold_inhale_sec", "3")
+        repository.saveSetting("meditation_exhale_sec", "6")
+        repository.saveSetting("study_break_start_sound_enabled", "false")
+        repository.saveSetting("study_keep_screen_on_enabled", "true")
+
+        val viewModel = MainViewModel(repository)
+
+        // Read through repository & ViewModel flows
+        val savedTheme = repository.getSetting("app_theme_mode").first()
+        assertEquals(com.example.ui.theme.AppThemeMode.OLED_DARK.name, savedTheme?.value)
+
+        val savedAudioMode = repository.getSetting("meditation_audio_mode").first()
+        assertEquals(com.example.util.MeditationAudioMode.BREATHING_CUES.name, savedAudioMode?.value)
+
+        val savedInhale = repository.getSetting("meditation_inhale_sec").first()
+        assertEquals("5", savedInhale?.value)
+
+        val savedPause = repository.getSetting("meditation_hold_inhale_sec").first()
+        assertEquals("3", savedPause?.value)
+
+        val savedExhale = repository.getSetting("meditation_exhale_sec").first()
+        assertEquals("6", savedExhale?.value)
+
+        val savedSound = repository.getSetting("study_break_start_sound_enabled").first()
+        assertEquals("false", savedSound?.value)
+
+        val savedKeepScreen = repository.getSetting("study_keep_screen_on_enabled").first()
+        assertEquals("true", savedKeepScreen?.value)
+
+        // ViewModel setters test
+        viewModel.setAppThemeMode(com.example.ui.theme.AppThemeMode.LIGHT)
+        testScheduler.advanceUntilIdle()
+        assertEquals("LIGHT", repository.getSetting("app_theme_mode").first()?.value)
+
+        viewModel.setStudyKeepScreenOn(false)
+        testScheduler.advanceUntilIdle()
+        assertEquals("false", repository.getSetting("study_keep_screen_on_enabled").first()?.value)
+    }
 }
+
 

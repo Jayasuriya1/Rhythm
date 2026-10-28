@@ -58,20 +58,57 @@ private val LightColorScheme =
     outlineVariant = SageOutlineVariantLight,
   )
 
+private val OledDarkColorScheme =
+  darkColorScheme(
+    primary = OledPrimary,
+    onPrimary = OledOnPrimary,
+    primaryContainer = OledPrimaryContainer,
+    onPrimaryContainer = OledOnPrimaryContainer,
+    secondary = OledSecondary,
+    onSecondary = OledOnSecondary,
+    secondaryContainer = OledSecondaryContainer,
+    onSecondaryContainer = OledOnSecondaryContainer,
+    tertiary = OledTertiary,
+    onTertiary = OledOnTertiary,
+    tertiaryContainer = OledTertiaryContainer,
+    onTertiaryContainer = OledOnTertiaryContainer,
+    background = OledBackground,
+    onBackground = OledOnBackground,
+    surface = OledSurface,
+    onSurface = OledOnSurface,
+    surfaceVariant = OledSurfaceVariant,
+    onSurfaceVariant = OledOnSurfaceVariant,
+    outline = OledOutline,
+    outlineVariant = OledOutlineVariant,
+  )
+
+enum class AppThemeMode(val displayName: String) {
+    SYSTEM("Follow System"),
+    LIGHT("Calming Sage Light"),
+    DARK("Calming Sage Dark"),
+    OLED_DARK("OLED Pitch Black")
+}
+
 @Composable
 fun RhythmFocusTheme(
-  darkTheme: Boolean = isSystemInDarkTheme(),
-  dynamicColor: Boolean = false, // Preserve crafted Calming Sage mood by default
+  themeMode: AppThemeMode = AppThemeMode.SYSTEM,
+  dynamicColor: Boolean = false,
   content: @Composable () -> Unit,
 ) {
+  val isSystemDark = isSystemInDarkTheme()
   val colorScheme =
     when {
       dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
         val context = LocalContext.current
-        if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
+        if (themeMode == AppThemeMode.OLED_DARK) OledDarkColorScheme
+        else if (themeMode == AppThemeMode.DARK || (themeMode == AppThemeMode.SYSTEM && isSystemDark)) dynamicDarkColorScheme(context)
+        else dynamicLightColorScheme(context)
       }
-      darkTheme -> DarkColorScheme
-      else -> LightColorScheme
+      themeMode == AppThemeMode.OLED_DARK -> OledDarkColorScheme
+      themeMode == AppThemeMode.DARK -> DarkColorScheme
+      themeMode == AppThemeMode.LIGHT -> LightColorScheme
+      themeMode == AppThemeMode.SYSTEM -> if (isSystemDark) DarkColorScheme else LightColorScheme
+      else -> if (isSystemDark) DarkColorScheme else LightColorScheme
     }
 
   MaterialTheme(colorScheme = colorScheme, typography = Typography, content = content)
@@ -84,5 +121,10 @@ fun MyApplicationTheme(
   dynamicColor: Boolean = false,
   content: @Composable () -> Unit,
 ) {
-  RhythmFocusTheme(darkTheme = darkTheme, dynamicColor = dynamicColor, content = content)
+  RhythmFocusTheme(
+    themeMode = if (darkTheme) AppThemeMode.DARK else AppThemeMode.LIGHT,
+    dynamicColor = dynamicColor,
+    content = content
+  )
 }
+

@@ -199,8 +199,25 @@ fun MeditationScreen(
     val context = LocalContext.current
     val audioHelper = remember { MeditationAudioHelper(context) }
 
-    var voiceGuidanceEnabled by remember { mutableStateOf(false) }
-    var audioMode by remember { mutableStateOf(MeditationAudioMode.TTS) }
+    val persistedAudioMode by viewModel.meditationAudioMode.collectAsStateWithLifecycle()
+    val persistedInhaleSec by viewModel.meditationInhaleSeconds.collectAsStateWithLifecycle()
+    val persistedHoldInhaleSec by viewModel.meditationHoldInhaleSeconds.collectAsStateWithLifecycle()
+    val persistedExhaleSec by viewModel.meditationExhaleSeconds.collectAsStateWithLifecycle()
+    val persistedHoldExhaleSec by viewModel.meditationHoldExhaleSeconds.collectAsStateWithLifecycle()
+
+    var audioMode by remember { mutableStateOf(persistedAudioMode) }
+    var inhaleSeconds by remember { mutableIntStateOf(persistedInhaleSec) }
+    var holdInhaleSeconds by remember { mutableIntStateOf(persistedHoldInhaleSec) }
+    var exhaleSeconds by remember { mutableIntStateOf(persistedExhaleSec) }
+    var holdExhaleSeconds by remember { mutableIntStateOf(persistedHoldExhaleSec) }
+
+    LaunchedEffect(persistedAudioMode) { audioMode = persistedAudioMode }
+    LaunchedEffect(persistedInhaleSec) { inhaleSeconds = persistedInhaleSec }
+    LaunchedEffect(persistedHoldInhaleSec) { holdInhaleSeconds = persistedHoldInhaleSec }
+    LaunchedEffect(persistedExhaleSec) { exhaleSeconds = persistedExhaleSec }
+    LaunchedEffect(persistedHoldExhaleSec) { holdExhaleSeconds = persistedHoldExhaleSec }
+
+    var voiceGuidanceEnabled by remember { mutableStateOf(true) }
     var speechRate by remember { mutableFloatStateOf(0.85f) }
     var selectedAudioUri by remember { mutableStateOf<android.net.Uri?>(null) }
     var selectedAudioName by remember { mutableStateOf<String?>(null) }
@@ -374,9 +391,25 @@ fun MeditationScreen(
 
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    // Breathing Guide Animation (4s Inhale, 2s Pause, 4s Exhale, 2s Rest = 12s peaceful cycle)
+                    // Breathing Guide Animation with Configurable Pacing and Cues
                     if (showBreathingAnimation) {
-                        BreathingGuideCircle(isRunning = isSessionRunning && !isSessionPaused)
+                        BreathingGuideCircle(
+                            isRunning = isSessionRunning && !isSessionPaused,
+                            inhaleSeconds = inhaleSeconds,
+                            holdInhaleSeconds = holdInhaleSeconds,
+                            exhaleSeconds = exhaleSeconds,
+                            holdExhaleSeconds = holdExhaleSeconds,
+                            onPhaseTransition = { phase ->
+                                if (voiceGuidanceEnabled && audioMode == MeditationAudioMode.BREATHING_CUES && isSessionRunning && !isSessionPaused) {
+                                    when (phase) {
+                                        ActiveBreathingPhase.INHALE -> audioHelper.playInhaleCue()
+                                        ActiveBreathingPhase.HOLD_IN -> audioHelper.playHoldCue()
+                                        ActiveBreathingPhase.EXHALE -> audioHelper.playExhaleCue()
+                                        ActiveBreathingPhase.HOLD_OUT -> audioHelper.playHoldCue()
+                                    }
+                                }
+                            }
+                        )
                         Spacer(modifier = Modifier.height(16.dp))
                     }
 
@@ -410,12 +443,25 @@ fun MeditationScreen(
                                     isSessionPaused = false
 
                                     if (voiceGuidanceEnabled) {
-                                        if (audioMode == MeditationAudioMode.TTS) {
-                                            audioHelper.setSpeechRate(speechRate)
-                                            val stepInterval = maxOf(6, (sessionDurationMinutes * 60) / maxOf(1, selectedTechnique.guidanceSteps.size))
-                                            audioHelper.startTtsSession(selectedTechnique.guidanceSteps, stepInterval)
-                                        } else if (selectedAudioUri != null) {
-                                            audioHelper.startAudioFileSession(selectedAudioUri!!)
+                                        when (audioMode) {
+                                            MeditationAudioMode.TTS -> {
+                                                audioHelper.setSpeechRate(speechRate)
+                                                val stepInterval = maxOf(6, (sessionDurationMinutes * 60) / maxOf(1, selectedTechnique.guidanceSteps.size))
+                                                audioHelper.startTtsSession(selectedTechnique.guidanceSteps, stepInterval)
+                                            }
+                                            MeditationAudioMode.BREATHING_CUES -> {
+                                                audioHelper.playInhaleCue()
+                                            }
+                                            MeditationAudioMode.AMBIENT -> {
+                                                if (selectedAudioUri != null) {
+                                                    audioHelper.startAudioFileSession(selectedAudioUri!!)
+                                                } else {
+                                                    audioHelper.startSyntheticAmbientDrone()
+                                                }
+                                            }
+                                            MeditationAudioMode.SILENT -> {
+                                                // Silent visual pacing
+                                            }
                                         }
                                     }
                                 },
@@ -430,9 +476,7 @@ fun MeditationScreen(
                             FilledTonalButton(
                                 onClick = {
                                     isSessionPaused = true
-                                    if (voiceGuidanceEnabled) {
-                                        audioHelper.pause()
-                                    }
+                                    audioHelper.pause()
                                 },
                                 shape = RoundedCornerShape(12.dp),
                                 modifier = Modifier.testTag("pause_meditation_btn")
@@ -514,80 +558,44 @@ fun MeditationScreen(
             }
         }
 
-        // Voice-Guided Meditation Settings & Controls Card (Feature 2)
+        // Mindfulness Guidance & Breathing Rhythm Settings
         item {
             Card(
                 shape = RoundedCornerShape(18.dp),
                 colors = CardDefaults.cardColors(
-                    containerColor = if (voiceGuidanceEnabled) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f)
-                    else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
                 ),
                 modifier = Modifier.fillMaxWidth().testTag("voice_guided_meditation_card")
             ) {
-                Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                    Text(
+                        text = "Guidance Mode",
+                        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                        color = MaterialTheme.colorScheme.primary
+                    )
+
+                    // 4 Selectable Audio Modes
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(10.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.VolumeUp,
-                                contentDescription = null,
-                                tint = if (voiceGuidanceEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                        MeditationAudioMode.values().forEach { mode ->
+                            val isSelected = audioMode == mode
+                            FilterChip(
+                                selected = isSelected,
+                                onClick = {
+                                    audioMode = mode
+                                    viewModel.setMeditationAudioMode(mode)
+                                },
+                                label = { Text(mode.displayName, style = MaterialTheme.typography.labelSmall) },
+                                modifier = Modifier.weight(1f)
                             )
-                            Column {
-                                Text(
-                                    text = "Spoken Voice Guidance",
-                                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
-                                    color = MaterialTheme.colorScheme.onSurface
-                                )
-                                Text(
-                                    text = "Close your eyes & follow spoken pacing",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
                         }
-                        Switch(
-                            checked = voiceGuidanceEnabled,
-                            onCheckedChange = { voiceGuidanceEnabled = it },
-                            modifier = Modifier.testTag("toggle_voice_guidance_switch")
-                        )
                     }
 
-                    if (voiceGuidanceEnabled) {
-                        // Mode selection: Mode A (TTS) vs Mode B (Audio File)
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            FilterChip(
-                                selected = audioMode == MeditationAudioMode.TTS,
-                                onClick = { audioMode = MeditationAudioMode.TTS },
-                                label = { Text("Spoken Instructions (TTS)") },
-                                leadingIcon = {
-                                    Icon(Icons.Default.GraphicEq, contentDescription = null, modifier = Modifier.size(16.dp))
-                                },
-                                modifier = Modifier.weight(1f).testTag("select_tts_mode_chip")
-                            )
-
-                            FilterChip(
-                                selected = audioMode == MeditationAudioMode.AUDIO_FILE,
-                                onClick = { audioMode = MeditationAudioMode.AUDIO_FILE },
-                                label = { Text("Guided Audio File") },
-                                leadingIcon = {
-                                    Icon(Icons.Default.Audiotrack, contentDescription = null, modifier = Modifier.size(16.dp))
-                                },
-                                modifier = Modifier.weight(1f).testTag("select_audio_file_mode_chip")
-                            )
-                        }
-
-                        if (audioMode == MeditationAudioMode.TTS) {
-                            // TTS Settings: Speech rate & preview
+                    // Mode Details & Previews
+                    when (audioMode) {
+                        MeditationAudioMode.TTS -> {
                             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                 Text(
                                     text = "Voice Pacing & Rate:",
@@ -641,15 +649,49 @@ fun MeditationScreen(
                                     }
                                 }
                             }
-                        } else {
-                            // Mode B: Guided Audio File Selector & Playback
+                        }
+                        MeditationAudioMode.BREATHING_CUES -> {
                             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                 Text(
-                                    text = "Guided Meditation Audio Track:",
-                                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
-                                    color = MaterialTheme.colorScheme.onSurface
+                                    text = "Gentle Acoustic Breathing Cues (Rising Inhale, Chime Hold, Soft Exhale):",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
-
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    OutlinedButton(
+                                        onClick = { audioHelper.playInhaleCue() },
+                                        shape = RoundedCornerShape(8.dp),
+                                        modifier = Modifier.weight(1f)
+                                    ) {
+                                        Text("Inhale Cue", style = MaterialTheme.typography.labelSmall)
+                                    }
+                                    OutlinedButton(
+                                        onClick = { audioHelper.playHoldCue() },
+                                        shape = RoundedCornerShape(8.dp),
+                                        modifier = Modifier.weight(1f)
+                                    ) {
+                                        Text("Hold Cue", style = MaterialTheme.typography.labelSmall)
+                                    }
+                                    OutlinedButton(
+                                        onClick = { audioHelper.playExhaleCue() },
+                                        shape = RoundedCornerShape(8.dp),
+                                        modifier = Modifier.weight(1f)
+                                    ) {
+                                        Text("Exhale Cue", style = MaterialTheme.typography.labelSmall)
+                                    }
+                                }
+                            }
+                        }
+                        MeditationAudioMode.AMBIENT -> {
+                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Text(
+                                    text = "Calming Background Sound (Local Track or Built-in Binaural Harmonic Drone):",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
                                 OutlinedButton(
                                     onClick = { audioPickerLauncher.launch(arrayOf("audio/*")) },
                                     shape = RoundedCornerShape(10.dp),
@@ -657,31 +699,128 @@ fun MeditationScreen(
                                 ) {
                                     Icon(Icons.Default.Audiotrack, contentDescription = null, modifier = Modifier.size(16.dp))
                                     Spacer(modifier = Modifier.width(6.dp))
-                                    Text(selectedAudioName ?: "Choose Local Audio File (.mp3/.wav)")
+                                    Text(selectedAudioName ?: "Use Local Audio File (.mp3/.wav)")
                                 }
-
-                                if (selectedAudioUri != null && audioDurationMs > 0) {
-                                    val currentSec = audioPositionMs / 1000
-                                    val totalSec = audioDurationMs / 1000
+                                if (selectedAudioName == null) {
                                     Text(
-                                        text = String.format(Locale.getDefault(), "Playback: %02d:%02d / %02d:%02d", currentSec / 60, currentSec % 60, totalSec / 60, totalSec % 60),
+                                        text = "No custom file chosen: built-in soothing 108Hz/432Hz ambient harmonic drone will play.",
                                         style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                    Slider(
-                                        value = audioPositionMs.toFloat(),
-                                        onValueChange = { audioHelper.seekTo(it.toInt()) },
-                                        valueRange = 0f..audioDurationMs.toFloat(),
-                                        modifier = Modifier.fillMaxWidth()
+                                        color = MaterialTheme.colorScheme.primary
                                     )
                                 }
                             }
                         }
+                        MeditationAudioMode.SILENT -> {
+                            Text(
+                                text = "Completely silent visual pacing. The glowing breathing circle will pace your inhalation, retention, and exhalation without emitting sound.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+            }
+        }
 
-                        Text(
-                            text = "Screen-Off Friendly: You can turn off your screen or switch apps once started. Spoken guidance continues uninterrupted.",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+        // Configurable Breathing Rhythm Pacing Card
+        item {
+            Card(
+                shape = RoundedCornerShape(18.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)
+                ),
+                modifier = Modifier.fillMaxWidth().testTag("breathing_pacing_card")
+            ) {
+                Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text(
+                        text = "Breathing Rhythm & Pacing",
+                        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                        color = MaterialTheme.colorScheme.primary
+                    )
+
+                    // Presets Row
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        listOf(
+                            "Box (4-4-4-4)" to listOf(4, 4, 4, 4),
+                            "4-7-8 Relax" to listOf(4, 7, 8, 0),
+                            "Calm (5-2-6)" to listOf(5, 2, 6, 0),
+                            "Natural (3-0-3)" to listOf(3, 0, 3, 0)
+                        ).forEach { (presetName, values) ->
+                            val isPresetMatch = inhaleSeconds == values[0] && holdInhaleSeconds == values[1] &&
+                                    exhaleSeconds == values[2] && holdExhaleSeconds == values[3]
+                            FilterChip(
+                                selected = isPresetMatch,
+                                onClick = {
+                                    inhaleSeconds = values[0]
+                                    holdInhaleSeconds = values[1]
+                                    exhaleSeconds = values[2]
+                                    holdExhaleSeconds = values[3]
+                                    viewModel.setMeditationBreathingPacing(values[0], values[1], values[2], values[3])
+                                },
+                                label = { Text(presetName, style = MaterialTheme.typography.labelSmall) }
+                            )
+                        }
+                    }
+
+                    // Sliders
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                            Text("Inhale Duration", style = MaterialTheme.typography.bodySmall)
+                            Text("${inhaleSeconds}s", style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold))
+                        }
+                        Slider(
+                            value = inhaleSeconds.toFloat(),
+                            onValueChange = {
+                                inhaleSeconds = it.toInt()
+                                viewModel.setMeditationBreathingPacing(inhaleSeconds, holdInhaleSeconds, exhaleSeconds, holdExhaleSeconds)
+                            },
+                            valueRange = 2f..10f,
+                            steps = 7
+                        )
+
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                            Text("Hold After Inhale", style = MaterialTheme.typography.bodySmall)
+                            Text("${holdInhaleSeconds}s", style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold))
+                        }
+                        Slider(
+                            value = holdInhaleSeconds.toFloat(),
+                            onValueChange = {
+                                holdInhaleSeconds = it.toInt()
+                                viewModel.setMeditationBreathingPacing(inhaleSeconds, holdInhaleSeconds, exhaleSeconds, holdExhaleSeconds)
+                            },
+                            valueRange = 0f..10f,
+                            steps = 9
+                        )
+
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                            Text("Exhale Duration", style = MaterialTheme.typography.bodySmall)
+                            Text("${exhaleSeconds}s", style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold))
+                        }
+                        Slider(
+                            value = exhaleSeconds.toFloat(),
+                            onValueChange = {
+                                exhaleSeconds = it.toInt()
+                                viewModel.setMeditationBreathingPacing(inhaleSeconds, holdInhaleSeconds, exhaleSeconds, holdExhaleSeconds)
+                            },
+                            valueRange = 2f..10f,
+                            steps = 7
+                        )
+
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                            Text("Hold After Exhale / Rest", style = MaterialTheme.typography.bodySmall)
+                            Text("${holdExhaleSeconds}s", style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold))
+                        }
+                        Slider(
+                            value = holdExhaleSeconds.toFloat(),
+                            onValueChange = {
+                                holdExhaleSeconds = it.toInt()
+                                viewModel.setMeditationBreathingPacing(inhaleSeconds, holdInhaleSeconds, exhaleSeconds, holdExhaleSeconds)
+                            },
+                            valueRange = 0f..10f,
+                            steps = 9
                         )
                     }
                 }
@@ -938,26 +1077,77 @@ fun MeditationScreen(
     }
 }
 
+enum class ActiveBreathingPhase(val label: String) {
+    INHALE("Inhale softly…"),
+    HOLD_IN("Hold gently…"),
+    EXHALE("Exhale slowly…"),
+    HOLD_OUT("Rest & pause…")
+}
+
 /**
  * Calm, comfortable breathing animation circle.
- * Inhale (4s expanding), Exhale (4s contracting).
- * No rapid or uncomfortable hyperventilation.
+ * Fully configurable pacing for Inhale, Hold, Exhale, and Rest.
+ * Smoothly drives visual scale and notifies audio helper on phase transitions.
  */
 @Composable
-fun BreathingGuideCircle(isRunning: Boolean) {
-    val infiniteTransition = rememberInfiniteTransition(label = "breathing")
-    val scale by infiniteTransition.animateFloat(
-        initialValue = 0.75f,
-        targetValue = 1.15f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 4000, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
+fun BreathingGuideCircle(
+    isRunning: Boolean,
+    inhaleSeconds: Int = 4,
+    holdInhaleSeconds: Int = 4,
+    exhaleSeconds: Int = 4,
+    holdExhaleSeconds: Int = 0,
+    onPhaseTransition: ((ActiveBreathingPhase) -> Unit)? = null
+) {
+    var currentPhase by remember { mutableStateOf(ActiveBreathingPhase.INHALE) }
+    var targetScale by remember { mutableFloatStateOf(0.75f) }
+    var animDurationMs by remember { mutableIntStateOf(inhaleSeconds * 1000) }
+
+    LaunchedEffect(isRunning, inhaleSeconds, holdInhaleSeconds, exhaleSeconds, holdExhaleSeconds) {
+        if (isRunning) {
+            while (true) {
+                // Inhale
+                currentPhase = ActiveBreathingPhase.INHALE
+                onPhaseTransition?.invoke(ActiveBreathingPhase.INHALE)
+                targetScale = 1.15f
+                animDurationMs = maxOf(1, inhaleSeconds) * 1000
+                delay(animDurationMs.toLong())
+
+                // Hold In
+                if (holdInhaleSeconds > 0) {
+                    currentPhase = ActiveBreathingPhase.HOLD_IN
+                    onPhaseTransition?.invoke(ActiveBreathingPhase.HOLD_IN)
+                    targetScale = 1.15f
+                    animDurationMs = holdInhaleSeconds * 1000
+                    delay(animDurationMs.toLong())
+                }
+
+                // Exhale
+                currentPhase = ActiveBreathingPhase.EXHALE
+                onPhaseTransition?.invoke(ActiveBreathingPhase.EXHALE)
+                targetScale = 0.75f
+                animDurationMs = maxOf(1, exhaleSeconds) * 1000
+                delay(animDurationMs.toLong())
+
+                // Hold Out
+                if (holdExhaleSeconds > 0) {
+                    currentPhase = ActiveBreathingPhase.HOLD_OUT
+                    onPhaseTransition?.invoke(ActiveBreathingPhase.HOLD_OUT)
+                    targetScale = 0.75f
+                    animDurationMs = holdExhaleSeconds * 1000
+                    delay(animDurationMs.toLong())
+                }
+            }
+        } else {
+            targetScale = 0.9f
+            currentPhase = ActiveBreathingPhase.INHALE
+        }
+    }
+
+    val animatedScale by androidx.compose.animation.core.animateFloatAsState(
+        targetValue = targetScale,
+        animationSpec = tween(durationMillis = if (isRunning) animDurationMs else 600, easing = FastOutSlowInEasing),
         label = "breathing_scale"
     )
-
-    val actualScale = if (isRunning) scale else 0.9f
-    val breathPhase = if (actualScale > 0.95f) "Inhale softly…" else "Exhale gently…"
 
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -967,7 +1157,7 @@ fun BreathingGuideCircle(isRunning: Boolean) {
             contentAlignment = Alignment.Center,
             modifier = Modifier
                 .size(140.dp)
-                .scale(actualScale)
+                .scale(animatedScale)
         ) {
             Surface(
                 shape = CircleShape,
@@ -988,7 +1178,7 @@ fun BreathingGuideCircle(isRunning: Boolean) {
         }
         Spacer(modifier = Modifier.height(6.dp))
         Text(
-            text = if (isRunning) breathPhase else "Ready to breathe",
+            text = if (isRunning) currentPhase.label else "Ready to breathe",
             style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Medium),
             color = MaterialTheme.colorScheme.primary
         )

@@ -5,8 +5,10 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
+import androidx.compose.runtime.getValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.data.database.AppDatabase
 import com.example.data.repository.AppRepository
 import com.example.ui.MainViewModel
@@ -31,7 +33,8 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         handleIntent(intent)
         setContent {
-            RhythmFocusTheme {
+            val themeMode by viewModel.appThemeMode.collectAsStateWithLifecycle()
+            RhythmFocusTheme(themeMode = themeMode) {
                 RhythmFocusApp(viewModel = viewModel)
             }
         }

@@ -175,14 +175,20 @@ data class ActiveTimerDraftEntity(
     val taskId: Long? = null,
     val taskTitle: String = "Focused Study",
     val category: String = "General",
-    val mode: String = "POMODORO", // "POMODORO", "DEEP_WORK", "CUSTOM", "STOPWATCH"
+    val mode: String = "POMODORO", // "POMODORO", "DEEP_WORK", "CUSTOM", "STOPWATCH", "PROTOCOL"
     val targetSeconds: Int = 25 * 60,
     val startWallClockMillis: Long = 0L,
     val accumulatedElapsedSeconds: Int = 0,
     val isRunning: Boolean = false,
     val isPaused: Boolean = false,
     val isCompleted: Boolean = false,
-    val lastUpdatedMillis: Long = System.currentTimeMillis()
+    val lastUpdatedMillis: Long = System.currentTimeMillis(),
+    val currentPhase: String = "FOCUS", // "FOCUS", "SHORT_BREAK", "LONG_BREAK", "COOLDOWN", "COMPLETED"
+    val phaseElapsedSeconds: Int = 0,
+    val phaseTargetSeconds: Int = 25 * 60,
+    val protocolJson: String? = null,
+    val passedBreakPointIds: String = "",
+    val activeBreakExtensionSeconds: Int = 0
 )
 
 @Entity(tableName = "brain_dump_notes")

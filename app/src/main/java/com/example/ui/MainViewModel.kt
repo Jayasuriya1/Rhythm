@@ -16,15 +16,24 @@ import com.example.data.entity.StudyCategoryEntity
 import com.example.data.entity.StudySessionEntity
 import com.example.data.entity.StudyTaskEntity
 import com.example.data.entity.WaterEntryEntity
+import com.example.data.model.BreakPoint
+import com.example.data.model.BreakScheduleMethod
+import com.example.data.model.StudyProtocol
+import com.example.data.model.TimerPhase
 import com.example.data.repository.AppRepository
 import com.example.util.AlarmScheduler
 import com.example.util.DateTimeUtils
 import com.example.util.NotificationHelper
+import com.example.util.StudySoundHelper
+import com.example.util.StudySoundType
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
@@ -48,6 +57,7 @@ enum class TimerMode(val title: String, val defaultMinutes: Int) {
     POMODORO("Pomodoro (25m)", 25),
     DEEP_WORK("Deep Work (50m)", 50),
     CUSTOM("Custom Interval", 30),
+    PROTOCOL("Protocol (with Breaks)", 50),
     STOPWATCH("Stopwatch Mode", 0)
 }
 
@@ -64,7 +74,16 @@ data class TimerState(
     val sessionStartTimestamp: Long = 0L,
     val selectedTaskId: Long? = null,
     val selectedTaskTitle: String = "Focused Study",
-    val selectedCategory: String = "General"
+    val selectedCategory: String = "General",
+
+    // Protocol & Micro-Break State (Phase 1)
+    val currentPhase: TimerPhase = TimerPhase.FOCUS,
+    val currentPhaseElapsedSeconds: Int = 0,
+    val currentPhaseTargetSeconds: Int = 25 * 60,
+    val activeBreakPoint: BreakPoint? = null,
+    val protocol: StudyProtocol = StudyProtocol(),
+    val passedBreakPointIds: Set<String> = emptySet(),
+    val activeBreakExtensionSeconds: Int = 0
 )
 
 @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
@@ -185,8 +204,16 @@ class MainViewModel(private val repository: AppRepository) : ViewModel() {
         .map { it?.value?.toBooleanStrictOrNull() ?: true }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
 
-    // Study Focus Timer Sounds
+    // Study Focus Timer Sounds (Independent settings)
     val studyStartSoundEnabled: StateFlow<Boolean> = repository.getSetting("study_start_sound_enabled")
+        .map { it?.value?.toBooleanStrictOrNull() ?: true }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
+
+    val studyBreakStartSoundEnabled: StateFlow<Boolean> = repository.getSetting("study_break_start_sound_enabled")
+        .map { it?.value?.toBooleanStrictOrNull() ?: true }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
+
+    val studyBreakEndSoundEnabled: StateFlow<Boolean> = repository.getSetting("study_break_end_sound_enabled")
         .map { it?.value?.toBooleanStrictOrNull() ?: true }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
 
@@ -194,12 +221,84 @@ class MainViewModel(private val repository: AppRepository) : ViewModel() {
         .map { it?.value?.toBooleanStrictOrNull() ?: true }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
 
+    // Keep screen awake during active timer
+    val studyKeepScreenOnEnabled: StateFlow<Boolean> = repository.getSetting("study_keep_screen_on_enabled")
+        .map { it?.value?.toBooleanStrictOrNull() ?: false }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+
+    // Saved Protocol Configuration
+    val studyProtocol: StateFlow<StudyProtocol> = repository.getSetting("saved_study_protocol")
+        .map { setting -> StudyProtocol.fromJson(setting?.value) }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, StudyProtocol())
+
+    // App Theme Preference (OLED Pitch Black, Standard Dark, Light, Follow System)
+    val appThemeMode: StateFlow<com.example.ui.theme.AppThemeMode> = repository.getSetting("app_theme_mode")
+        .map { setting ->
+            setting?.value?.let {
+                try { com.example.ui.theme.AppThemeMode.valueOf(it) } catch (_: Exception) { null }
+            } ?: com.example.ui.theme.AppThemeMode.SYSTEM
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), com.example.ui.theme.AppThemeMode.SYSTEM)
+
+    fun setAppThemeMode(mode: com.example.ui.theme.AppThemeMode) {
+        viewModelScope.launch {
+            repository.saveSetting("app_theme_mode", mode.name)
+        }
+    }
+
+    val keepScreenOnEnabled: StateFlow<Boolean> get() = studyKeepScreenOnEnabled
+    val studySoundBreakStart: StateFlow<Boolean> get() = studyBreakStartSoundEnabled
+    val breathingInhaleSeconds: StateFlow<Int> get() = meditationInhaleSeconds
+    val breathingPauseSeconds: StateFlow<Int> get() = meditationHoldInhaleSeconds
+    val breathingExhaleSeconds: StateFlow<Int> get() = meditationExhaleSeconds
+
+    fun setStudyKeepScreenOnEnabled(enabled: Boolean) = setStudyKeepScreenOn(enabled)
+    fun setKeepScreenOnEnabled(enabled: Boolean) = setStudyKeepScreenOn(enabled)
+
+    fun setStudySoundEnabled(type: String, enabled: Boolean) {
+        when (type) {
+            "start" -> setStudyStartSoundEnabled(enabled)
+            "break_start" -> setStudyBreakStartSoundEnabled(enabled)
+            "break_end" -> setStudyBreakEndSoundEnabled(enabled)
+            "end" -> setStudyEndSoundEnabled(enabled)
+        }
+    }
+
+    // Decoupled Sound Events
+    private val _studySoundEvents = MutableSharedFlow<StudySoundType>(extraBufferCapacity = 4)
+    val studySoundEvents: SharedFlow<StudySoundType> = _studySoundEvents.asSharedFlow()
+
     // Meditation Data
     val allMeditationSessions: StateFlow<List<com.example.data.entity.MeditationSessionEntity>> = repository.allMeditationSessions
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     val recentMeditationSessions: StateFlow<List<com.example.data.entity.MeditationSessionEntity>> = repository.recentMeditationSessions
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    // Meditation Breathing Settings (Persisted)
+    val meditationAudioMode: StateFlow<com.example.util.MeditationAudioMode> = repository.getSetting("meditation_audio_mode")
+        .map { setting ->
+            setting?.value?.let { value ->
+                try { com.example.util.MeditationAudioMode.valueOf(value) } catch (_: Exception) { null }
+            } ?: com.example.util.MeditationAudioMode.TTS
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), com.example.util.MeditationAudioMode.TTS)
+
+    val meditationInhaleSeconds: StateFlow<Int> = repository.getSetting("meditation_inhale_sec")
+        .map { it?.value?.toIntOrNull() ?: 4 }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 4)
+
+    val meditationHoldInhaleSeconds: StateFlow<Int> = repository.getSetting("meditation_hold_inhale_sec")
+        .map { it?.value?.toIntOrNull() ?: 4 }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 4)
+
+    val meditationExhaleSeconds: StateFlow<Int> = repository.getSetting("meditation_exhale_sec")
+        .map { it?.value?.toIntOrNull() ?: 4 }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 4)
+
+    val meditationHoldExhaleSeconds: StateFlow<Int> = repository.getSetting("meditation_hold_exhale_sec")
+        .map { it?.value?.toIntOrNull() ?: 0 }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
 
     // Dedicated Custom Alarms
     val allAlarms: StateFlow<List<com.example.data.entity.CustomAlarmEntity>> = repository.allAlarms
@@ -229,43 +328,124 @@ class MainViewModel(private val repository: AppRepository) : ViewModel() {
             TimerMode.POMODORO
         }
 
+        val phase = try {
+            TimerPhase.valueOf(draft.currentPhase)
+        } catch (_: Exception) {
+            TimerPhase.FOCUS
+        }
+
+        val protocol = StudyProtocol.fromJson(draft.protocolJson)
+        val passedIds = if (draft.passedBreakPointIds.isNotBlank()) {
+            draft.passedBreakPointIds.split(",").map { it.trim() }.filter { it.isNotEmpty() }.toSet()
+        } else emptySet()
+
+        val activeBreakPoint = protocol.resolvedBreakPoints().firstOrNull { it.id in passedIds && (phase == TimerPhase.SHORT_BREAK || phase == TimerPhase.LONG_BREAK) }
+
         val now = System.currentTimeMillis()
         if (draft.isRunning && draft.startWallClockMillis > 0L) {
             val deltaSeconds = ((now - draft.startWallClockMillis) / 1000).toInt()
-            val totalElapsed = draft.accumulatedElapsedSeconds + maxOf(0, deltaSeconds)
 
-            if (mode != TimerMode.STOPWATCH && totalElapsed >= draft.targetSeconds) {
-                _timerState.value = TimerState(
-                    isRunning = false,
-                    isPaused = false,
-                    isCompleted = true,
-                    mode = mode,
-                    targetSeconds = draft.targetSeconds,
-                    elapsedSeconds = draft.targetSeconds,
-                    remainingSeconds = 0,
-                    accumulatedElapsedSeconds = draft.targetSeconds,
-                    sessionStartTimestamp = draft.startWallClockMillis,
-                    selectedTaskId = draft.taskId,
-                    selectedTaskTitle = draft.taskTitle,
-                    selectedCategory = draft.category
-                )
+            if (phase == TimerPhase.FOCUS) {
+                val totalElapsed = draft.accumulatedElapsedSeconds + maxOf(0, deltaSeconds)
+
+                if (mode != TimerMode.STOPWATCH && totalElapsed >= draft.targetSeconds) {
+                    _timerState.value = TimerState(
+                        isRunning = false,
+                        isPaused = false,
+                        isCompleted = true,
+                        mode = mode,
+                        targetSeconds = draft.targetSeconds,
+                        elapsedSeconds = draft.targetSeconds,
+                        remainingSeconds = 0,
+                        accumulatedElapsedSeconds = draft.targetSeconds,
+                        sessionStartTimestamp = draft.startWallClockMillis,
+                        selectedTaskId = draft.taskId,
+                        selectedTaskTitle = draft.taskTitle,
+                        selectedCategory = draft.category,
+                        currentPhase = TimerPhase.COMPLETED,
+                        currentPhaseElapsedSeconds = draft.targetSeconds,
+                        currentPhaseTargetSeconds = draft.targetSeconds,
+                        protocol = protocol,
+                        passedBreakPointIds = passedIds
+                    )
+                } else {
+                    _timerState.value = TimerState(
+                        isRunning = true,
+                        isPaused = false,
+                        isCompleted = false,
+                        mode = mode,
+                        targetSeconds = draft.targetSeconds,
+                        elapsedSeconds = totalElapsed,
+                        remainingSeconds = if (mode == TimerMode.STOPWATCH) 0 else maxOf(0, draft.targetSeconds - totalElapsed),
+                        startWallClockMillis = draft.startWallClockMillis,
+                        accumulatedElapsedSeconds = draft.accumulatedElapsedSeconds,
+                        sessionStartTimestamp = draft.startWallClockMillis,
+                        selectedTaskId = draft.taskId,
+                        selectedTaskTitle = draft.taskTitle,
+                        selectedCategory = draft.category,
+                        currentPhase = TimerPhase.FOCUS,
+                        currentPhaseElapsedSeconds = totalElapsed,
+                        currentPhaseTargetSeconds = draft.targetSeconds,
+                        protocol = protocol,
+                        passedBreakPointIds = passedIds
+                    )
+                    startTickerLoop()
+                }
             } else {
-                _timerState.value = TimerState(
-                    isRunning = true,
-                    isPaused = false,
-                    isCompleted = false,
-                    mode = mode,
-                    targetSeconds = draft.targetSeconds,
-                    elapsedSeconds = totalElapsed,
-                    remainingSeconds = if (mode == TimerMode.STOPWATCH) 0 else maxOf(0, draft.targetSeconds - totalElapsed),
-                    startWallClockMillis = draft.startWallClockMillis,
-                    accumulatedElapsedSeconds = draft.accumulatedElapsedSeconds,
-                    sessionStartTimestamp = draft.startWallClockMillis,
-                    selectedTaskId = draft.taskId,
-                    selectedTaskTitle = draft.taskTitle,
-                    selectedCategory = draft.category
-                )
-                startTickerLoop()
+                // Was in a break or cooldown
+                val totalBreakElapsed = draft.phaseElapsedSeconds + maxOf(0, deltaSeconds)
+                val targetBreak = draft.phaseTargetSeconds + draft.activeBreakExtensionSeconds
+
+                if (totalBreakElapsed >= targetBreak) {
+                    // Break completed while app was backgrounded
+                    _timerState.value = TimerState(
+                        isRunning = true,
+                        isPaused = false,
+                        isCompleted = false,
+                        mode = mode,
+                        targetSeconds = draft.targetSeconds,
+                        elapsedSeconds = draft.accumulatedElapsedSeconds,
+                        remainingSeconds = maxOf(0, draft.targetSeconds - draft.accumulatedElapsedSeconds),
+                        startWallClockMillis = now,
+                        accumulatedElapsedSeconds = draft.accumulatedElapsedSeconds,
+                        sessionStartTimestamp = draft.startWallClockMillis,
+                        selectedTaskId = draft.taskId,
+                        selectedTaskTitle = draft.taskTitle,
+                        selectedCategory = draft.category,
+                        currentPhase = TimerPhase.FOCUS,
+                        currentPhaseElapsedSeconds = draft.accumulatedElapsedSeconds,
+                        currentPhaseTargetSeconds = draft.targetSeconds,
+                        activeBreakPoint = null,
+                        protocol = protocol,
+                        passedBreakPointIds = passedIds,
+                        activeBreakExtensionSeconds = 0
+                    )
+                    startTickerLoop()
+                } else {
+                    _timerState.value = TimerState(
+                        isRunning = true,
+                        isPaused = false,
+                        isCompleted = false,
+                        mode = mode,
+                        targetSeconds = draft.targetSeconds,
+                        elapsedSeconds = draft.accumulatedElapsedSeconds,
+                        remainingSeconds = maxOf(0, draft.targetSeconds - draft.accumulatedElapsedSeconds),
+                        startWallClockMillis = draft.startWallClockMillis,
+                        accumulatedElapsedSeconds = draft.accumulatedElapsedSeconds,
+                        sessionStartTimestamp = draft.startWallClockMillis,
+                        selectedTaskId = draft.taskId,
+                        selectedTaskTitle = draft.taskTitle,
+                        selectedCategory = draft.category,
+                        currentPhase = phase,
+                        currentPhaseElapsedSeconds = totalBreakElapsed,
+                        currentPhaseTargetSeconds = draft.phaseTargetSeconds,
+                        activeBreakPoint = activeBreakPoint,
+                        protocol = protocol,
+                        passedBreakPointIds = passedIds,
+                        activeBreakExtensionSeconds = draft.activeBreakExtensionSeconds
+                    )
+                    startTickerLoop()
+                }
             }
         } else if (draft.isPaused) {
             _timerState.value = TimerState(
@@ -281,7 +461,14 @@ class MainViewModel(private val repository: AppRepository) : ViewModel() {
                 sessionStartTimestamp = draft.startWallClockMillis,
                 selectedTaskId = draft.taskId,
                 selectedTaskTitle = draft.taskTitle,
-                selectedCategory = draft.category
+                selectedCategory = draft.category,
+                currentPhase = phase,
+                currentPhaseElapsedSeconds = draft.phaseElapsedSeconds,
+                currentPhaseTargetSeconds = draft.phaseTargetSeconds,
+                activeBreakPoint = activeBreakPoint,
+                protocol = protocol,
+                passedBreakPointIds = passedIds,
+                activeBreakExtensionSeconds = draft.activeBreakExtensionSeconds
             )
         }
     }
@@ -745,7 +932,11 @@ class MainViewModel(private val repository: AppRepository) : ViewModel() {
 
     fun setTimerConfig(mode: TimerMode, customMinutes: Int = 25) {
         stopTimer()
-        val totalSec = if (mode == TimerMode.STOPWATCH) 0 else customMinutes * 60
+        val totalSec = when (mode) {
+            TimerMode.STOPWATCH -> 0
+            TimerMode.PROTOCOL -> studyProtocol.value.totalFocusMinutes * 60
+            else -> customMinutes * 60
+        }
         _timerState.value = _timerState.value.copy(
             mode = mode,
             targetSeconds = totalSec,
@@ -755,7 +946,14 @@ class MainViewModel(private val repository: AppRepository) : ViewModel() {
             startWallClockMillis = 0L,
             isRunning = false,
             isPaused = false,
-            isCompleted = false
+            isCompleted = false,
+            currentPhase = TimerPhase.FOCUS,
+            currentPhaseElapsedSeconds = 0,
+            currentPhaseTargetSeconds = totalSec,
+            activeBreakPoint = null,
+            activeBreakExtensionSeconds = 0,
+            passedBreakPointIds = emptySet(),
+            protocol = studyProtocol.value
         )
         persistTimerDraft()
     }
@@ -772,13 +970,48 @@ class MainViewModel(private val repository: AppRepository) : ViewModel() {
         }
     }
 
+    fun setStudyBreakStartSoundEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            repository.saveSetting("study_break_start_sound_enabled", enabled.toString())
+        }
+    }
+
+    fun setStudyBreakEndSoundEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            repository.saveSetting("study_break_end_sound_enabled", enabled.toString())
+        }
+    }
+
     fun setStudyEndSoundEnabled(enabled: Boolean) {
         viewModelScope.launch {
             repository.saveSetting("study_end_sound_enabled", enabled.toString())
         }
     }
 
-    fun startTimer(context: android.content.Context? = null) {
+    fun setStudyKeepScreenOn(enabled: Boolean) {
+        viewModelScope.launch {
+            repository.saveSetting("study_keep_screen_on_enabled", enabled.toString())
+            _userFeedbackMessage.value = if (enabled) "Keep screen awake enabled during active timer" else "Keep screen awake disabled"
+        }
+    }
+
+    fun saveStudyProtocol(protocol: StudyProtocol) {
+        viewModelScope.launch {
+            repository.saveSetting("saved_study_protocol", protocol.toJson())
+            val current = _timerState.value
+            _timerState.value = current.copy(protocol = protocol)
+            if (current.mode == TimerMode.PROTOCOL && !current.isRunning && !current.isPaused) {
+                setTimerConfig(TimerMode.PROTOCOL, protocol.totalFocusMinutes)
+            }
+            _userFeedbackMessage.value = "Study protocol saved (${protocol.totalFocusMinutes}m, ${protocol.resolvedBreakPoints().size} breaks)"
+        }
+    }
+
+    fun previewStudySound(context: Context, type: StudySoundType) {
+        StudySoundHelper.previewSound(context, type)
+    }
+
+    fun startTimer(context: Context? = null) {
         if (_timerState.value.isRunning) return
 
         val now = System.currentTimeMillis()
@@ -795,8 +1028,11 @@ class MainViewModel(private val repository: AppRepository) : ViewModel() {
         persistTimerDraft()
         startTickerLoop()
 
-        if (context != null && studyStartSoundEnabled.value) {
-            com.example.util.StudySoundHelper.playStartSound(context)
+        if (studyStartSoundEnabled.value) {
+            _studySoundEvents.tryEmit(StudySoundType.SESSION_START)
+            if (context != null) {
+                StudySoundHelper.playStartSound(context)
+            }
         }
     }
 
@@ -810,17 +1046,28 @@ class MainViewModel(private val repository: AppRepository) : ViewModel() {
             ((now - current.startWallClockMillis) / 1000).toInt()
         } else 0
 
-        val newAccumulated = current.accumulatedElapsedSeconds + maxOf(0, deltaSeconds)
-        val remaining = if (current.mode == TimerMode.STOPWATCH) 0 else maxOf(0, current.targetSeconds - newAccumulated)
+        if (current.currentPhase == TimerPhase.FOCUS) {
+            val newAccumulated = current.accumulatedElapsedSeconds + maxOf(0, deltaSeconds)
+            val remaining = if (current.mode == TimerMode.STOPWATCH) 0 else maxOf(0, current.targetSeconds - newAccumulated)
 
-        _timerState.value = current.copy(
-            isRunning = false,
-            isPaused = true,
-            startWallClockMillis = 0L,
-            accumulatedElapsedSeconds = newAccumulated,
-            elapsedSeconds = newAccumulated,
-            remainingSeconds = remaining
-        )
+            _timerState.value = current.copy(
+                isRunning = false,
+                isPaused = true,
+                startWallClockMillis = 0L,
+                accumulatedElapsedSeconds = newAccumulated,
+                elapsedSeconds = newAccumulated,
+                remainingSeconds = remaining,
+                currentPhaseElapsedSeconds = newAccumulated
+            )
+        } else {
+            val newPhaseElapsed = current.currentPhaseElapsedSeconds + maxOf(0, deltaSeconds)
+            _timerState.value = current.copy(
+                isRunning = false,
+                isPaused = true,
+                startWallClockMillis = 0L,
+                currentPhaseElapsedSeconds = newPhaseElapsed
+            )
+        }
 
         persistTimerDraft()
     }
@@ -839,11 +1086,48 @@ class MainViewModel(private val repository: AppRepository) : ViewModel() {
             remainingSeconds = _timerState.value.targetSeconds,
             accumulatedElapsedSeconds = 0,
             startWallClockMillis = 0L,
-            sessionStartTimestamp = 0L
+            sessionStartTimestamp = 0L,
+            currentPhase = TimerPhase.FOCUS,
+            currentPhaseElapsedSeconds = 0,
+            activeBreakPoint = null,
+            activeBreakExtensionSeconds = 0,
+            passedBreakPointIds = emptySet()
         )
         viewModelScope.launch {
             repository.clearTimerDraft()
         }
+    }
+
+    fun skipBreak(context: Context? = null) {
+        val current = _timerState.value
+        if (current.currentPhase != TimerPhase.SHORT_BREAK && current.currentPhase != TimerPhase.LONG_BREAK && current.currentPhase != TimerPhase.COOLDOWN) return
+
+        val now = System.currentTimeMillis()
+        _timerState.value = current.copy(
+            currentPhase = TimerPhase.FOCUS,
+            currentPhaseElapsedSeconds = 0,
+            activeBreakPoint = null,
+            activeBreakExtensionSeconds = 0,
+            startWallClockMillis = if (current.isRunning) now else 0L
+        )
+        persistTimerDraft()
+        if (studyBreakEndSoundEnabled.value) {
+            _studySoundEvents.tryEmit(StudySoundType.BREAK_END)
+            if (context != null) {
+                StudySoundHelper.playBreakEndSound(context)
+            }
+        }
+        _userFeedbackMessage.value = "Skipped break. Resuming focus."
+    }
+
+    fun extendBreak(additionalMinutes: Int) {
+        val current = _timerState.value
+        val additionalSeconds = additionalMinutes * 60
+        _timerState.value = current.copy(
+            activeBreakExtensionSeconds = current.activeBreakExtensionSeconds + additionalSeconds
+        )
+        persistTimerDraft()
+        _userFeedbackMessage.value = "Extended break by $additionalMinutes min"
     }
 
     private fun startTickerLoop() {
@@ -856,27 +1140,124 @@ class MainViewModel(private val repository: AppRepository) : ViewModel() {
 
                 val now = System.currentTimeMillis()
                 val deltaSec = ((now - current.startWallClockMillis) / 1000).toInt()
-                val totalElapsed = current.accumulatedElapsedSeconds + maxOf(0, deltaSec)
 
-                if (current.mode != TimerMode.STOPWATCH && totalElapsed >= current.targetSeconds) {
-                    _timerState.value = current.copy(
-                        elapsedSeconds = current.targetSeconds,
-                        remainingSeconds = 0,
-                        accumulatedElapsedSeconds = current.targetSeconds,
-                        isRunning = false,
-                        isPaused = false,
-                        isCompleted = true,
-                        startWallClockMillis = 0L
-                    )
-                    persistTimerDraft()
-                    _userFeedbackMessage.value = "Focus session completed! Record your study log."
-                    break
+                if (current.currentPhase == TimerPhase.FOCUS) {
+                    val focusElapsed = current.accumulatedElapsedSeconds + maxOf(0, deltaSec)
+
+                    // Check for break point triggers in PROTOCOL mode
+                    if (current.mode == TimerMode.PROTOCOL) {
+                        val breakPoints = current.protocol.resolvedBreakPoints()
+                        val pendingBreak = breakPoints.firstOrNull { bp ->
+                            focusElapsed >= bp.triggerElapsedMinute * 60 && !current.passedBreakPointIds.contains(bp.id)
+                        }
+
+                        if (pendingBreak != null) {
+                            val newPassed = current.passedBreakPointIds + pendingBreak.id
+                            val breakPhase = if (pendingBreak.isLongBreak) TimerPhase.LONG_BREAK else TimerPhase.SHORT_BREAK
+                            val breakTargetSec = pendingBreak.breakDurationMinutes * 60
+
+                            _timerState.value = current.copy(
+                                accumulatedElapsedSeconds = focusElapsed,
+                                elapsedSeconds = focusElapsed,
+                                remainingSeconds = maxOf(0, current.targetSeconds - focusElapsed),
+                                currentPhase = breakPhase,
+                                currentPhaseElapsedSeconds = 0,
+                                currentPhaseTargetSeconds = breakTargetSec,
+                                activeBreakPoint = pendingBreak,
+                                passedBreakPointIds = newPassed,
+                                activeBreakExtensionSeconds = 0,
+                                startWallClockMillis = now
+                            )
+                            persistTimerDraft()
+                            if (studyBreakStartSoundEnabled.value) {
+                                _studySoundEvents.tryEmit(StudySoundType.BREAK_START)
+                            }
+                            _userFeedbackMessage.value = "Time for a ${pendingBreak.label} (${pendingBreak.breakDurationMinutes}m). Step away and stretch!"
+                            continue
+                        }
+                    }
+
+                    if (current.mode != TimerMode.STOPWATCH && focusElapsed >= current.targetSeconds) {
+                        if (current.mode == TimerMode.PROTOCOL && current.protocol.hasCooldownPeriod && current.currentPhase != TimerPhase.COOLDOWN) {
+                            val cooldownSec = current.protocol.cooldownMinutes * 60
+                            _timerState.value = current.copy(
+                                accumulatedElapsedSeconds = current.targetSeconds,
+                                elapsedSeconds = current.targetSeconds,
+                                remainingSeconds = 0,
+                                currentPhase = TimerPhase.COOLDOWN,
+                                currentPhaseElapsedSeconds = 0,
+                                currentPhaseTargetSeconds = cooldownSec,
+                                startWallClockMillis = now
+                            )
+                            persistTimerDraft()
+                            _userFeedbackMessage.value = "Focus completed! Entering ${current.protocol.cooldownMinutes}m session cooldown."
+                            continue
+                        } else {
+                            _timerState.value = current.copy(
+                                elapsedSeconds = current.targetSeconds,
+                                remainingSeconds = 0,
+                                accumulatedElapsedSeconds = current.targetSeconds,
+                                isRunning = false,
+                                isPaused = false,
+                                isCompleted = true,
+                                startWallClockMillis = 0L,
+                                currentPhase = TimerPhase.COMPLETED
+                            )
+                            persistTimerDraft()
+                            if (studyEndSoundEnabled.value) {
+                                _studySoundEvents.tryEmit(StudySoundType.SESSION_END)
+                            }
+                            _userFeedbackMessage.value = "Focus session completed! Record your study log."
+                            break
+                        }
+                    } else {
+                        val remaining = if (current.mode == TimerMode.STOPWATCH) 0 else maxOf(0, current.targetSeconds - focusElapsed)
+                        _timerState.value = current.copy(
+                            elapsedSeconds = focusElapsed,
+                            remainingSeconds = remaining,
+                            currentPhaseElapsedSeconds = focusElapsed
+                        )
+                    }
                 } else {
-                    val remaining = if (current.mode == TimerMode.STOPWATCH) 0 else maxOf(0, current.targetSeconds - totalElapsed)
-                    _timerState.value = current.copy(
-                        elapsedSeconds = totalElapsed,
-                        remainingSeconds = remaining
-                    )
+                    // In SHORT_BREAK, LONG_BREAK, or COOLDOWN
+                    val breakElapsed = current.currentPhaseElapsedSeconds + maxOf(0, deltaSec)
+                    val totalTarget = current.currentPhaseTargetSeconds + current.activeBreakExtensionSeconds
+
+                    if (breakElapsed >= totalTarget) {
+                        if (current.currentPhase == TimerPhase.COOLDOWN) {
+                            _timerState.value = current.copy(
+                                isRunning = false,
+                                isPaused = false,
+                                isCompleted = true,
+                                startWallClockMillis = 0L,
+                                currentPhase = TimerPhase.COMPLETED
+                            )
+                            persistTimerDraft()
+                            if (studyEndSoundEnabled.value) {
+                                _studySoundEvents.tryEmit(StudySoundType.SESSION_END)
+                            }
+                            _userFeedbackMessage.value = "Cooldown completed! Save your study session."
+                            break
+                        } else {
+                            _timerState.value = current.copy(
+                                currentPhase = TimerPhase.FOCUS,
+                                currentPhaseElapsedSeconds = 0,
+                                currentPhaseTargetSeconds = current.targetSeconds,
+                                activeBreakPoint = null,
+                                activeBreakExtensionSeconds = 0,
+                                startWallClockMillis = now
+                            )
+                            persistTimerDraft()
+                            if (studyBreakEndSoundEnabled.value) {
+                                _studySoundEvents.tryEmit(StudySoundType.BREAK_END)
+                            }
+                            _userFeedbackMessage.value = "Break finished! Back to focus."
+                        }
+                    } else {
+                        _timerState.value = current.copy(
+                            currentPhaseElapsedSeconds = breakElapsed
+                        )
+                    }
                 }
             }
         }
@@ -898,7 +1279,13 @@ class MainViewModel(private val repository: AppRepository) : ViewModel() {
                     isRunning = state.isRunning,
                     isPaused = state.isPaused,
                     isCompleted = state.isCompleted,
-                    lastUpdatedMillis = System.currentTimeMillis()
+                    lastUpdatedMillis = System.currentTimeMillis(),
+                    currentPhase = state.currentPhase.name,
+                    phaseElapsedSeconds = state.currentPhaseElapsedSeconds,
+                    phaseTargetSeconds = state.currentPhaseTargetSeconds,
+                    protocolJson = state.protocol.toJson(),
+                    passedBreakPointIds = state.passedBreakPointIds.joinToString(","),
+                    activeBreakExtensionSeconds = state.activeBreakExtensionSeconds
                 )
             )
         }
@@ -1310,6 +1697,30 @@ class MainViewModel(private val repository: AppRepository) : ViewModel() {
             refreshDatabaseIntegrityStats()
             _userFeedbackMessage.value = "Mindfulness session completed ($durationMinutes min)"
         }
+    }
+
+    fun setMeditationAudioMode(mode: com.example.util.MeditationAudioMode) {
+        viewModelScope.launch {
+            repository.saveSetting("meditation_audio_mode", mode.name)
+        }
+    }
+
+    fun setMeditationAudioMode(modeName: String) {
+        val mode = try { com.example.util.MeditationAudioMode.valueOf(modeName) } catch (_: Exception) { com.example.util.MeditationAudioMode.TTS }
+        setMeditationAudioMode(mode)
+    }
+
+    fun setMeditationBreathingPacing(inhale: Int, holdInhale: Int, exhale: Int, holdExhale: Int) {
+        viewModelScope.launch {
+            repository.saveSetting("meditation_inhale_sec", inhale.toString())
+            repository.saveSetting("meditation_hold_inhale_sec", holdInhale.toString())
+            repository.saveSetting("meditation_exhale_sec", exhale.toString())
+            repository.saveSetting("meditation_hold_exhale_sec", holdExhale.toString())
+        }
+    }
+
+    fun setBreathingDurations(inhale: Int, pause: Int, exhale: Int) {
+        setMeditationBreathingPacing(inhale, pause, exhale, pause)
     }
 
     fun clearAllUserData() {

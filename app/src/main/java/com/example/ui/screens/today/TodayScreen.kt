@@ -38,6 +38,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -94,26 +95,169 @@ fun TodayScreen(
     val brainDumpNotes by viewModel.activeBrainDumpNotes.collectAsStateWithLifecycle()
 
     var showQuickCaptureDialog by remember { mutableStateOf(false) }
+    var showQuickActionsDialog by remember { mutableStateOf(false) }
 
     val totalWaterMl = waterEntries.sumOf { it.volumeMl }
     val completedRoutines = routineEntries.count { it.status == "COMPLETED" }
 
-    if (isExpandedScreen) {
-        // Tablet / Wide 2-Column Dashboard (e.g. Xiaomi Pad 7)
-        Row(
-            modifier = modifier
-                .fillMaxSize()
-                .padding(horizontal = 24.dp),
-            horizontalArrangement = Arrangement.spacedBy(24.dp)
-        ) {
+    Box(modifier = modifier.fillMaxSize()) {
+        if (isExpandedScreen) {
+            // Tablet / Wide 2-Column Dashboard (e.g. Xiaomi Pad 7)
+            Row(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 24.dp),
+                horizontalArrangement = Arrangement.spacedBy(24.dp)
+            ) {
+                LazyColumn(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxSize(),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    item {
+                        TodayGreetingHeader(selectedDate = selectedDate)
+                    }
+                    item {
+                        NextEventCircularArcCard(
+                            anchors = routineAnchors,
+                            entries = routineEntries,
+                            dailyPriorityTask = dailyPriorityTask,
+                            onDoneNow = { anchor -> viewModel.markRoutineDoneNow(anchor) },
+                            onStartFocus = { task ->
+                                viewModel.selectTaskForTimer(task)
+                                viewModel.startTimer()
+                                viewModel.navigateTo(AppDestination.STUDY)
+                            },
+                            onViewSchedule = { viewModel.navigateTo(AppDestination.ROUTINE) }
+                        )
+                    }
+                    item {
+                        WearableHealthConnectCard(
+                            sleepEntry = sleepEntry,
+                            waterVolumeMl = totalWaterMl,
+                            waterTargetMl = 2000,
+                            onRefreshSync = { /* Refreshes local DB views */ },
+                            onNavigateHealth = { viewModel.navigateTo(AppDestination.HEALTH) }
+                        )
+                    }
+                    item {
+                        RoutineSummaryCard(
+                            completedCount = completedRoutines,
+                            totalCount = routineAnchors.size,
+                            anchors = routineAnchors,
+                            entries = routineEntries,
+                            onDoneNow = { anchor -> viewModel.markRoutineDoneNow(anchor) },
+                            onViewRoutine = { viewModel.navigateTo(AppDestination.ROUTINE) }
+                        )
+                    }
+                    item {
+                        SleepSummaryCard(
+                            sleep = sleepEntry,
+                            onLogSleep = { viewModel.navigateTo(AppDestination.HEALTH) }
+                        )
+                    }
+                    item {
+                        MoodEnergySummaryCard(
+                            health = healthCheckin,
+                            onLogHealth = { viewModel.navigateTo(AppDestination.HEALTH) }
+                        )
+                    }
+                    item {
+                        TodayMindfulnessCard(
+                            onStartMeditation = { viewModel.navigateTo(AppDestination.MEDITATION) }
+                        )
+                    }
+                    item {
+                        TodayRemindersQuickCard(
+                            onOpenReminderCenter = { viewModel.navigateTo(AppDestination.REMINDERS) }
+                        )
+                    }
+                    item { Spacer(modifier = Modifier.height(80.dp)) }
+                }
+
+                LazyColumn(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxSize(),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    item {
+                        DailyPriorityStudyCard(
+                            task = dailyPriorityTask,
+                            onStartFocus = { task ->
+                                viewModel.selectTaskForTimer(task)
+                                viewModel.startTimer()
+                                viewModel.navigateTo(AppDestination.STUDY)
+                            },
+                            onViewTasks = { viewModel.navigateTo(AppDestination.STUDY) }
+                        )
+                    }
+                    item {
+                        TodayBrainDumpCard(
+                            notes = brainDumpNotes,
+                            onQuickCapture = { showQuickCaptureDialog = true },
+                            onViewAllThoughts = { viewModel.navigateTo(AppDestination.BRAIN_DUMP) }
+                        )
+                    }
+                    item {
+                        WaterTrackingCard(
+                            totalMl = totalWaterMl,
+                            targetMl = 2000,
+                            onAddWater = { amount -> viewModel.addWater(amount) },
+                            onViewWater = { viewModel.navigateTo(AppDestination.HEALTH) }
+                        )
+                    }
+                    item {
+                        MedicationOverviewCard(
+                            date = selectedDate,
+                            medications = activeMedications,
+                            intakes = medicationIntakes,
+                            onRecordIntake = { med, timeMin, status ->
+                                viewModel.recordMedicationIntake(med, timeMin, status, null)
+                            },
+                            onCorrectIntake = { intake, newStatus ->
+                                viewModel.correctMedicationIntake(intake, newStatus, null)
+                            },
+                            onManageMedications = { viewModel.navigateTo(AppDestination.HEALTH) }
+                        )
+                    }
+                    item { Spacer(modifier = Modifier.height(80.dp)) }
+                }
+            }
+        } else {
+            // Phone / Compact Single Column
             LazyColumn(
                 modifier = Modifier
-                    .weight(1f)
-                    .fillMaxSize(),
+                    .fillMaxSize()
+                    .padding(horizontal = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 item {
                     TodayGreetingHeader(selectedDate = selectedDate)
+                }
+                item {
+                    NextEventCircularArcCard(
+                        anchors = routineAnchors,
+                        entries = routineEntries,
+                        dailyPriorityTask = dailyPriorityTask,
+                        onDoneNow = { anchor -> viewModel.markRoutineDoneNow(anchor) },
+                        onStartFocus = { task ->
+                            viewModel.selectTaskForTimer(task)
+                            viewModel.startTimer()
+                            viewModel.navigateTo(AppDestination.STUDY)
+                        },
+                        onViewSchedule = { viewModel.navigateTo(AppDestination.ROUTINE) }
+                    )
+                }
+                item {
+                    WearableHealthConnectCard(
+                        sleepEntry = sleepEntry,
+                        waterVolumeMl = totalWaterMl,
+                        waterTargetMl = 2000,
+                        onRefreshSync = { /* Refreshes local DB views */ },
+                        onNavigateHealth = { viewModel.navigateTo(AppDestination.HEALTH) }
+                    )
                 }
                 item {
                     RoutineSummaryCard(
@@ -125,37 +269,6 @@ fun TodayScreen(
                         onViewRoutine = { viewModel.navigateTo(AppDestination.ROUTINE) }
                     )
                 }
-                item {
-                    SleepSummaryCard(
-                        sleep = sleepEntry,
-                        onLogSleep = { viewModel.navigateTo(AppDestination.HEALTH) }
-                    )
-                }
-                item {
-                    MoodEnergySummaryCard(
-                        health = healthCheckin,
-                        onLogHealth = { viewModel.navigateTo(AppDestination.HEALTH) }
-                    )
-                }
-                item {
-                    TodayMindfulnessCard(
-                        onStartMeditation = { viewModel.navigateTo(AppDestination.MEDITATION) }
-                    )
-                }
-                item {
-                    TodayRemindersQuickCard(
-                        onOpenReminderCenter = { viewModel.navigateTo(AppDestination.REMINDERS) }
-                    )
-                }
-                item { Spacer(modifier = Modifier.height(24.dp)) }
-            }
-
-            LazyColumn(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxSize(),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
                 item {
                     DailyPriorityStudyCard(
                         task = dailyPriorityTask,
@@ -172,6 +285,18 @@ fun TodayScreen(
                         notes = brainDumpNotes,
                         onQuickCapture = { showQuickCaptureDialog = true },
                         onViewAllThoughts = { viewModel.navigateTo(AppDestination.BRAIN_DUMP) }
+                    )
+                }
+                item {
+                    SleepSummaryCard(
+                        sleep = sleepEntry,
+                        onLogSleep = { viewModel.navigateTo(AppDestination.HEALTH) }
+                    )
+                }
+                item {
+                    MoodEnergySummaryCard(
+                        health = healthCheckin,
+                        onLogHealth = { viewModel.navigateTo(AppDestination.HEALTH) }
                     )
                 }
                 item {
@@ -196,94 +321,100 @@ fun TodayScreen(
                         onManageMedications = { viewModel.navigateTo(AppDestination.HEALTH) }
                     )
                 }
-                item { Spacer(modifier = Modifier.height(24.dp)) }
+                item {
+                    TodayMindfulnessCard(
+                        onStartMeditation = { viewModel.navigateTo(AppDestination.MEDITATION) }
+                    )
+                }
+                item {
+                    TodayRemindersQuickCard(
+                        onOpenReminderCenter = { viewModel.navigateTo(AppDestination.REMINDERS) }
+                    )
+                }
+                item { Spacer(modifier = Modifier.height(80.dp)) }
             }
         }
-    } else {
-        // Phone / Compact Single Column
-        LazyColumn(
-            modifier = modifier
-                .fillMaxSize()
-                .padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            item {
-                TodayGreetingHeader(selectedDate = selectedDate)
-            }
-            item {
-                RoutineSummaryCard(
-                    completedCount = completedRoutines,
-                    totalCount = routineAnchors.size,
-                    anchors = routineAnchors,
-                    entries = routineEntries,
-                    onDoneNow = { anchor -> viewModel.markRoutineDoneNow(anchor) },
-                    onViewRoutine = { viewModel.navigateTo(AppDestination.ROUTINE) }
+
+        // Quick Actions Extended Floating Action Button
+        ExtendedFloatingActionButton(
+            onClick = { showQuickActionsDialog = true },
+            icon = { Icon(Icons.Default.Add, contentDescription = "Quick Actions") },
+            text = { Text("Quick Action") },
+            containerColor = MaterialTheme.colorScheme.primary,
+            contentColor = MaterialTheme.colorScheme.onPrimary,
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(24.dp)
+                .testTag("today_quick_action_fab")
+        )
+    }
+
+    if (showQuickActionsDialog) {
+        AlertDialog(
+            onDismissRequest = { showQuickActionsDialog = false },
+            title = {
+                Text(
+                    text = "Quick Actions",
+                    style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)
                 )
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    FilledTonalButton(
+                        onClick = {
+                            showQuickActionsDialog = false
+                            viewModel.navigateTo(AppDestination.STUDY)
+                        },
+                        modifier = Modifier.fillMaxWidth().testTag("fab_quick_action_study")
+                    ) {
+                        Icon(Icons.Default.PlayArrow, contentDescription = null)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Start Focus Session")
+                    }
+
+                    FilledTonalButton(
+                        onClick = {
+                            showQuickActionsDialog = false
+                            viewModel.navigateTo(AppDestination.MEDITATION)
+                        },
+                        modifier = Modifier.fillMaxWidth().testTag("fab_quick_action_meditation")
+                    ) {
+                        Icon(Icons.Default.Spa, contentDescription = null)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Guided Breathing & Meditation")
+                    }
+
+                    FilledTonalButton(
+                        onClick = {
+                            showQuickActionsDialog = false
+                            showQuickCaptureDialog = true
+                        },
+                        modifier = Modifier.fillMaxWidth().testTag("fab_quick_action_thought")
+                    ) {
+                        Icon(Icons.Default.Lightbulb, contentDescription = null)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Park Distracting Thought")
+                    }
+
+                    OutlinedButton(
+                        onClick = {
+                            showQuickActionsDialog = false
+                            viewModel.addWater(250)
+                        },
+                        modifier = Modifier.fillMaxWidth().testTag("fab_quick_action_water")
+                    ) {
+                        Icon(Icons.Default.LocalDrink, contentDescription = null)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Log Water (+250 ml)")
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showQuickActionsDialog = false }) {
+                    Text("Close")
+                }
             }
-            item {
-                DailyPriorityStudyCard(
-                    task = dailyPriorityTask,
-                    onStartFocus = { task ->
-                        viewModel.selectTaskForTimer(task)
-                        viewModel.startTimer()
-                        viewModel.navigateTo(AppDestination.STUDY)
-                    },
-                    onViewTasks = { viewModel.navigateTo(AppDestination.STUDY) }
-                )
-            }
-            item {
-                TodayBrainDumpCard(
-                    notes = brainDumpNotes,
-                    onQuickCapture = { showQuickCaptureDialog = true },
-                    onViewAllThoughts = { viewModel.navigateTo(AppDestination.BRAIN_DUMP) }
-                )
-            }
-            item {
-                SleepSummaryCard(
-                    sleep = sleepEntry,
-                    onLogSleep = { viewModel.navigateTo(AppDestination.HEALTH) }
-                )
-            }
-            item {
-                MoodEnergySummaryCard(
-                    health = healthCheckin,
-                    onLogHealth = { viewModel.navigateTo(AppDestination.HEALTH) }
-                )
-            }
-            item {
-                WaterTrackingCard(
-                    totalMl = totalWaterMl,
-                    targetMl = 2000,
-                    onAddWater = { amount -> viewModel.addWater(amount) },
-                    onViewWater = { viewModel.navigateTo(AppDestination.HEALTH) }
-                )
-            }
-            item {
-                MedicationOverviewCard(
-                    date = selectedDate,
-                    medications = activeMedications,
-                    intakes = medicationIntakes,
-                    onRecordIntake = { med, timeMin, status ->
-                        viewModel.recordMedicationIntake(med, timeMin, status, null)
-                    },
-                    onCorrectIntake = { intake, newStatus ->
-                        viewModel.correctMedicationIntake(intake, newStatus, null)
-                    },
-                    onManageMedications = { viewModel.navigateTo(AppDestination.HEALTH) }
-                )
-            }
-            item {
-                TodayMindfulnessCard(
-                    onStartMeditation = { viewModel.navigateTo(AppDestination.MEDITATION) }
-                )
-            }
-            item {
-                TodayRemindersQuickCard(
-                    onOpenReminderCenter = { viewModel.navigateTo(AppDestination.REMINDERS) }
-                )
-            }
-            item { Spacer(modifier = Modifier.height(24.dp)) }
-        }
+        )
     }
 
     if (showQuickCaptureDialog) {

@@ -38,6 +38,7 @@ import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -84,7 +85,16 @@ fun FullScreenFocusTimerScreen(
     val context = LocalContext.current
     val studyStartSoundEnabled by viewModel.studyStartSoundEnabled.collectAsStateWithLifecycle()
     val studyEndSoundEnabled by viewModel.studyEndSoundEnabled.collectAsStateWithLifecycle()
+    val studyBreakStartSoundEnabled by viewModel.studyBreakStartSoundEnabled.collectAsStateWithLifecycle()
+    val studyBreakEndSoundEnabled by viewModel.studyBreakEndSoundEnabled.collectAsStateWithLifecycle()
+    val studyKeepScreenOnEnabled by viewModel.studyKeepScreenOnEnabled.collectAsStateWithLifecycle()
     var showSoundSettingsDialog by remember { mutableStateOf(false) }
+
+    // Screen awake effect: prevents display timeout while focus or break timer is running
+    com.example.util.KeepScreenOnEffect(
+        enabled = studyKeepScreenOnEnabled,
+        isTimerActive = timerState.isRunning
+    )
 
     var showNotesField by remember { mutableStateOf(false) }
     var sessionNotes by remember { mutableStateOf("") }
@@ -202,7 +212,64 @@ fun FullScreenFocusTimerScreen(
                     )
                 }
 
-                Spacer(modifier = Modifier.height(36.dp))
+                // Micro-break active banner
+                val isBreakActive = timerState.currentPhase == com.example.data.model.TimerPhase.SHORT_BREAK ||
+                        timerState.currentPhase == com.example.data.model.TimerPhase.LONG_BREAK
+                if (isBreakActive) {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 8.dp),
+                        shape = RoundedCornerShape(14.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer)
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(12.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(
+                                text = "🌿 ${timerState.currentPhase.displayName} in Progress",
+                                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                                color = MaterialTheme.colorScheme.onTertiaryContainer
+                            )
+                            val breakRem = maxOf(0, timerState.currentPhaseTargetSeconds - timerState.currentPhaseElapsedSeconds)
+                            val bMin = breakRem / 60
+                            val bSec = breakRem % 60
+                            Text(
+                                text = String.format(java.util.Locale.getDefault(), "Break Remaining: %02d:%02d", bMin, bSec),
+                                style = MaterialTheme.typography.bodyMedium.copy(fontFamily = FontFamily.Monospace),
+                                color = MaterialTheme.colorScheme.onTertiaryContainer
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                OutlinedButton(
+                                    onClick = { viewModel.skipBreak() },
+                                    shape = RoundedCornerShape(8.dp),
+                                    modifier = Modifier.testTag("fullscreen_skip_break_button")
+                                ) {
+                                    Text("Skip Break", style = MaterialTheme.typography.labelSmall)
+                                }
+                                FilledTonalButton(
+                                    onClick = { viewModel.extendBreak(60) },
+                                    shape = RoundedCornerShape(8.dp),
+                                    modifier = Modifier.testTag("fullscreen_extend_break_1m_button")
+                                ) {
+                                    Text("+1m", style = MaterialTheme.typography.labelSmall)
+                                }
+                                FilledTonalButton(
+                                    onClick = { viewModel.extendBreak(300) },
+                                    shape = RoundedCornerShape(8.dp),
+                                    modifier = Modifier.testTag("fullscreen_extend_break_5m_button")
+                                ) {
+                                    Text("+5m", style = MaterialTheme.typography.labelSmall)
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(28.dp))
 
                 // Circular Progress + Digital Clock
                 Box(
@@ -398,12 +465,17 @@ fun FullScreenFocusTimerScreen(
 
     if (showSoundSettingsDialog) {
         StudyTimerSoundSettingsDialog(
+            keepScreenOnEnabled = studyKeepScreenOnEnabled,
+            onToggleKeepScreenOn = { viewModel.setStudyKeepScreenOn(it) },
             startSoundEnabled = studyStartSoundEnabled,
+            breakStartSoundEnabled = studyBreakStartSoundEnabled,
+            breakEndSoundEnabled = studyBreakEndSoundEnabled,
             endSoundEnabled = studyEndSoundEnabled,
             onToggleStartSound = { viewModel.setStudyStartSoundEnabled(it) },
+            onToggleBreakStartSound = { viewModel.setStudyBreakStartSoundEnabled(it) },
+            onToggleBreakEndSound = { viewModel.setStudyBreakEndSoundEnabled(it) },
             onToggleEndSound = { viewModel.setStudyEndSoundEnabled(it) },
-            onPreviewStartSound = { com.example.util.StudySoundHelper.playStartSound(context) },
-            onPreviewEndSound = { com.example.util.StudySoundHelper.playEndSound(context) },
+            onPreviewSound = { type -> com.example.util.StudySoundHelper.previewSound(context, type) },
             onDismiss = { showSoundSettingsDialog = false }
         )
     }

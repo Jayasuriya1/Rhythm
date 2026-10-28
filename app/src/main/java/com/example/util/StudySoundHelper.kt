@@ -15,22 +15,33 @@ import kotlin.math.PI
 import kotlin.math.exp
 import kotlin.math.sin
 
+enum class StudySoundType(val displayName: String, val description: String) {
+    SESSION_START("Session Start", "Gentle, warm rising two-tone chime"),
+    BREAK_START("Break Start", "Soft relaxing descent cue"),
+    BREAK_END("Break End", "Refreshing ascending alert to return to study"),
+    SESSION_END("Session End", "Resonant calming Tibetan singing bowl chime")
+}
+
+/**
+ * High-performance, lightweight PCM AudioTrack synthesizer for study and break sound cues.
+ * Features:
+ * - Independent cues for session start, break start, break end, session end.
+ * - Transient audio focus ducking (music gently ducks or pauses).
+ * - Instant AudioTrack release after completion to prevent memory/resource leaks.
+ * - Never crashes the timer if audio output fails or is disabled.
+ */
 object StudySoundHelper {
 
     private const val SAMPLE_RATE = 44100
     private var activeTrack: AudioTrack? = null
 
-    /**
-     * Synthesizes and plays a gentle, warm rising chime (C5 523 Hz -> E5 659 Hz)
-     * signaling the start of a deep focus session.
-     */
     fun playStartSound(context: Context) {
         CoroutineScope(Dispatchers.IO).launch {
             val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
             val focusReq = requestFocus(audioManager)
 
             try {
-                // Generate ~400ms gentle two-tone rising chime
+                // ~420ms gentle rising two-tone chime (C5 523Hz -> E5 659Hz)
                 val durationSec = 0.42
                 val numSamples = (SAMPLE_RATE * durationSec).toInt()
                 val buffer = ShortArray(numSamples)
@@ -60,17 +71,85 @@ object StudySoundHelper {
         }
     }
 
-    /**
-     * Synthesizes and plays a resonant, calming singing bowl chime (A4 440 Hz + harmonic 880 Hz)
-     * signaling the completion of a study timer.
-     */
+    fun playBreakStartSound(context: Context) {
+        CoroutineScope(Dispatchers.IO).launch {
+            val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
+            val focusReq = requestFocus(audioManager)
+
+            try {
+                // ~500ms soothing relaxing descent tone (G4 392Hz -> E4 329Hz)
+                val durationSec = 0.50
+                val numSamples = (SAMPLE_RATE * durationSec).toInt()
+                val buffer = ShortArray(numSamples)
+
+                val tone1Samples = (SAMPLE_RATE * 0.22).toInt()
+                val freq1 = 392.00 // G4
+                val freq2 = 329.63 // E4
+
+                for (i in 0 until numSamples) {
+                    val time = i.toDouble() / SAMPLE_RATE
+                    val sample = if (i < tone1Samples) {
+                        val env = exp(-i.toDouble() / (SAMPLE_RATE * 0.14))
+                        sin(2.0 * PI * freq1 * time) * env
+                    } else {
+                        val subIndex = i - tone1Samples
+                        val env = exp(-subIndex.toDouble() / (SAMPLE_RATE * 0.25))
+                        sin(2.0 * PI * freq2 * time) * env
+                    }
+                    val amplitude = (sample * 0.30 * Short.MAX_VALUE).toInt()
+                    buffer[i] = amplitude.coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt()).toShort()
+                }
+
+                playBuffer(buffer)
+            } finally {
+                abandonFocus(audioManager, focusReq)
+            }
+        }
+    }
+
+    fun playBreakEndSound(context: Context) {
+        CoroutineScope(Dispatchers.IO).launch {
+            val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
+            val focusReq = requestFocus(audioManager)
+
+            try {
+                // ~450ms bright ascending alert (E5 659Hz -> G5 784Hz)
+                val durationSec = 0.45
+                val numSamples = (SAMPLE_RATE * durationSec).toInt()
+                val buffer = ShortArray(numSamples)
+
+                val tone1Samples = (SAMPLE_RATE * 0.18).toInt()
+                val freq1 = 659.25 // E5
+                val freq2 = 783.99 // G5
+
+                for (i in 0 until numSamples) {
+                    val time = i.toDouble() / SAMPLE_RATE
+                    val sample = if (i < tone1Samples) {
+                        val env = exp(-i.toDouble() / (SAMPLE_RATE * 0.12))
+                        sin(2.0 * PI * freq1 * time) * env
+                    } else {
+                        val subIndex = i - tone1Samples
+                        val env = exp(-subIndex.toDouble() / (SAMPLE_RATE * 0.22))
+                        sin(2.0 * PI * freq2 * time) * env
+                    }
+                    val amplitude = (sample * 0.32 * Short.MAX_VALUE).toInt()
+                    buffer[i] = amplitude.coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt()).toShort()
+                }
+
+                playBuffer(buffer)
+            } finally {
+                abandonFocus(audioManager, focusReq)
+            }
+        }
+    }
+
     fun playEndSound(context: Context) {
         CoroutineScope(Dispatchers.IO).launch {
             val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
             val focusReq = requestFocus(audioManager)
 
             try {
-                // Generate ~850ms calming Tibetan singing bowl tone with gentle exponential decay
+                // ~850ms calming Tibetan singing bowl tone (A4 440Hz + harmonic A5 880Hz)
                 val durationSec = 0.85
                 val numSamples = (SAMPLE_RATE * durationSec).toInt()
                 val buffer = ShortArray(numSamples)
@@ -92,6 +171,15 @@ object StudySoundHelper {
             } finally {
                 abandonFocus(audioManager, focusReq)
             }
+        }
+    }
+
+    fun previewSound(context: Context, type: StudySoundType) {
+        when (type) {
+            StudySoundType.SESSION_START -> playStartSound(context)
+            StudySoundType.BREAK_START -> playBreakStartSound(context)
+            StudySoundType.BREAK_END -> playBreakEndSound(context)
+            StudySoundType.SESSION_END -> playEndSound(context)
         }
     }
 

@@ -57,3 +57,26 @@ val StateHealthy = Color(0xFF4A7C59)
 val StateWarning = Color(0xFFD97706)
 val StateInfo = Color(0xFF3B82F6)
 val StateMuted = Color(0xFF6B7280)
+
+// OLED Pitch Black Scheme (Xiaomi Pad 7 & OLED Battery Optimized)
+val OledBackground = Color(0xFF000000)
+val OledSurface = Color(0xFF000000)
+val OledSurfaceVariant = Color(0xFF141414)
+val OledOnBackground = Color(0xFFF3F4F6)
+val OledOnSurface = Color(0xFFF3F4F6)
+val OledOnSurfaceVariant = Color(0xFF9CA3AF)
+val OledPrimary = Color(0xFF2DD4BF) // Luminous Teal
+val OledOnPrimary = Color(0xFF003830)
+val OledPrimaryContainer = Color(0xFF0D3D36)
+val OledOnPrimaryContainer = Color(0xFF99F6E4)
+val OledSecondary = Color(0xFFA7F3D0) // Mint Sage
+val OledOnSecondary = Color(0xFF064E3B)
+val OledSecondaryContainer = Color(0xFF133E2F)
+val OledOnSecondaryContainer = Color(0xFFD1FAE5)
+val OledTertiary = Color(0xFFFDBA74) // Warm Amber
+val OledOnTertiary = Color(0xFF431407)
+val OledTertiaryContainer = Color(0xFF451A03)
+val OledOnTertiaryContainer = Color(0xFFFFEDD5)
+val OledOutline = Color(0xFF27272A)
+val OledOutlineVariant = Color(0xFF18181B)
+

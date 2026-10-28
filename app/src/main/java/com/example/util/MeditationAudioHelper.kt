@@ -3,7 +3,9 @@ package com.example.util
 import android.content.Context
 import android.media.AudioAttributes
 import android.media.AudioFocusRequest
+import android.media.AudioFormat
 import android.media.AudioManager
+import android.media.AudioTrack
 import android.media.MediaPlayer
 import android.net.Uri
 import android.os.Build
@@ -12,20 +14,47 @@ import android.os.Looper
 import android.speech.tts.TextToSpeech
 import android.speech.tts.UtteranceProgressListener
 import android.util.Log
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import java.util.Locale
 import java.util.concurrent.atomic.AtomicBoolean
+import kotlin.math.PI
+import kotlin.math.exp
+import kotlin.math.sin
 
-enum class MeditationAudioMode {
-    TTS,
-    AUDIO_FILE
+enum class MeditationAudioMode(val displayName: String, val description: String) {
+    TTS("Spoken Instructions", "Mindful voice prompts pacing the exercise"),
+    BREATHING_CUES("Breathing Sound Cues", "Gentle acoustic tones for Inhale, Hold, and Exhale"),
+    AMBIENT("Ambient Audio", "Calming background drone or local audio track"),
+    SILENT("Silent Visual Pacing", "Quiet session guided purely by visual breathing circle")
+}
+
+data class BreathingPacing(
+    val inhaleSeconds: Int = 4,
+    val holdInhaleSeconds: Int = 4,
+    val exhaleSeconds: Int = 4,
+    val holdExhaleSeconds: Int = 0
+) {
+    val totalCycleSeconds: Int
+        get() = inhaleSeconds + holdInhaleSeconds + exhaleSeconds + holdExhaleSeconds
+
+    companion object {
+        val BOX_BREATHING = BreathingPacing(4, 4, 4, 4)
+        val RELAXING_4_7_8 = BreathingPacing(4, 7, 8, 0)
+        val DEEP_CALM = BreathingPacing(5, 2, 6, 0)
+        val NATURAL_FLOW = BreathingPacing(3, 0, 3, 0)
+    }
 }
 
 /**
- * Controller for Voice-Guided Meditation.
+ * Controller for Voice and Audio Guidance in Meditation.
  * Supports:
- * - Mode A: Text-to-Speech (TTS) calm instruction pacing, adjustable speech rate, voice preview, pause/resume/stop.
- * - Mode B: Prerecorded guided audio files via MediaPlayer with seek, duration, pause/resume/stop.
- * - Handles Audio Focus politely so music or external sounds are ducked or paused.
+ * - Mode 1: Text-to-Speech (TTS) calm instruction pacing, adjustable rate, voice preview.
+ * - Mode 2: Subtle PCM synthesized sound cues for breathing phases (Inhale, Hold, Exhale).
+ * - Mode 3: Ambient background audio drone or local user-selected track.
+ * - Mode 4: Silent visual pacing.
+ * - Complete Audio Focus polite ducking and clean resource cancellation.
  */
 class MeditationAudioHelper(private val context: Context) {
 
@@ -38,22 +67,27 @@ class MeditationAudioHelper(private val context: Context) {
     private var isTtsSpeaking = false
     private var currentStepIndex = 0
     private var stepsToSpeak: List<String> = emptyList()
-    private var speechRate: Float = 0.85f // Calm, mindful pace by default
+    private var speechRate: Float = 0.85f
     private var stepIntervalSeconds: Int = 12
 
     // Audio file player state
     private var mediaPlayer: MediaPlayer? = null
+    private var ambientTrack: AudioTrack? = null
     private var audioUri: Uri? = null
 
     // Audio focus
     private var audioManager: AudioManager? = null
     private var audioFocusRequest: AudioFocusRequest? = null
 
+    // PCM Cue Track
+    private var cueTrack: AudioTrack? = null
+    private val sampleRate = 44100
+
     // Callbacks
     var onStepSpoken: ((Int, String) -> Unit)? = null
     var onSessionComplete: (() -> Unit)? = null
     var onError: ((String) -> Unit)? = null
-    var onAudioProgress: ((Int, Int) -> Unit)? = null // (positionMs, durationMs)
+    var onAudioProgress: ((Int, Int) -> Unit)? = null
 
     private val isPaused = AtomicBoolean(false)
     private val isStopped = AtomicBoolean(false)
@@ -134,7 +168,7 @@ class MeditationAudioHelper(private val context: Context) {
     }
 
     /**
-     * Start Mode A: TTS Guided Meditation
+     * Start Mode 1: TTS Guided Meditation
      */
     fun startTtsSession(steps: List<String>, intervalSeconds: Int = 12) {
         if (steps.isEmpty()) return
@@ -165,7 +199,6 @@ class MeditationAudioHelper(private val context: Context) {
             tts?.setSpeechRate(speechRate)
             tts?.speak(text, TextToSpeech.QUEUE_FLUSH, null, currentUtteranceId)
         } else {
-            // If TTS is unready, wait interval and proceed
             scheduleNextStep()
         }
     }
@@ -181,7 +214,79 @@ class MeditationAudioHelper(private val context: Context) {
     }
 
     /**
-     * Start Mode B: Audio file guided meditation
+     * Mode 2: Breathing Sound Cues (Synthesized PCM Tones)
+     */
+    fun playInhaleCue() {
+        if (isPaused.get() || isStopped.get()) return
+        playSynthesizedTone(startFreq = 300.0, endFreq = 460.0, durationSec = 0.35, amplitudeScale = 0.28)
+    }
+
+    fun playHoldCue() {
+        if (isPaused.get() || isStopped.get()) return
+        playSynthesizedTone(startFreq = 528.0, endFreq = 528.0, durationSec = 0.22, amplitudeScale = 0.22)
+    }
+
+    fun playExhaleCue() {
+        if (isPaused.get() || isStopped.get()) return
+        playSynthesizedTone(startFreq = 460.0, endFreq = 300.0, durationSec = 0.35, amplitudeScale = 0.28)
+    }
+
+    private fun playSynthesizedTone(startFreq: Double, endFreq: Double, durationSec: Double, amplitudeScale: Double) {
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                stopCueTrack()
+                val numSamples = (sampleRate * durationSec).toInt()
+                val buffer = ShortArray(numSamples)
+                for (i in 0 until numSamples) {
+                    val progress = i.toDouble() / numSamples
+                    val freq = startFreq + (endFreq - startFreq) * progress
+                    val time = i.toDouble() / sampleRate
+                    val envelope = sin(PI * progress) // smooth parabolic rise & fall
+                    val sample = sin(2.0 * PI * freq * time) * envelope
+                    buffer[i] = (sample * amplitudeScale * Short.MAX_VALUE).toInt()
+                        .coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt()).toShort()
+                }
+
+                val track = AudioTrack.Builder()
+                    .setAudioAttributes(
+                        AudioAttributes.Builder()
+                            .setUsage(AudioAttributes.USAGE_ASSISTANCE_SONIFICATION)
+                            .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                            .build()
+                    )
+                    .setAudioFormat(
+                        AudioFormat.Builder()
+                            .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
+                            .setSampleRate(sampleRate)
+                            .setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
+                            .build()
+                    )
+                    .setBufferSizeInBytes(buffer.size * 2)
+                    .setTransferMode(AudioTrack.MODE_STATIC)
+                    .build()
+
+                cueTrack = track
+                track.write(buffer, 0, buffer.size)
+                track.play()
+            } catch (_: Exception) {}
+        }
+    }
+
+    private fun stopCueTrack() {
+        try {
+            cueTrack?.let {
+                if (it.playState == AudioTrack.PLAYSTATE_PLAYING) {
+                    it.stop()
+                }
+                it.release()
+            }
+        } catch (_: Exception) {} finally {
+            cueTrack = null
+        }
+    }
+
+    /**
+     * Mode 3: Ambient Audio (Prerecorded file or gentle synthetic binaural drone)
      */
     fun startAudioFileSession(uri: Uri) {
         stop()
@@ -199,6 +304,7 @@ class MeditationAudioHelper(private val context: Context) {
                         .build()
                 )
                 setDataSource(appContext, uri)
+                isLooping = true
                 prepareAsync()
                 setOnPreparedListener { mp ->
                     mp.start()
@@ -217,6 +323,56 @@ class MeditationAudioHelper(private val context: Context) {
         } catch (e: Exception) {
             Log.e("MeditationAudioHelper", "Failed to start audio file: ${e.message}")
             onError?.invoke("Could not open selected audio file: ${e.message}")
+        }
+    }
+
+    fun startSyntheticAmbientDrone() {
+        stop()
+        isPaused.set(false)
+        isStopped.set(false)
+        requestAudioFocus()
+
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                // 3-second loopable warm ambient harmonic chord (108Hz + 432Hz fifth)
+                val durationSec = 3.0
+                val numSamples = (sampleRate * durationSec).toInt()
+                val buffer = ShortArray(numSamples)
+                val freq1 = 108.0
+                val freq2 = 432.0
+
+                for (i in 0 until numSamples) {
+                    val time = i.toDouble() / sampleRate
+                    val s1 = sin(2.0 * PI * freq1 * time) * 0.7
+                    val s2 = sin(2.0 * PI * freq2 * time) * 0.3
+                    val sample = (s1 + s2) * 0.18
+                    buffer[i] = (sample * Short.MAX_VALUE).toInt()
+                        .coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt()).toShort()
+                }
+
+                val track = AudioTrack.Builder()
+                    .setAudioAttributes(
+                        AudioAttributes.Builder()
+                            .setUsage(AudioAttributes.USAGE_MEDIA)
+                            .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+                            .build()
+                    )
+                    .setAudioFormat(
+                        AudioFormat.Builder()
+                            .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
+                            .setSampleRate(sampleRate)
+                            .setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
+                            .build()
+                    )
+                    .setBufferSizeInBytes(buffer.size * 2)
+                    .setTransferMode(AudioTrack.MODE_STATIC)
+                    .build()
+
+                track.write(buffer, 0, buffer.size)
+                track.setLoopPoints(0, buffer.size, -1)
+                ambientTrack = track
+                track.play()
+            } catch (_: Exception) {}
         }
     }
 
@@ -245,6 +401,10 @@ class MeditationAudioHelper(private val context: Context) {
             if (mediaPlayer?.isPlaying == true) {
                 mediaPlayer?.pause()
             }
+            if (ambientTrack?.playState == AudioTrack.PLAYSTATE_PLAYING) {
+                ambientTrack?.pause()
+            }
+            stopCueTrack()
         } catch (_: Exception) {}
     }
 
@@ -261,7 +421,13 @@ class MeditationAudioHelper(private val context: Context) {
             } catch (_: Exception) {}
         }
 
-        // Mode A resume
+        ambientTrack?.let {
+            try {
+                it.play()
+                return
+            } catch (_: Exception) {}
+        }
+
         speakCurrentStep()
     }
 
@@ -290,6 +456,17 @@ class MeditationAudioHelper(private val context: Context) {
         } catch (_: Exception) {}
         mediaPlayer = null
 
+        try {
+            ambientTrack?.let {
+                if (it.playState == AudioTrack.PLAYSTATE_PLAYING) {
+                    it.stop()
+                }
+                it.release()
+            }
+        } catch (_: Exception) {}
+        ambientTrack = null
+
+        stopCueTrack()
         abandonAudioFocus()
     }
 
