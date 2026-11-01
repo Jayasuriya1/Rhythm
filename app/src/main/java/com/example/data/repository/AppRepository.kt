@@ -33,6 +33,7 @@ class AppRepository(private val database: AppDatabase) {
     val reminderDao = database.reminderDao()
     private val meditationDao = database.meditationDao()
     val customAlarmDao = database.customAlarmDao()
+    val registeredCodeDao = database.registeredCodeDao()
 
     // Routine
     val routineAnchors: Flow<List<RoutineAnchorEntity>> = routineDao.getAllAnchors()
@@ -540,6 +541,38 @@ class AppRepository(private val database: AppDatabase) {
         if (customAlarmDao.getAlarmsCount() == 0) {
             customAlarmDao.insertDefaultAlarms(AppDatabase.DEFAULT_ALARMS)
         }
+    }
+
+    // Registered Barcode / QR Codes
+    val allRegisteredCodes: Flow<List<com.example.data.entity.RegisteredCodeEntity>> = registeredCodeDao.getAllRegisteredCodes()
+
+    suspend fun getAllRegisteredCodesSync(): List<com.example.data.entity.RegisteredCodeEntity> {
+        return registeredCodeDao.getAllRegisteredCodesSync()
+    }
+
+    suspend fun getRegisteredCodeById(id: Long): com.example.data.entity.RegisteredCodeEntity? {
+        return registeredCodeDao.getCodeByIdSync(id)
+    }
+
+    suspend fun getRegisteredCodeByValue(codeValue: String): com.example.data.entity.RegisteredCodeEntity? {
+        return registeredCodeDao.getCodeByValue(codeValue)
+    }
+
+    suspend fun saveRegisteredCode(code: com.example.data.entity.RegisteredCodeEntity): Long {
+        return if (code.id == 0L) {
+            registeredCodeDao.insertCode(code)
+        } else {
+            registeredCodeDao.updateCode(code)
+            code.id
+        }
+    }
+
+    suspend fun deleteRegisteredCode(id: Long) {
+        registeredCodeDao.deleteCodeById(id)
+    }
+
+    suspend fun updateRegisteredCodeScanned(id: Long) {
+        registeredCodeDao.updateLastScanned(id, System.currentTimeMillis())
     }
 
     // Database Reset / Management for Settings

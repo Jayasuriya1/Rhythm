@@ -304,6 +304,10 @@ class MainViewModel(private val repository: AppRepository) : ViewModel() {
     val allAlarms: StateFlow<List<com.example.data.entity.CustomAlarmEntity>> = repository.allAlarms
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
+    // Registered Household Codes & Studio QR Codes
+    val registeredCodes: StateFlow<List<com.example.data.entity.RegisteredCodeEntity>> = repository.allRegisteredCodes
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
     // Message Toast / Feedback
     private val _userFeedbackMessage = MutableStateFlow<String?>(null)
     val userFeedbackMessage: StateFlow<String?> = _userFeedbackMessage.asStateFlow()
@@ -1556,6 +1560,35 @@ class MainViewModel(private val repository: AppRepository) : ViewModel() {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
         }
         context.startActivity(activityIntent)
+    }
+
+    // --- Registered Household & QR Studio Codes ---
+    fun saveRegisteredCode(
+        code: com.example.data.entity.RegisteredCodeEntity,
+        onSaved: ((Long) -> Unit)? = null
+    ) {
+        viewModelScope.launch {
+            val id = repository.saveRegisteredCode(code)
+            _userFeedbackMessage.value = "Saved code '${code.label}'"
+            onSaved?.invoke(id)
+        }
+    }
+
+    fun deleteRegisteredCode(code: com.example.data.entity.RegisteredCodeEntity) {
+        viewModelScope.launch {
+            repository.deleteRegisteredCode(code.id)
+            _userFeedbackMessage.value = "Deleted code '${code.label}'"
+        }
+    }
+
+    suspend fun checkCodeDuplicate(codeValue: String): com.example.data.entity.RegisteredCodeEntity? {
+        return repository.getRegisteredCodeByValue(codeValue.trim())
+    }
+
+    fun recordCodeScanned(id: Long) {
+        viewModelScope.launch {
+            repository.updateRegisteredCodeScanned(id)
+        }
     }
 
     fun setRemindersMasterEnabled(enabled: Boolean, context: Context? = null) {

@@ -8,16 +8,19 @@
 
 ## 📱 Core Features & Architecture
 
-### 1. ⏰ Dedicated Custom Alarm System
+### 1. ⏰ Dedicated Custom Alarm System & QR Studio
 Engineered for deep-sleepers and discipline-focused routines, providing hardware-level reliability and failsafe dismissals:
 - **Lock-Screen Activation:** Bypasses system keyguards and wakes device displays instantly using `setShowWhenLocked(true)`, `setTurnScreenOn(true)`, and `FLAG_KEEP_SCREEN_ON` via `ActiveAlarmActivity`.
+- **Interactive Swipe-to-Dismiss Slider:** Precision physics-based slider requiring continuous left-to-right gesture past an 80% threshold. Smooth spring-back physics prevents accidental taps and premature dismissal. Includes high-contrast accessibility actions (`CustomAccessibilityAction`).
+- **Scan & Register Existing Household Barcodes:** Wake-up missions do not require printing new codes. Register everyday items (toothpaste, books, coffee box, medicine packs) across standard formats: EAN-13, EAN-8, UPC-A, UPC-E, Code 128, Code 39, QR Code.
+- **Custom QR Code Studio (100% Offline):** Built-in generator with 10 visual templates (*Minimal B&W, Modern OLED, Soft Sage, Modern Teal, Purple Focus, Home Essentials, Compact Sticker, Wall Poster, Morning Rise, Custom*):
+  - Real-time **WCAG 2.1 contrast ratio verification** (blocks low-contrast color combinations).
+  - High-resolution PNG card exports with customizable title, location hint, and instructions.
+  - Multi-layout PDF generator: **A4**, **A5**, **Sticker Single**, and **4-Up A4 Sticker Sheet** with dashed cut guides.
+  - Native **Android PrintManager** integration for wireless home printing.
+- **My Codes Library:** Central repository of registered barcodes and custom codes with live test-scanning, renaming, location tagging, and direct association with custom alarms.
 - **Custom Wallpapers & Scrim Overlays:** Personalize alarm screens with custom gallery photos or choose from 5 curated dynamic gradients (*Midnight Indigo*, *Sunrise Gold*, *Deep Forest*, *Sunset Crimson*, *Aurora Borealis*).
-- **Layered Clock Typography:** 4 typography clock styles optimized for glanceable legibility:
-  - *Modern Digital* (clean, ultra-legible modern font)
-  - *Terminal Monospace* (retro terminal aesthetics)
-  - *Classic Serif* (timeless editorial styling)
-  - *Elegant Minimalist* (contemporary, spacious design)
-- **QR / Barcode CAPTCHA Mission (Optional):** Integrated real-time **CameraX** and **ZXing** barcode analyzer. Prevent alarm silencing until a registered physical item's barcode (e.g., toothpaste, coffee mug, book) is scanned.
+- **Layered Clock Typography:** 4 typography clock styles optimized for glanceable legibility (*Modern Digital*, *Terminal Monospace*, *Classic Serif*, *Elegant Minimalist*).
 - **Physical Volume & Action Interception:** Intercepts hardware volume buttons and disables back/recent navigations to eliminate accidental muting before mission completion.
 - **Chained Backup Alarm:** Automated secondary alarm generator scheduling an aggressive fallback alert exactly 5 minutes after the primary alarm if dismissed or ignored.
 - **Linear Volume Fade-In (Crescendo):** Smoothly transitions volume from silence to full volume across selectable windows (Off, 30s, 60s, 2m, or 5m).
@@ -106,9 +109,9 @@ app/src/main/
 ├── java/com/example/
 │   ├── MainActivity.kt              # App entry point, edge-to-edge setup, root Scaffold
 │   ├── data/
-│   │   ├── database/AppDatabase.kt  # Room database definition (Schema v8), seeders
-│   │   ├── entity/Entities.kt       # All entity definitions (Alarms, Routines, Sleep, Tasks, Meds)
-│   │   ├── dao/AppDaos.kt           # Room DAOs with reactive Flow queries
+│   │   ├── database/AppDatabase.kt  # Room database definition (Schema v10), MIGRATION_9_10
+│   │   ├── entity/Entities.kt       # All entity definitions (Alarms, RegisteredCodes, Routines, Sleep, Tasks, Meds)
+│   │   ├── dao/AppDaos.kt           # Room DAOs with reactive Flow queries (RegisteredCodeDao, CustomAlarmDao)
 │   │   └── repository/AppRepository.kt # Centralized repository & business coordination
 │   ├── receiver/
 │   │   ├── CustomAlarmReceiver.kt   # Triggers alarm playback & launches full-screen UI
@@ -117,14 +120,17 @@ app/src/main/
 │   ├── service/
 │   │   └── CustomAlarmPlaybackService.kt # Foreground media service with volume crescendo
 │   ├── ui/
-│   │   ├── MainViewModel.kt         # Central UI state management & flows
+│   │   ├── MainViewModel.kt         # Central UI state management, registered codes Flow
 │   │   ├── RhythmFocusApp.kt        # Primary navigation & modal dialog router
 │   │   ├── screens/
 │   │   │   ├── alarm/
-│   │   │   │   ├── ActiveAlarmActivity.kt # Full-screen lock-screen dismiss view
-│   │   │   │   ├── AlarmSectionScreen.kt  # Alarms list & management screen
-│   │   │   │   ├── AlarmEditDialog.kt     # Create/edit alarm dialog with file & barcode pickers
-│   │   │   │   └── BarcodeScannerView.kt  # Embedded CameraX & ZXing camera scanner
+│   │   │   │   ├── ActiveAlarmActivity.kt           # Full-screen lock-screen dismiss view
+│   │   │   │   ├── InteractiveSwipeToDismissSlider.kt # Physics-based swipe slider with spring release
+│   │   │   │   ├── AlarmSectionScreen.kt            # Tabbed alarm hub: Alarms, QR Studio, My Codes
+│   │   │   │   ├── AlarmEditDialog.kt               # Create/edit alarm dialog with household code selector
+│   │   │   │   ├── BarcodeScannerView.kt            # Embedded CameraX & ZXing camera scanner
+│   │   │   │   ├── QrCodeStudioScreen.kt            # 100% offline QR generator with 10 templates & PDF print
+│   │   │   │   └── MyCodesLibraryScreen.kt          # Registered barcode repository & test-scan manager
 │   │   │   ├── RoutineScreen.kt     # Social rhythm anchors & stability metrics
 │   │   │   ├── StudyScreen.kt       # Pomodoro timer, tasks & category analytics
 │   │   │   ├── BrainDumpScreen.kt   # Fleeting thought capture & task conversion
@@ -135,6 +141,7 @@ app/src/main/
 │   │   └── theme/                   # Material 3 colors, typography, shapes
 │   └── util/
 │       ├── CustomAlarmScheduler.kt  # Exact alarm scheduling & chained backup alarms
+│       ├── QrCodeStudioUtil.kt      # ZXing generation, WCAG contrast verification, PDF/PNG export & print
 │       ├── AlarmScheduler.kt        # Reminder scheduling & quiet hours calculation
 │       ├── DataBackupManager.kt     # JSON export, schema validation & atomic restore
 │       └── DateTimeUtils.kt         # Delta formatting & date utilities
@@ -155,7 +162,7 @@ app/src/main/
 # Compile Debug APK
 gradle :app:assembleDebug
 
-# Run Unit & Robolectric Tests (37 comprehensive test suites)
+# Run Unit & Robolectric Tests (45 comprehensive test suites)
 gradle :app:testDebugUnitTest
 
 # Check Codebase Lint

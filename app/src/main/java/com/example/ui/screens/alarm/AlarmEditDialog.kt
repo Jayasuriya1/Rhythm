@@ -31,6 +31,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Alarm
 import androidx.compose.material.icons.filled.Audiotrack
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.QrCodeScanner
@@ -47,6 +48,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -72,6 +74,8 @@ import com.example.data.entity.CustomAlarmEntity
 @Composable
 fun AlarmEditDialog(
     alarm: CustomAlarmEntity?,
+    registeredCodes: List<com.example.data.entity.RegisteredCodeEntity> = emptyList(),
+    onSaveNewRegisteredCode: ((com.example.data.entity.RegisteredCodeEntity) -> Unit)? = null,
     onDismiss: () -> Unit,
     onSave: (CustomAlarmEntity) -> Unit
 ) {
@@ -124,7 +128,15 @@ fun AlarmEditDialog(
     var missionType by remember { mutableStateOf(alarm?.missionType ?: "NONE") }
     var targetBarcode by remember { mutableStateOf(alarm?.targetBarcode ?: "") }
     var targetBarcodeLabel by remember { mutableStateOf(alarm?.targetBarcodeLabel ?: "") }
+    var targetBarcodeFormat by remember { mutableStateOf(alarm?.targetBarcodeFormat ?: "QR_CODE") }
+    var targetBarcodeLocation by remember { mutableStateOf(alarm?.targetBarcodeLocation ?: "") }
+    var registeredCodeId by remember { mutableStateOf(alarm?.registeredCodeId) }
     var chainedBackupAlarmEnabled by remember { mutableStateOf(alarm?.chainedBackupAlarmEnabled ?: true) }
+
+    var showHouseholdScanner by remember { mutableStateOf(false) }
+    var showCodesPickerSheet by remember { mutableStateOf(false) }
+    var showTestScan by remember { mutableStateOf(false) }
+    var testSuccessMessage by remember { mutableStateOf<String?>(null) }
 
     // Audio Preview Player
     var isPreviewPlaying by remember { mutableStateOf(false) }
@@ -603,29 +615,142 @@ fun AlarmEditDialog(
 
                         if (missionType == "BARCODE") {
                             Spacer(modifier = Modifier.height(10.dp))
-                            OutlinedTextField(
-                                value = targetBarcode,
-                                onValueChange = { targetBarcode = it },
-                                label = { Text("Target Barcode / QR Code Value") },
-                                placeholder = { Text("e.g. 012345678905") },
-                                singleLine = true,
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                            Spacer(modifier = Modifier.height(6.dp))
-                            OutlinedTextField(
-                                value = targetBarcodeLabel,
-                                onValueChange = { targetBarcodeLabel = it },
-                                label = { Text("Item Name / Location Hint") },
-                                placeholder = { Text("e.g. Bathroom Toothpaste") },
-                                singleLine = true,
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text(
-                                text = "Scan any household item barcode to ensure you get out of bed to dismiss the alarm.",
-                                fontSize = 11.sp,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
+
+                            if (testSuccessMessage != null) {
+                                Surface(
+                                    color = Color(0xFF2E7D32).copy(alpha = 0.15f),
+                                    shape = RoundedCornerShape(8.dp),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(8.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Icon(Icons.Default.Check, contentDescription = null, tint = Color(0xFF2E7D32), modifier = Modifier.size(16.dp))
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Text(testSuccessMessage ?: "", color = Color(0xFF2E7D32), fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                    }
+                                }
+                                Spacer(modifier = Modifier.height(8.dp))
+                            }
+
+                            if (targetBarcode.isNotBlank()) {
+                                // Selected code card preview
+                                Surface(
+                                    color = MaterialTheme.colorScheme.surface,
+                                    shape = RoundedCornerShape(12.dp),
+                                    border = androidx.compose.foundation.BorderStroke(1.5.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Column(modifier = Modifier.padding(12.dp)) {
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Column(modifier = Modifier.weight(1f)) {
+                                                Text(
+                                                    text = targetBarcodeLabel.ifBlank { "Household Target Code" },
+                                                    fontWeight = FontWeight.Bold,
+                                                    fontSize = 14.sp
+                                                )
+                                                if (targetBarcodeLocation.isNotBlank()) {
+                                                    Text(
+                                                        text = "📍 $targetBarcodeLocation",
+                                                        fontSize = 11.sp,
+                                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                    )
+                                                }
+                                            }
+                                            Surface(
+                                                color = MaterialTheme.colorScheme.primaryContainer,
+                                                shape = RoundedCornerShape(6.dp)
+                                            ) {
+                                                Text(
+                                                    text = targetBarcodeFormat,
+                                                    fontSize = 10.sp,
+                                                    fontWeight = FontWeight.Bold,
+                                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                                )
+                                            }
+                                        }
+
+                                        Spacer(modifier = Modifier.height(6.dp))
+                                        Text(
+                                            text = targetBarcode,
+                                            fontSize = 12.sp,
+                                            fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+
+                                        Spacer(modifier = Modifier.height(10.dp))
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.End
+                                        ) {
+                                            OutlinedButton(
+                                                onClick = { showTestScan = true }
+                                            ) {
+                                                Icon(Icons.Default.QrCodeScanner, contentDescription = null, modifier = Modifier.size(14.dp))
+                                                Spacer(modifier = Modifier.width(4.dp))
+                                                Text("Test Scan", fontSize = 11.sp)
+                                            }
+                                            Spacer(modifier = Modifier.width(8.dp))
+                                            TextButton(
+                                                onClick = {
+                                                    targetBarcode = ""
+                                                    targetBarcodeLabel = ""
+                                                    registeredCodeId = null
+                                                }
+                                            ) {
+                                                Text("Change", fontSize = 11.sp)
+                                            }
+                                        }
+                                    }
+                                }
+                            } else {
+                                // Choice to scan new item or pick from library
+                                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    Button(
+                                        onClick = { showHouseholdScanner = true },
+                                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                                        modifier = Modifier.fillMaxWidth()
+                                    ) {
+                                        Icon(Icons.Default.QrCodeScanner, contentDescription = null, modifier = Modifier.size(16.dp))
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text("Scan Existing Household Item", fontSize = 12.sp)
+                                    }
+
+                                    if (registeredCodes.isNotEmpty()) {
+                                        OutlinedButton(
+                                            onClick = { showCodesPickerSheet = true },
+                                            modifier = Modifier.fillMaxWidth()
+                                        ) {
+                                            Text("Choose from Saved Library (${registeredCodes.size} items)", fontSize = 12.sp)
+                                        }
+                                    }
+
+                                    // Manual entry fallback fields
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    OutlinedTextField(
+                                        value = targetBarcode,
+                                        onValueChange = { targetBarcode = it },
+                                        label = { Text("Or Type Barcode Digits Manually") },
+                                        placeholder = { Text("e.g. 012345678905") },
+                                        singleLine = true,
+                                        modifier = Modifier.fillMaxWidth()
+                                    )
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    OutlinedTextField(
+                                        value = targetBarcodeLabel,
+                                        onValueChange = { targetBarcodeLabel = it },
+                                        label = { Text("Label / Product Name") },
+                                        placeholder = { Text("e.g. Bathroom Toothpaste") },
+                                        singleLine = true,
+                                        modifier = Modifier.fillMaxWidth()
+                                    )
+                                }
+                            }
                         }
 
                         Spacer(modifier = Modifier.height(12.dp))
@@ -680,8 +805,11 @@ fun AlarmEditDialog(
                         wallpaperPresetColor = wallpaperPresetColor,
                         timeClockFont = timeClockFont,
                         missionType = missionType,
-                        targetBarcode = if (missionType == "BARCODE") targetBarcode.trim() else null,
-                        targetBarcodeLabel = if (missionType == "BARCODE") targetBarcodeLabel.trim() else null,
+                        targetBarcode = if (missionType == "BARCODE") targetBarcode.trim().ifBlank { null } else null,
+                        targetBarcodeLabel = if (missionType == "BARCODE") targetBarcodeLabel.trim().ifBlank { null } else null,
+                        targetBarcodeFormat = if (missionType == "BARCODE") targetBarcodeFormat else null,
+                        targetBarcodeLocation = if (missionType == "BARCODE") targetBarcodeLocation.trim().ifBlank { null } else null,
+                        registeredCodeId = if (missionType == "BARCODE") registeredCodeId else null,
                         chainedBackupAlarmEnabled = chainedBackupAlarmEnabled,
                         createdAt = alarm?.createdAt ?: System.currentTimeMillis()
                     )
@@ -700,4 +828,107 @@ fun AlarmEditDialog(
             }
         }
     )
+
+    // Household Item Camera Scanner Modal
+    if (showHouseholdScanner) {
+        BarcodeScannerView(
+            scannerMode = ScannerMode.REGISTER_EXISTING,
+            existingCodes = registeredCodes.map { it.codeValue },
+            onCodeRegistered = { value, format, label, location ->
+                targetBarcode = value
+                targetBarcodeFormat = format
+                targetBarcodeLabel = label
+                targetBarcodeLocation = location ?: ""
+
+                // Also persist to registered codes table so it appears in My Codes library
+                val newEntity = com.example.data.entity.RegisteredCodeEntity(
+                    codeValue = value,
+                    codeFormat = format,
+                    label = label,
+                    locationHint = location,
+                    isCustomGenerated = false,
+                    createdAt = System.currentTimeMillis()
+                )
+                onSaveNewRegisteredCode?.invoke(newEntity)
+
+                showHouseholdScanner = false
+                testSuccessMessage = "Registered '$label' ($format)"
+            },
+            onCancelOrSkip = { showHouseholdScanner = false }
+        )
+    }
+
+    // Test Scan Modal
+    if (showTestScan && targetBarcode.isNotBlank()) {
+        BarcodeScannerView(
+            targetBarcode = targetBarcode,
+            targetLabel = targetBarcodeLabel,
+            targetFormat = targetBarcodeFormat,
+            scannerMode = ScannerMode.DISMISS_VERIFY,
+            onBarcodeMatched = {
+                testSuccessMessage = "✓ Verified: '$targetBarcodeLabel' matches successfully!"
+                showTestScan = false
+            },
+            onCancelOrSkip = { showTestScan = false }
+        )
+    }
+
+    // Pick from Library Sheet
+    if (showCodesPickerSheet && registeredCodes.isNotEmpty()) {
+        AlertDialog(
+            onDismissRequest = { showCodesPickerSheet = false },
+            title = { Text("Select Registered Code") },
+            text = {
+                Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                    registeredCodes.forEach { item ->
+                        Surface(
+                            color = MaterialTheme.colorScheme.surfaceVariant,
+                            shape = RoundedCornerShape(10.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp)
+                                .clickable {
+                                    targetBarcode = item.codeValue
+                                    targetBarcodeFormat = item.codeFormat
+                                    targetBarcodeLabel = item.label
+                                    targetBarcodeLocation = item.locationHint ?: ""
+                                    registeredCodeId = item.id
+                                    showCodesPickerSheet = false
+                                }
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(12.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(item.label, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                                    if (!item.locationHint.isNullOrBlank()) {
+                                        Text("📍 ${item.locationHint}", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    }
+                                }
+                                Surface(
+                                    color = MaterialTheme.colorScheme.primaryContainer,
+                                    shape = RoundedCornerShape(6.dp)
+                                ) {
+                                    Text(
+                                        text = item.codeFormat,
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = {
+                TextButton(onClick = { showCodesPickerSheet = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
 }

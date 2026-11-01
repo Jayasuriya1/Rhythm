@@ -372,15 +372,24 @@ fun ActiveAlarmScreen(
                             fontWeight = FontWeight.Medium
                         )
                     }
+                    if (!alarm?.targetBarcodeLocation.isNullOrBlank()) {
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "📍 Location: ${alarm?.targetBarcodeLocation}",
+                            color = Color.White.copy(alpha = 0.85f),
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Normal
+                        )
+                    }
                 } else {
-                    // Standard Swipe-To-Dismiss Slider
-                    SwipeToDismissSlider(
+                    // Touch-friendly Interactive Physics Swipe-To-Dismiss Slider
+                    InteractiveSwipeToDismissSlider(
                         onDismiss = onDismissAlarm
                     )
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
-                // Safety Emergency Override (Press & hold 10 seconds in case of extreme emergency / camera failure)
+                // Safety Emergency Override (Press & hold in case of extreme emergency / camera failure)
                 EmergencyOverrideButton(onEmergencyDismiss = onDismissAlarm)
             }
         }
@@ -390,6 +399,7 @@ fun ActiveAlarmScreen(
             BarcodeScannerView(
                 targetBarcode = alarm?.targetBarcode,
                 targetLabel = alarm?.targetBarcodeLabel,
+                targetFormat = alarm?.targetBarcodeFormat,
                 onBarcodeMatched = {
                     showScannerView = false
                     onDismissAlarm()
@@ -398,53 +408,6 @@ fun ActiveAlarmScreen(
                     showScannerView = false
                 }
             )
-        }
-    }
-}
-
-@Composable
-fun SwipeToDismissSlider(
-    onDismiss: () -> Unit
-) {
-    var isSwiped by remember { mutableStateOf(false) }
-
-    Surface(
-        color = Color.White.copy(alpha = 0.2f),
-        shape = RoundedCornerShape(32.dp),
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(64.dp)
-    ) {
-        Box(
-            modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.CenterStart
-        ) {
-            Text(
-                text = "Tap or Slide to Dismiss  >>>",
-                color = Color.White.copy(alpha = 0.8f),
-                fontWeight = FontWeight.SemiBold,
-                fontSize = 16.sp,
-                modifier = Modifier.align(Alignment.Center)
-            )
-
-            Button(
-                onClick = {
-                    isSwiped = true
-                    onDismiss()
-                },
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50)),
-                shape = CircleShape,
-                modifier = Modifier
-                    .padding(4.dp)
-                    .size(56.dp)
-                    .align(Alignment.CenterEnd)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.CheckCircle,
-                    contentDescription = "Dismiss",
-                    tint = Color.White
-                )
-            }
         }
     }
 }

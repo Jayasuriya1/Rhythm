@@ -327,6 +327,9 @@ data class CustomAlarmEntity(
     val missionType: String = "NONE", // "NONE", "BARCODE"
     val targetBarcode: String? = null,
     val targetBarcodeLabel: String? = null,
+    val targetBarcodeFormat: String? = null,
+    val targetBarcodeLocation: String? = null,
+    val registeredCodeId: Long? = null,
     val chainedBackupAlarmEnabled: Boolean = true,
     val createdAt: Long = System.currentTimeMillis()
 ) {
@@ -367,3 +370,21 @@ data class CustomAlarmEntity(
         return days.contains(dayAbbr.uppercase())
     }
 }
+
+@Entity(
+    tableName = "registered_codes",
+    indices = [Index(value = ["codeValue"])]
+)
+data class RegisteredCodeEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val codeValue: String, // e.g. raw barcode digits or QR payload
+    val codeFormat: String = "QR_CODE", // e.g. "QR_CODE", "EAN_13", "UPC_A", "CODE_128"
+    val label: String, // e.g. "Kitchen Coffee Box", "Study Room Book"
+    val locationHint: String? = null, // e.g. "Kitchen top pantry"
+    val isCustomGenerated: Boolean = false, // true if created in QR Studio
+    val designTemplate: String = "MINIMAL_BW", // e.g. "MINIMAL_BW", "OLED", "TEAL", "PASTEL"
+    val designConfigJson: String? = null, // JSON config for custom styling (colors, border, etc.)
+    val createdAt: Long = System.currentTimeMillis(),
+    val lastScannedAt: Long? = null
+)
+

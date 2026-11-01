@@ -32,6 +32,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.FlashOn
 import androidx.compose.material.icons.filled.Image
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.Security
@@ -47,13 +48,16 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
+import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -71,7 +75,7 @@ import com.example.data.entity.CustomAlarmEntity
 import com.example.ui.MainViewModel
 import com.example.util.CustomAlarmScheduler
 
-@OptIn(ExperimentalLayoutApi::class)
+@OptIn(ExperimentalLayoutApi::class, androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 fun AlarmSectionScreen(
     viewModel: MainViewModel,
@@ -79,7 +83,9 @@ fun AlarmSectionScreen(
 ) {
     val context = LocalContext.current
     val alarms by viewModel.allAlarms.collectAsStateWithLifecycle()
+    val registeredCodes by viewModel.registeredCodes.collectAsStateWithLifecycle()
 
+    var selectedTabIndex by remember { mutableIntStateOf(0) }
     var showEditDialog by remember { mutableStateOf(false) }
     var selectedAlarmForEdit by remember { mutableStateOf<CustomAlarmEntity?>(null) }
     var alarmToDelete by remember { mutableStateOf<CustomAlarmEntity?>(null) }
@@ -92,217 +98,265 @@ fun AlarmSectionScreen(
 
     Scaffold(
         floatingActionButton = {
-            FloatingActionButton(
-                onClick = {
-                    selectedAlarmForEdit = null
-                    showEditDialog = true
-                },
-                containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = MaterialTheme.colorScheme.onPrimary
-            ) {
-                Icon(Icons.Default.Add, contentDescription = "New Alarm")
+            if (selectedTabIndex == 0) {
+                FloatingActionButton(
+                    onClick = {
+                        selectedAlarmForEdit = null
+                        showEditDialog = true
+                    },
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = "New Alarm")
+                }
             }
         },
         modifier = modifier.fillMaxSize()
     ) { innerPadding ->
-        LazyColumn(
+        Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // 1. Hero Overview Header Card
-            item {
-                Card(
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer
-                    ),
-                    shape = RoundedCornerShape(20.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Column(modifier = Modifier.padding(18.dp)) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Column {
-                                Text(
-                                    text = "Dedicated Alarms",
-                                    style = MaterialTheme.typography.titleLarge,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.onPrimaryContainer
-                                )
-                                Text(
-                                    text = "Precision wake-up, crescendo & missions",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
-                                )
-                            }
-                            Icon(
-                                imageVector = Icons.Default.AlarmOn,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(36.dp)
-                            )
-                        }
+            // Material 3 Primary Tab Row
+            PrimaryTabRow(
+                selectedTabIndex = selectedTabIndex,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Tab(
+                    selected = selectedTabIndex == 0,
+                    onClick = { selectedTabIndex = 0 },
+                    text = { Text("Alarms", fontSize = 13.sp) },
+                    icon = { Icon(Icons.Default.Alarm, contentDescription = null, modifier = Modifier.size(20.dp)) }
+                )
+                Tab(
+                    selected = selectedTabIndex == 1,
+                    onClick = { selectedTabIndex = 1 },
+                    text = { Text("QR Studio", fontSize = 13.sp) },
+                    icon = { Icon(Icons.Default.AutoAwesome, contentDescription = null, modifier = Modifier.size(20.dp)) }
+                )
+                Tab(
+                    selected = selectedTabIndex == 2,
+                    onClick = { selectedTabIndex = 2 },
+                    text = { Text("My Codes (${registeredCodes.size})", fontSize = 13.sp) },
+                    icon = { Icon(Icons.Default.QrCodeScanner, contentDescription = null, modifier = Modifier.size(20.dp)) }
+                )
+            }
 
-                        Spacer(modifier = Modifier.height(14.dp))
-
-                        // Next Upcoming Alarm Info Banner
-                        if (nextAlarm != null) {
-                            Surface(
-                                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.8f),
-                                shape = RoundedCornerShape(12.dp),
+            when (selectedTabIndex) {
+                1 -> {
+                    QrCodeStudioScreen(
+                        viewModel = viewModel,
+                        onNavigateToMyCodes = { selectedTabIndex = 2 }
+                    )
+                }
+                2 -> {
+                    MyCodesLibraryScreen(
+                        viewModel = viewModel,
+                        onNavigateToStudio = { selectedTabIndex = 1 }
+                    )
+                }
+                else -> {
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        // 1. Hero Overview Header Card
+                        item {
+                            Card(
+                                colors = CardDefaults.cardColors(
+                                    containerColor = MaterialTheme.colorScheme.primaryContainer
+                                ),
+                                shape = RoundedCornerShape(20.dp),
                                 modifier = Modifier.fillMaxWidth()
                             ) {
-                                Row(
-                                    modifier = Modifier.padding(12.dp),
-                                    verticalAlignment = Alignment.CenterVertically
+                                Column(modifier = Modifier.padding(18.dp)) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Column {
+                                            Text(
+                                                text = "Dedicated Alarms",
+                                                style = MaterialTheme.typography.titleLarge,
+                                                fontWeight = FontWeight.Bold,
+                                                color = MaterialTheme.colorScheme.onPrimaryContainer
+                                            )
+                                            Text(
+                                                text = "Precision wake-up, crescendo & missions",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
+                                            )
+                                        }
+                                        Icon(
+                                            imageVector = Icons.Default.AlarmOn,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.primary,
+                                            modifier = Modifier.size(36.dp)
+                                        )
+                                    }
+
+                                    Spacer(modifier = Modifier.height(14.dp))
+
+                                    // Next Upcoming Alarm Info Banner
+                                    if (nextAlarm != null) {
+                                        Surface(
+                                            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.8f),
+                                            shape = RoundedCornerShape(12.dp),
+                                            modifier = Modifier.fillMaxWidth()
+                                        ) {
+                                            Row(
+                                                modifier = Modifier.padding(12.dp),
+                                                verticalAlignment = Alignment.CenterVertically
+                                            ) {
+                                                Icon(
+                                                    imageVector = Icons.Default.Alarm,
+                                                    contentDescription = null,
+                                                    tint = MaterialTheme.colorScheme.primary,
+                                                    modifier = Modifier.size(20.dp)
+                                                )
+                                                Spacer(modifier = Modifier.width(10.dp))
+                                                Column(modifier = Modifier.weight(1f)) {
+                                                    Text(
+                                                        text = "Next: ${nextAlarm.title} at ${nextAlarm.formattedTime()}",
+                                                        fontWeight = FontWeight.Bold,
+                                                        fontSize = 13.sp
+                                                    )
+                                                    Text(
+                                                        text = nextAlarm.formattedSchedule(),
+                                                        fontSize = 11.sp,
+                                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    } else {
+                                        Text(
+                                            text = "All alarms are currently disabled.",
+                                            fontSize = 12.sp,
+                                            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+                                        )
+                                    }
+
+                                    Spacer(modifier = Modifier.height(12.dp))
+
+                                    // Quick Test Button
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.End
+                                    ) {
+                                        OutlinedButton(
+                                            onClick = {
+                                                val testTarget = nextAlarm ?: alarms.firstOrNull() ?: CustomAlarmEntity(
+                                                    title = "Quick Alarm Test",
+                                                    timeMinutes = 420,
+                                                    crescendoDurationSeconds = 30
+                                                )
+                                                viewModel.testAlarmNow(context, testTarget)
+                                            }
+                                        ) {
+                                            Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(16.dp))
+                                            Spacer(modifier = Modifier.width(6.dp))
+                                            Text("Test Alarm Screen Now", fontSize = 12.sp)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        // 2. Alarms List Header
+                        item {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "Your Alarms (${alarms.size})",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                                TextButton(onClick = {
+                                    selectedAlarmForEdit = null
+                                    showEditDialog = true
+                                }) {
+                                    Text("+ New Alarm")
+                                }
+                            }
+                        }
+
+                        // 3. Alarm Cards
+                        if (alarms.isEmpty()) {
+                            item {
+                                Card(
+                                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                                    modifier = Modifier.fillMaxWidth()
                                 ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Alarm,
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.primary,
-                                        modifier = Modifier.size(20.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(10.dp))
-                                    Column(modifier = Modifier.weight(1f)) {
+                                    Column(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(32.dp),
+                                        horizontalAlignment = Alignment.CenterHorizontally
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Alarm,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.primary,
+                                            modifier = Modifier.size(48.dp)
+                                        )
+                                        Spacer(modifier = Modifier.height(12.dp))
                                         Text(
-                                            text = "Next: ${nextAlarm.title} at ${nextAlarm.formattedTime()}",
+                                            text = "No custom alarms yet",
                                             fontWeight = FontWeight.Bold,
-                                            fontSize = 13.sp
+                                            style = MaterialTheme.typography.titleMedium
                                         )
+                                        Spacer(modifier = Modifier.height(4.dp))
                                         Text(
-                                            text = nextAlarm.formattedSchedule(),
-                                            fontSize = 11.sp,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            text = "Create an alarm with custom wallpaper, crescendo volume, and optional barcode missions.",
+                                            fontSize = 13.sp,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
                                         )
+                                        Spacer(modifier = Modifier.height(16.dp))
+                                        Button(onClick = {
+                                            selectedAlarmForEdit = null
+                                            showEditDialog = true
+                                        }) {
+                                            Text("Create First Alarm")
+                                        }
                                     }
                                 }
                             }
                         } else {
-                            Text(
-                                text = "All alarms are currently disabled.",
-                                fontSize = 12.sp,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
-                            )
-                        }
-
-                        Spacer(modifier = Modifier.height(12.dp))
-
-                        // Quick Test Button
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.End
-                        ) {
-                            OutlinedButton(
-                                onClick = {
-                                    val testTarget = nextAlarm ?: alarms.firstOrNull() ?: CustomAlarmEntity(
-                                        title = "Quick Alarm Test",
-                                        timeMinutes = 420,
-                                        crescendoDurationSeconds = 30
-                                    )
-                                    viewModel.testAlarmNow(context, testTarget)
-                                }
-                            ) {
-                                Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(16.dp))
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text("Test Alarm Screen Now", fontSize = 12.sp)
+                            items(alarms, key = { it.id }) { alarmItem ->
+                                AlarmCard(
+                                    alarm = alarmItem,
+                                    onToggleEnabled = { isChecked ->
+                                        viewModel.toggleAlarm(context, alarmItem, isChecked)
+                                    },
+                                    onEdit = {
+                                        selectedAlarmForEdit = alarmItem
+                                        showEditDialog = true
+                                    },
+                                    onDelete = {
+                                        alarmToDelete = alarmItem
+                                    },
+                                    onTest = {
+                                        viewModel.testAlarmNow(context, alarmItem)
+                                    }
+                                )
                             }
                         }
-                    }
-                }
-            }
 
-            // 2. Alarms List Header
-            item {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "Your Alarms (${alarms.size})",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                    TextButton(onClick = {
-                        selectedAlarmForEdit = null
-                        showEditDialog = true
-                    }) {
-                        Text("+ New Alarm")
-                    }
-                }
-            }
-
-            // 3. Alarm Cards
-            if (alarms.isEmpty()) {
-                item {
-                    Card(
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(32.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Alarm,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(48.dp)
-                            )
-                            Spacer(modifier = Modifier.height(12.dp))
-                            Text(
-                                text = "No custom alarms yet",
-                                fontWeight = FontWeight.Bold,
-                                style = MaterialTheme.typography.titleMedium
-                            )
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text(
-                                text = "Create an alarm with custom wallpaper, crescendo volume, and optional barcode missions.",
-                                fontSize = 13.sp,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                textAlign = androidx.compose.ui.text.style.TextAlign.Center
-                            )
-                            Spacer(modifier = Modifier.height(16.dp))
-                            Button(onClick = {
-                                selectedAlarmForEdit = null
-                                showEditDialog = true
-                            }) {
-                                Text("Create First Alarm")
-                            }
+                        // Bottom Spacing for FAB
+                        item {
+                            Spacer(modifier = Modifier.height(72.dp))
                         }
                     }
                 }
-            } else {
-                items(alarms, key = { it.id }) { alarmItem ->
-                    AlarmCard(
-                        alarm = alarmItem,
-                        onToggleEnabled = { isChecked ->
-                            viewModel.toggleAlarm(context, alarmItem, isChecked)
-                        },
-                        onEdit = {
-                            selectedAlarmForEdit = alarmItem
-                            showEditDialog = true
-                        },
-                        onDelete = {
-                            alarmToDelete = alarmItem
-                        },
-                        onTest = {
-                            viewModel.testAlarmNow(context, alarmItem)
-                        }
-                    )
-                }
-            }
-
-            // Bottom Spacing for FAB
-            item {
-                Spacer(modifier = Modifier.height(72.dp))
             }
         }
     }
@@ -311,6 +365,8 @@ fun AlarmSectionScreen(
     if (showEditDialog) {
         AlarmEditDialog(
             alarm = selectedAlarmForEdit,
+            registeredCodes = registeredCodes,
+            onSaveNewRegisteredCode = { viewModel.saveRegisteredCode(it) },
             onDismiss = { showEditDialog = false },
             onSave = { saved ->
                 viewModel.saveCustomAlarm(context, saved)
@@ -446,8 +502,15 @@ fun AlarmCard(
                                 modifier = Modifier.size(12.dp)
                             )
                             Spacer(modifier = Modifier.width(4.dp))
+                            val missionText = buildString {
+                                append("Scan: ")
+                                append(alarm.targetBarcodeLabel?.ifBlank { null } ?: "Item")
+                                if (!alarm.targetBarcodeLocation.isNullOrBlank()) {
+                                    append(" (${alarm.targetBarcodeLocation})")
+                                }
+                            }
                             Text(
-                                text = if (!alarm.targetBarcodeLabel.isNullOrBlank()) "Scan: ${alarm.targetBarcodeLabel}" else "Barcode Mission",
+                                text = missionText,
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = Color(0xFF1976D2)

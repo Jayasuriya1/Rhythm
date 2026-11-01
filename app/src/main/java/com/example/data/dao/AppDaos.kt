@@ -494,4 +494,44 @@ interface CustomAlarmDao {
     suspend fun getAlarmsCount(): Int
 }
 
+@Dao
+interface RegisteredCodeDao {
+    @Query("SELECT * FROM registered_codes ORDER BY createdAt DESC")
+    fun getAllRegisteredCodes(): kotlinx.coroutines.flow.Flow<List<com.example.data.entity.RegisteredCodeEntity>>
+
+    @Query("SELECT * FROM registered_codes ORDER BY createdAt DESC")
+    suspend fun getAllRegisteredCodesSync(): List<com.example.data.entity.RegisteredCodeEntity>
+
+    @Query("SELECT * FROM registered_codes WHERE id = :id LIMIT 1")
+    fun getCodeById(id: Long): kotlinx.coroutines.flow.Flow<com.example.data.entity.RegisteredCodeEntity?>
+
+    @Query("SELECT * FROM registered_codes WHERE id = :id LIMIT 1")
+    suspend fun getCodeByIdSync(id: Long): com.example.data.entity.RegisteredCodeEntity?
+
+    @Query("SELECT * FROM registered_codes WHERE codeValue = :value LIMIT 1")
+    suspend fun getCodeByValue(value: String): com.example.data.entity.RegisteredCodeEntity?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertCode(code: com.example.data.entity.RegisteredCodeEntity): Long
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertCodesList(codes: List<com.example.data.entity.RegisteredCodeEntity>)
+
+    @Update
+    suspend fun updateCode(code: com.example.data.entity.RegisteredCodeEntity)
+
+    @Delete
+    suspend fun deleteCode(code: com.example.data.entity.RegisteredCodeEntity)
+
+    @Query("DELETE FROM registered_codes WHERE id = :id")
+    suspend fun deleteCodeById(id: Long)
+
+    @Query("UPDATE registered_codes SET lastScannedAt = :timestamp WHERE id = :id")
+    suspend fun updateLastScanned(id: Long, timestamp: Long = System.currentTimeMillis())
+
+    @Query("SELECT COUNT(*) FROM registered_codes")
+    suspend fun getCodesCount(): Int
+}
+
+
 

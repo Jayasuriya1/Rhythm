@@ -31,7 +31,8 @@ data class BackupSummary(
     val brainDumpCount: Int,
     val remindersCount: Int,
     val meditationSessionsCount: Int = 0,
-    val customAlarmsCount: Int = 0
+    val customAlarmsCount: Int = 0,
+    val registeredCodesCount: Int = 0
 )
 
 data class DatabaseIntegrityStats(
@@ -49,6 +50,7 @@ data class DatabaseIntegrityStats(
     val enabledReminders: Int,
     val totalMeditationSessions: Int,
     val totalCustomAlarms: Int = 0,
+    val totalRegisteredCodes: Int = 0,
     val isConsistent: Boolean
 )
 
@@ -316,11 +318,32 @@ object DataBackupManager {
             o.put("missionType", a.missionType)
             if (a.targetBarcode != null) o.put("targetBarcode", a.targetBarcode)
             if (a.targetBarcodeLabel != null) o.put("targetBarcodeLabel", a.targetBarcodeLabel)
+            if (a.targetBarcodeFormat != null) o.put("targetBarcodeFormat", a.targetBarcodeFormat)
+            if (a.targetBarcodeLocation != null) o.put("targetBarcodeLocation", a.targetBarcodeLocation)
+            if (a.registeredCodeId != null) o.put("registeredCodeId", a.registeredCodeId)
             o.put("chainedBackupAlarmEnabled", a.chainedBackupAlarmEnabled)
             o.put("createdAt", a.createdAt)
             alarmsArr.put(o)
         }
         root.put("customAlarms", alarmsArr)
+
+        // 12. Registered Codes
+        val codesArr = JSONArray()
+        database.registeredCodeDao().getAllRegisteredCodesSync().forEach { c ->
+            val o = JSONObject()
+            o.put("id", c.id)
+            o.put("codeValue", c.codeValue)
+            o.put("codeFormat", c.codeFormat)
+            o.put("label", c.label)
+            if (c.locationHint != null) o.put("locationHint", c.locationHint)
+            o.put("isCustomGenerated", c.isCustomGenerated)
+            o.put("designTemplate", c.designTemplate)
+            if (c.designConfigJson != null) o.put("designConfigJson", c.designConfigJson)
+            o.put("createdAt", c.createdAt)
+            if (c.lastScannedAt != null) o.put("lastScannedAt", c.lastScannedAt)
+            codesArr.put(o)
+        }
+        root.put("registeredCodes", codesArr)
 
         return root.toString(2)
     }
@@ -345,7 +368,8 @@ object DataBackupManager {
                 brainDumpCount = root.optJSONArray("brainDumpNotes")?.length() ?: 0,
                 remindersCount = root.optJSONArray("reminders")?.length() ?: 0,
                 meditationSessionsCount = root.optJSONArray("meditationSessions")?.length() ?: 0,
-                customAlarmsCount = root.optJSONArray("customAlarms")?.length() ?: 0
+                customAlarmsCount = root.optJSONArray("customAlarms")?.length() ?: 0,
+                registeredCodesCount = root.optJSONArray("registeredCodes")?.length() ?: 0
             )
             Result.success(summary)
         } catch (e: Exception) {
@@ -678,8 +702,33 @@ object DataBackupManager {
                             missionType = o.optString("missionType", "NONE"),
                             targetBarcode = if (o.has("targetBarcode")) o.getString("targetBarcode") else null,
                             targetBarcodeLabel = if (o.has("targetBarcodeLabel")) o.getString("targetBarcodeLabel") else null,
+                            targetBarcodeFormat = if (o.has("targetBarcodeFormat")) o.getString("targetBarcodeFormat") else null,
+                            targetBarcodeLocation = if (o.has("targetBarcodeLocation")) o.getString("targetBarcodeLocation") else null,
+                            registeredCodeId = if (o.has("registeredCodeId")) o.getLong("registeredCodeId") else null,
                             chainedBackupAlarmEnabled = o.optBoolean("chainedBackupAlarmEnabled", true),
                             createdAt = o.optLong("createdAt", System.currentTimeMillis())
+                        )
+                    )
+                }
+            }
+
+            // Parse Registered Codes
+            val codesList = mutableListOf<com.example.data.entity.RegisteredCodeEntity>()
+            root.optJSONArray("registeredCodes")?.let { arr ->
+                for (i in 0 until arr.length()) {
+                    val o = arr.getJSONObject(i)
+                    codesList.add(
+                        com.example.data.entity.RegisteredCodeEntity(
+                            id = o.optLong("id", 0L),
+                            codeValue = o.getString("codeValue"),
+                            codeFormat = o.optString("codeFormat", "QR_CODE"),
+                            label = o.getString("label"),
+                            locationHint = if (o.has("locationHint")) o.getString("locationHint") else null,
+                            isCustomGenerated = o.optBoolean("isCustomGenerated", false),
+                            designTemplate = o.optString("designTemplate", "MINIMAL_BW"),
+                            designConfigJson = if (o.has("designConfigJson")) o.getString("designConfigJson") else null,
+                            createdAt = o.optLong("createdAt", System.currentTimeMillis()),
+                            lastScannedAt = if (o.has("lastScannedAt")) o.getLong("lastScannedAt") else null
                         )
                     )
                 }
@@ -700,6 +749,7 @@ object DataBackupManager {
             if (remindersList.isNotEmpty()) database.reminderDao().insertRemindersList(remindersList)
             if (meditationList.isNotEmpty()) database.meditationDao().insertSessionsList(meditationList)
             if (alarmsList.isNotEmpty()) database.customAlarmDao().insertAlarmsList(alarmsList)
+            if (codesList.isNotEmpty()) database.registeredCodeDao().insertCodesList(codesList)
             if (settingsList.isNotEmpty()) database.settingsDao().insertSettingsList(settingsList)
 
             // Re-ensure basic defaults if list was empty
@@ -728,6 +778,7 @@ object DataBackupManager {
         val enabledReminders = database.reminderDao().getEnabledRemindersCount()
         val totalMeditationSessions = database.meditationDao().getSessionsCount()
         val totalCustomAlarms = database.customAlarmDao().getAlarmsCount()
+        val totalRegisteredCodes = database.registeredCodeDao().getCodesCount()
 
         // Integrity check: Categories > 0, Anchors > 0
         val isConsistent = totalCategories > 0 && AppDatabase.DEFAULT_ANCHORS.isNotEmpty()
@@ -747,6 +798,7 @@ object DataBackupManager {
             enabledReminders = enabledReminders,
             totalMeditationSessions = totalMeditationSessions,
             totalCustomAlarms = totalCustomAlarms,
+            totalRegisteredCodes = totalRegisteredCodes,
             isConsistent = isConsistent
         )
     }

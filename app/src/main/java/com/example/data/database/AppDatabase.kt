@@ -14,6 +14,7 @@ import com.example.data.dao.RoutineDao
 import com.example.data.dao.SettingsDao
 import com.example.data.dao.SleepDao
 import com.example.data.dao.BrainDumpDao
+import com.example.data.dao.RegisteredCodeDao
 import com.example.data.dao.StudyCategoryDao
 import com.example.data.dao.StudyDao
 import com.example.data.dao.TimerDraftDao
@@ -25,6 +26,7 @@ import com.example.data.entity.HealthCheckinEntity
 import com.example.data.entity.MedicationEntity
 import com.example.data.entity.MedicationIntakeEntity
 import com.example.data.entity.MeditationSessionEntity
+import com.example.data.entity.RegisteredCodeEntity
 import com.example.data.entity.ReminderEntity
 import com.example.data.entity.RoutineAnchorEntity
 import com.example.data.entity.RoutineEntryEntity
@@ -54,9 +56,10 @@ import kotlinx.coroutines.launch
         AppSettingEntity::class,
         ReminderEntity::class,
         MeditationSessionEntity::class,
-        com.example.data.entity.CustomAlarmEntity::class
+        com.example.data.entity.CustomAlarmEntity::class,
+        RegisteredCodeEntity::class
     ],
-    version = 9,
+    version = 10,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -74,6 +77,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun reminderDao(): ReminderDao
     abstract fun meditationDao(): MeditationDao
     abstract fun customAlarmDao(): com.example.data.dao.CustomAlarmDao
+    abstract fun registeredCodeDao(): RegisteredCodeDao
 
     companion object {
         @Volatile
@@ -248,6 +252,31 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        val MIGRATION_9_10 = object : Migration(9, 10) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `registered_codes` (
+                        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `codeValue` TEXT NOT NULL,
+                        `codeFormat` TEXT NOT NULL,
+                        `label` TEXT NOT NULL,
+                        `locationHint` TEXT,
+                        `isCustomGenerated` INTEGER NOT NULL DEFAULT 0,
+                        `designTemplate` TEXT NOT NULL DEFAULT 'MINIMAL_BW',
+                        `designConfigJson` TEXT,
+                        `createdAt` INTEGER NOT NULL DEFAULT 0,
+                        `lastScannedAt` INTEGER
+                    )
+                    """.trimIndent()
+                )
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_registered_codes_codeValue` ON `registered_codes` (`codeValue`)")
+                db.execSQL("ALTER TABLE `custom_alarms` ADD COLUMN `targetBarcodeFormat` TEXT")
+                db.execSQL("ALTER TABLE `custom_alarms` ADD COLUMN `targetBarcodeLocation` TEXT")
+                db.execSQL("ALTER TABLE `custom_alarms` ADD COLUMN `registeredCodeId` INTEGER")
+            }
+        }
+
         fun getDatabase(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -255,7 +284,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "rhythm_focus_database"
                 )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10)
                     .fallbackToDestructiveMigrationOnDowngrade()
                     .addCallback(DatabaseCallback())
                     .build()
