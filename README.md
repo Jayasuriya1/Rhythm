@@ -185,3 +185,12 @@ gradle :app:lintDebug
 
 ## 📄 License
 This project is licensed under the Apache 2.0 License. All rights reserved.
+
+
+---
+
+## 🎨 Product Design & UX Standards
+
+Rhythm's product vision, design principles, proposed design system, accessibility standards, screen specifications, AI contribution workflow and release quality gates are maintained in [`design/`](design/README.md).
+
+Contributors and AI coding agents should read the [design workflow](design/AI_WORKFLOW.md) before changing user interfaces. The design documentation is a proposed foundation and should be validated against the running application before implementation.

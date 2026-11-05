@@ -116,7 +116,7 @@ fun SettingsScreen(
                     }
                     Spacer(modifier = Modifier.height(6.dp))
                     Text(
-                        text = "All health, sleep, routine, and study records are stored 100% locally on this device in SQLite Room database. No health or personal telemetry is transmitted over the network.",
+                        text = "Routine, sleep, medication, study and check-in records are stored in the on-device Room database. Health Connect access is permission-based. Cloud sync is not currently implemented. Any feature that sends information to an online service must explain that data flow before use.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -574,7 +574,7 @@ fun SettingsScreen(
             ) {
                 Column(modifier = Modifier.padding(18.dp)) {
                     Text(
-                        text = "Verified Integrations & Storage Architecture",
+                        text = "Connections & Local Storage",
                         style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
                         color = MaterialTheme.colorScheme.onSurface
                     )
@@ -593,7 +593,7 @@ fun SettingsScreen(
                         title = "Google Health Connect",
                         status = when (healthState.availability) {
                             com.example.health.HealthConnectAvailability.AVAILABLE ->
-                                if (healthState.grantedPermissions.isNotEmpty()) "Active & Verified (${healthState.grantedPermissions.size} permissions)"
+                                if (healthState.grantedPermissions.isNotEmpty()) "Access granted (${healthState.grantedPermissions.size} permissions)"
                                 else "Available • Tap to Authorize"
                             com.example.health.HealthConnectAvailability.UPDATE_REQUIRED -> "Provider Update Required"
                             else -> "Install from Play Store"
@@ -619,16 +619,16 @@ fun SettingsScreen(
                         icon = Icons.Default.CloudQueue,
                         title = "Firebase Cloud Firestore Sync",
                         status = when (cloudState.status) {
-                            com.example.sync.CloudSyncStatus.SYNC_SUCCESS -> "Connected & Synced"
-                            com.example.sync.CloudSyncStatus.AUTHENTICATED_IDLE -> "Authenticated • Ready"
+                            com.example.sync.CloudSyncStatus.SYNC_SUCCESS -> "Sync complete"
+                            com.example.sync.CloudSyncStatus.AUTHENTICATED_IDLE -> "Authenticated • Not syncing"
                             com.example.sync.CloudSyncStatus.SYNCING -> "Synchronizing..."
-                            else -> "Unprovisioned • Local Room Active"
+                            else -> "Not available yet • Local data active"
                         },
-                        isActive = (cloudState.status == com.example.sync.CloudSyncStatus.SYNC_SUCCESS || cloudState.status == com.example.sync.CloudSyncStatus.AUTHENTICATED_IDLE)
+                        isActive = false
                     )
 
                     Text(
-                        text = "All routines, sleep logs, alarms, and notes remain 100% offline-first and private in your device's local database. Cloud sync requires provisioning Firebase.",
+                        text = "Cloud synchronization is not implemented yet. This status will remain unavailable until a real, verified transfer is built. Local Room storage continues to work independently.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(top = 8.dp)

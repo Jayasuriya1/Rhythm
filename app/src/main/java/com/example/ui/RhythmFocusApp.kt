@@ -110,7 +110,7 @@ fun RhythmFocusApp(viewModel: MainViewModel) {
         NavigationItem(AppDestination.ROUTINE, Icons.Default.Schedule, "Routine"),
         NavigationItem(AppDestination.HEALTH, Icons.Default.SelfImprovement, "Health"),
         NavigationItem(AppDestination.STUDY, Icons.Default.Psychology, "Study"),
-        NavigationItem(AppDestination.MEDITATION, Icons.Default.Spa, "Meditation"),
+        NavigationItem(AppDestination.MEDITATION, Icons.Default.Spa, "Meditate"),
         NavigationItem(AppDestination.INSIGHTS, Icons.Default.Analytics, "Insights")
     )
 

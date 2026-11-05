@@ -58,39 +58,39 @@ val StateWarning = Color(0xFFD97706)
 val StateInfo = Color(0xFF3B82F6)
 val StateMuted = Color(0xFF6B7280)
 
-// OLED Pitch Black & Dark Luxe Scheme (Modern, vibrant, battery-optimized)
+// OLED Pitch Black scheme with restrained sage and warm semantic accents.
 val OledBackground = Color(0xFF000000)
 val OledSurface = Color(0xFF0D110F)
 val OledSurfaceVariant = Color(0xFF131916)
 val OledSurfaceElevated = Color(0xFF1A221E)
-val OledOnBackground = Color(0xFFF8FAFC)
-val OledOnSurface = Color(0xFFF8FAFC)
-val OledOnSurfaceVariant = Color(0xFF94A3B8)
+val OledOnBackground = Color(0xFFF1F4F1)
+val OledOnSurface = Color(0xFFF1F4F1)
+val OledOnSurfaceVariant = Color(0xFFA2AAA5)
 
-// Primary accent: Vibrant Modern Emerald Mint (energetic, polished, legible)
-val OledPrimary = Color(0xFF10B981)
-val OledOnPrimary = Color(0xFF022C22)
-val OledPrimaryContainer = Color(0xFF064E3B)
-val OledOnPrimaryContainer = Color(0xFFA7F3D0)
+// Primary accent: muted mint-sage for calm, legible emphasis.
+val OledPrimary = Color(0xFFA8C9B0)
+val OledOnPrimary = Color(0xFF0B1710)
+val OledPrimaryContainer = Color(0xFF20362A)
+val OledOnPrimaryContainer = Color(0xFFE0EDE3)
 
-// Secondary accent: Sleek Sage Jade
-val OledSecondary = Color(0xFF34D399)
-val OledOnSecondary = Color(0xFF022C22)
-val OledSecondaryContainer = Color(0xFF065F46)
-val OledOnSecondaryContainer = Color(0xFFD1FAE5)
+// Secondary accent: neutral sage for supporting emphasis.
+val OledSecondary = Color(0xFFB7C4BA)
+val OledOnSecondary = Color(0xFF18211B)
+val OledSecondaryContainer = Color(0xFF202923)
+val OledOnSecondaryContainer = Color(0xFFDEE5DF)
 
-// Tertiary accent: Vibrant Warm Amber for timers, alerts, routines
-val OledTertiary = Color(0xFFF59E0B)
-val OledOnTertiary = Color(0xFF451A03)
-val OledTertiaryContainer = Color(0xFF78350F)
-val OledOnTertiaryContainer = Color(0xFFFEF3C7)
+// Tertiary accent: muted amber for time-sensitive and attention states.
+val OledTertiary = Color(0xFFD8B477)
+val OledOnTertiary = Color(0xFF24180A)
+val OledTertiaryContainer = Color(0xFF3A2B17)
+val OledOnTertiaryContainer = Color(0xFFF1E2C5)
 
 // Luminous lavender for reflective & mindfulness accents
-val OledLavender = Color(0xFFA78BFA)
+val OledLavender = Color(0xFFC7B7E8)
 
 // Neutral subtle borders & dividers
-val OledOutline = Color(0xFF24322A)
-val OledOutlineVariant = Color(0xFF17201B)
+val OledOutline = Color(0xFF303A33)
+val OledOutlineVariant = Color(0xFF1C241F)
 
 // Dedicated Semantic Health & Wearable Metric Colors (consistent across all charts & dashboards)
 val HealthMetricSteps = Color(0xFF86B393)      // Soft Sage
