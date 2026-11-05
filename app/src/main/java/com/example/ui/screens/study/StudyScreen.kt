@@ -233,32 +233,34 @@ fun StudyScreen(
                 Text(
                     text = "Tasks & Priorities",
                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                    color = MaterialTheme.colorScheme.onSurface
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                    modifier = Modifier.weight(1f)
                 )
                 Row(
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    FilledTonalButton(
+                    IconButton(
                         onClick = { showCategoryManagerDialog = true },
-                        shape = RoundedCornerShape(10.dp),
-                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
-                        modifier = Modifier.testTag("manage_categories_button")
+                        modifier = Modifier.size(48.dp).testTag("manage_categories_button")
                     ) {
-                        Icon(Icons.Default.Folder, contentDescription = null, modifier = Modifier.size(16.dp))
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("Categories", style = MaterialTheme.typography.labelSmall)
+                        Icon(
+                            Icons.Default.Folder,
+                            contentDescription = "Manage categories",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
 
-                    Button(
+                    IconButton(
                         onClick = { showAddTaskDialog = true },
-                        shape = RoundedCornerShape(10.dp),
-                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
-                        modifier = Modifier.testTag("add_study_task_button")
+                        modifier = Modifier.size(48.dp).testTag("add_study_task_button")
                     ) {
-                        Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("New Task", style = MaterialTheme.typography.labelSmall)
+                        Icon(
+                            Icons.Default.Add,
+                            contentDescription = "Add study task",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
                     }
                 }
             }
