@@ -3,7 +3,7 @@
 Date: 2026-11-05
 Branch: docs/product-design-system
 Baseline: main commit bfde88ce799579f0a215e47d641e4266312347a2; follow-up code fixes are on this branch.
-Status: source inspection only. Screenshots exist in public/assets/aistudio but have not yet been visually inspected. No app build, test execution, device run or user test has been performed.
+Status: source inspection plus a first visual review of committed screenshots. The captures appear to predate some newer branch changes. No app build, test execution or current-device re-capture has been performed.
 
 ## Confirmed findings and current branch changes
 
@@ -53,7 +53,8 @@ TodayScreen, StudyScreen, HealthScreen, SettingsScreen and AlarmEditDialog are l
 The inspected repository tree contains gradle-wrapper.properties but does not show gradlew, gradlew.bat or gradle-wrapper.jar. A GitHub Actions workflow was added to install Gradle 9.3.1 directly and run debug assembly plus lint. No workflow run has yet been observed. Unit tests remain unverified; make the Robolectric offline configuration CI-compatible.
 
 ## Factual boundaries
-- No visual screenshot inspection, app build, tests, lint, device validation or user testing has been performed in this audit.
+- A subset of repository screenshots has been visually inspected; see VISUAL_SCREENSHOT_REVIEW.md. These captures may predate current branch code.
+- No current-branch app build, tests, lint, device validation or user testing has been performed.
 - Health Connect manager contains real SDK integration code, but end-to-end device sync and every metric are not verified.
 - CloudSyncManager's current branch behavior is intentionally unavailable; no cloud sync is implemented.
 - README's encryption claim and backup/restore correctness still require implementation-level verification.
