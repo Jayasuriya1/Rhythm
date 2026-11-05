@@ -4,19 +4,22 @@
 - [ ] User problem and outcome documented.
 - [ ] Screen specification approved.
 - [ ] Primary action obvious.
-- [ ] Loading, empty, error, disabled and success states handled as applicable.
+- [ ] Loading, empty, error, disabled, offline, permission-denied and success states handled as applicable.
 - [ ] Persistence and lifecycle behavior verified.
 - [ ] Accessibility checked.
-- [ ] Light and dark themes checked.
+- [ ] OLED, Standard Dark, Light and System themes checked.
+- [ ] Phone, tablet, landscape and split-screen layouts checked.
 - [ ] Adjacent flows regression-tested.
 - [ ] Automated tests pass.
 - [ ] Documentation updated.
 
 ## Build and test
-Use the checked-in Gradle wrapper if present. README documents :app:assembleDebug, :app:testDebugUnitTest and :app:lintDebug. Verify wrapper and task names; record actual results, never infer success from compilation alone.
+Use the checked-in Gradle wrapper. README documents :app:assembleDebug, :app:testDebugUnitTest and :app:lintDebug. Verify wrapper and task names; record actual results. A successful compile is not proof of correct behavior.
 
 ## Privacy and data
 - [ ] Local storage claims verified against implementation.
+- [ ] AI/network requests and payloads disclosed clearly.
+- [ ] Cloud sync never reports success without verified transfer.
 - [ ] Backup/export and restore tested.
 - [ ] Sensitive data not unintentionally exposed in logs/notifications.
 - [ ] Permissions requested in context.
@@ -25,20 +28,7 @@ Use the checked-in Gradle wrapper if present. README documents :app:assembleDebu
 - [ ] No unapproved tracking or analytics.
 
 ## F-Droid readiness
-- [ ] FLOSS license declared and compatible.
-- [ ] All dependencies/assets have compatible licenses.
-- [ ] No proprietary tracking/ads SDK in F-Droid build.
-- [ ] Google Play Services, Firebase, Crashlytics and proprietary dependencies absent from F-Droid flavor or replaced with compliant alternatives.
-- [ ] Source build uses accepted public toolchains.
-- [ ] No embedded API keys or secrets.
-- [ ] No unapproved runtime executable downloads.
-- [ ] Stable unique application ID.
-- [ ] Reproducible build requirements reviewed.
-- [ ] Functional, useful and maintained app.
-- [ ] Metadata, screenshots, icon and changelog ready.
-
-Policy: https://f-droid.org/en/docs/Inclusion_Policy/
-Reproducible builds: https://f-droid.org/en/docs/Reproducible_Builds/
+See [F-Droid readiness audit](F_DROID_AUDIT.md). F-Droid acceptance is a review, not an automatic consequence of an open-source license.
 
 ## Release path
-Internal device testing → public GitHub pre-release/APK → stable GitHub release → F-Droid submission after policy and reproducibility review.
+Internal device testing → public GitHub pre-release/APK → stable GitHub release → F-Droid submission after policy, dependency and reproducibility review.
