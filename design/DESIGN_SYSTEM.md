@@ -1,6 +1,6 @@
 # Rhythm Design System
 
-Status: proposed foundation v1.1. These are target tokens; map them to Compose Material 3 semantic roles only after visual review and contrast testing. The existing source already has an OLED scheme; the aim is to refine it, not introduce a competing palette.
+Status: foundation v1.2. The OLED palette values and full typography scale have now been applied in Color.kt and Type.kt on this branch. They are an initial implementation, not yet visually approved; contrast and rendered screenshots still require QA. The existing theme modes remain in place.
 
 ## 1. Theme modes
 - **OLED Pitch Black — default**
