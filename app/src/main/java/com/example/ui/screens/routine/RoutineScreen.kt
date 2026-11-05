@@ -211,7 +211,9 @@ fun RoutineAnchorItemCard(
                     )
                 }
 
-                StatusBadge(status = status)
+                if (status != "UNRECORDED") {
+                    StatusBadge(status = status)
+                }
             }
 
             Spacer(modifier = Modifier.height(14.dp))
@@ -254,17 +256,19 @@ fun RoutineAnchorItemCard(
                         )
                     }
 
-                    Column(horizontalAlignment = Alignment.End) {
-                        Text(
-                            text = "Variance",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Text(
-                            text = if (actualTime != null) DateTimeUtils.calculateDelta(anchor.defaultTargetMinutes, actualTime) else "—",
-                            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
-                            color = if (actualTime != null) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.outline
-                        )
+                    if (actualTime != null) {
+                        Column(horizontalAlignment = Alignment.End) {
+                            Text(
+                                text = "Variance",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Text(
+                                text = DateTimeUtils.calculateDelta(anchor.defaultTargetMinutes, actualTime),
+                                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                                color = MaterialTheme.colorScheme.tertiary
+                            )
+                        }
                     }
                 }
             }
@@ -294,7 +298,7 @@ fun RoutineAnchorItemCard(
                 ) {
                     Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp))
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("Done Now")
+                    Text("Log now", maxLines = 1, style = MaterialTheme.typography.labelSmall)
                 }
 
                 FilledTonalButton(
@@ -306,7 +310,7 @@ fun RoutineAnchorItemCard(
                 ) {
                     Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(16.dp))
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("Log Time")
+                    Text("Log time", maxLines = 1, style = MaterialTheme.typography.labelSmall)
                 }
 
                 OutlinedButton(
