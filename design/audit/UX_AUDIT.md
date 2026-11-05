@@ -32,7 +32,7 @@ TodayScreen has phone and wide two-column layouts with next event, wearable summ
 StudyScreen is approximately 1,936 lines and combines timer, task selection, category management, protocol, sound/music, focus studio, brain dump and dialogs. Timer should dominate; move low-frequency configuration to contextual surfaces and extract composables without behavior changes.
 
 ### P1 — Typography and palette need completion
-Type.kt only customizes bodyLarge. Existing OLED scheme uses bright emerald #10B981 and #34D399. The original app brief specifies OLED as default; design foundation v1.1 now reflects this and proposes restrained mint/sage.
+Type.kt originally customized only bodyLarge. On this branch, the full Material typography scale has been defined and OLED primary/secondary accents have been softened from bright emerald to muted sage/mint. This is implemented but not yet visually validated. Contrast, font scaling and screenshots remain required.
 
 ### P1 — Navigation has many primary choices
 Compact navigation exposes Today, Routine, Health, Study, Meditation and Insights. Expanded navigation exposes Brain Dump, Reminders, Alarms and Settings. Validate hierarchy with task-based user testing before moving or removing destinations.
@@ -50,7 +50,7 @@ InsightsScreen renders PlannedExportCard. A visible planned feature can reduce t
 TodayScreen, StudyScreen, HealthScreen, SettingsScreen and AlarmEditDialog are large. Extract by responsibility after visual/behavioral audit, preserving tests and state ownership.
 
 ## Build tooling finding
-The inspected repository tree contains gradle-wrapper.properties but does not show gradlew, gradlew.bat or gradle-wrapper.jar. Do not claim the checked-in wrapper can run until these files are added or confirmed. Establish a reproducible build path.
+The inspected repository tree contains gradle-wrapper.properties but does not show gradlew, gradlew.bat or gradle-wrapper.jar. A GitHub Actions workflow was added to install Gradle 9.3.1 directly and run debug assembly plus lint. No workflow run has yet been observed. Unit tests remain unverified; make the Robolectric offline configuration CI-compatible.
 
 ## Factual boundaries
 - No visual screenshot inspection, app build, tests, lint, device validation or user testing has been performed in this audit.
