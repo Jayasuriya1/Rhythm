@@ -9,7 +9,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.withContext
 
 enum class CloudSyncStatus {
-    UNCONFIGURED,       // google-services.json not found in project or unprovisioned
+    UNCONFIGURED,       // Cloud transfer is not implemented or configured
     UNAUTHENTICATED,    // Firebase library ready, but user has not signed in with Google
     AUTHENTICATED_IDLE, // Signed in, sync idle
     SYNCING,            // Local-to-cloud or cloud-to-local synchronization in progress
@@ -30,11 +30,9 @@ data class CloudSyncState(
 )
 
 /**
- * CloudSyncManager handles cloud data synchronization architecture.
- * Adheres strictly to the user requirement:
- * - Does NOT fake sync status or pretend local Room persistence is cloud synchronization.
- * - Detects whether Firebase Google Services configuration is present.
- * - Enforces user-scoped data isolation and selective category synchronization.
+ * CloudSyncManager currently exposes an explicit unavailable state until a real,
+ * authenticated and auditable transfer implementation exists. Local Room persistence
+ * must never be presented as cloud backup or synchronization.
  */
 class CloudSyncManager(
     private val context: Context,
