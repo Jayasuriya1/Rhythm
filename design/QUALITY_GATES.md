@@ -14,7 +14,7 @@
 - [ ] Documentation updated.
 
 ## Build and test
-Use the checked-in Gradle wrapper. README documents :app:assembleDebug, :app:testDebugUnitTest and :app:lintDebug. Verify wrapper and task names; record actual results. A successful compile is not proof of correct behavior.
+A GitHub Actions workflow now installs Gradle 9.3.1 directly and runs :app:assembleDebug plus :app:lintDebug. The repository tree currently lacks gradlew, gradlew.bat and gradle-wrapper.jar, so local wrapper commands are not available. Unit tests remain a separate required gate; the existing Robolectric offline path is environment-specific and must be made CI-compatible before claiming test coverage. Record actual run results; a successful compile is not proof of correct behavior.
 
 ## Privacy and data
 - [ ] Local storage claims verified against implementation.
