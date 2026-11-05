@@ -81,6 +81,20 @@ class ExampleRobolectricTest {
     }
 
     @Test
+    fun `routine anchor target updates persist without creating a completion entry`() = runTest {
+        repository.ensureDefaultAnchors()
+        val anchor = repository.routineAnchors.first().first()
+
+        repository.updateAnchor(anchor.copy(defaultTargetMinutes = 510))
+
+        val updatedAnchor = repository.routineAnchors.first().first { it.id == anchor.id }
+        assertEquals(510, updatedAnchor.defaultTargetMinutes)
+
+        val entries = repository.getRoutineEntriesForDate(DateTimeUtils.todayDateString()).first()
+        assertTrue("Editing an anchor target must not log a completion", entries.isEmpty())
+    }
+
+    @Test
     fun `defaultCategories contains 6 seeded categories`() {
         val categories = AppDatabase.DEFAULT_CATEGORIES
         assertEquals(6, categories.size)
