@@ -1,52 +1,68 @@
 # Rhythm Design System
 
-Status: proposed foundation v1. These are design targets, not proof that current screens conform. Map tokens to Compose Material 3 semantic roles and validate on device before implementation.
+Status: proposed foundation v1.1. These are target tokens; map them to Compose Material 3 semantic roles only after visual review and contrast testing. The existing source already has an OLED scheme; the aim is to refine it, not introduce a competing palette.
 
-## Color direction
+## 1. Theme modes
+- **OLED Pitch Black — default**
+- Standard Dark
+- Light
+- Follow System
 
-| Semantic token | Proposed value | Purpose |
+All screens, dialogs, bottom sheets, charts, notifications and immersive experiences must honor the selected mode. Theme preference must persist. Dynamic color should not unexpectedly override the brand palette unless the user explicitly opts in.
+
+## 2. OLED-first semantic palette
+
+| Token | Proposed value | Purpose |
 |---|---|---|
-| Canvas | #F7F5EF | Warm ivory background |
-| Surface | #FFFEFA | Main content |
-| Surface subtle | #F0EFE8 | Quiet grouped areas |
-| Ink | #262923 | Primary text |
-| Ink muted | #70756D | Secondary text |
-| Forest | #587461 | Primary action / selection |
-| Sage soft | #DCE7DC | Low-emphasis container |
-| Lavender | #AAA0D4 | Focus accent, sparingly |
-| Midnight | #333C5A | Sleep accent, sparingly |
-| Amber | #D6A66A | Attention/time accent |
-| Danger | #B54747 | Error/destructive |
+| background | #000000 | OLED canvas |
+| surface | #0C100E | Main surface |
+| surface-container | #121714 | Grouped content |
+| surface-elevated | #1A211D | Dialogs / elevated layers |
+| on-surface | #F1F4F1 | Primary text |
+| on-surface-variant | #A2AAA5 | Secondary text |
+| primary | #A8C9B0 | Muted mint/sage action |
+| on-primary | #0B1710 | Text on primary |
+| primary-container | #20362A | Selected / supporting surface |
+| secondary | #B7C4BA | Neutral secondary emphasis |
+| tertiary | #C7B7E8 | Optional reflective accent |
+| warning | #D8B477 | Attention / caution |
+| error | #E38A83 | Destructive / error |
+| outline | #303A33 | Subtle borders |
 
-Use semantic Material roles, not ad hoc screen colors. Keep existing Sage and OLED themes during migration. Consider deep charcoal/green-black dark surfaces and retain OLED black as an optional variant. Status must not rely on color alone.
+These are design proposals, not yet implemented values. Prefer a restrained primary accent over the current bright emerald #10B981 / #34D399 combination. Keep health-series colors stable and semantically defined.
 
-## Typography targets
+## 3. Light theme
+Use a warm-neutral canvas (#F6F7F2 direction), white/off-white surfaces, deep forest primary, high-contrast dark text and the same semantic status meanings. Light mode must receive equal QA.
 
-| Role | Size | Weight |
+## 4. Typography
+| Role | Target | Weight |
 |---|---:|---|
 | Display | 32–36sp | Medium |
 | Headline large | 28sp | Medium |
 | Headline medium | 22sp | Semibold |
 | Title large | 20sp | Semibold |
 | Title medium | 16sp | Semibold |
-| Body large | 16sp | Normal |
-| Body medium | 14sp | Normal |
+| Body large | 16sp / 24sp line | Normal |
+| Body medium | 14sp / 20sp line | Normal |
 | Label large | 14sp | Medium |
 | Label small | 12sp | Medium |
 
-Use Android system sans-serif unless a bundled font's license and F-Droid compatibility are confirmed. Respect font scaling; avoid clipping. Use tabular numerals for timers where possible.
+Define the full Material typography scale; current Type.kt only customizes bodyLarge. Use system sans-serif unless font licensing and F-Droid redistribution are confirmed. Respect font scaling; use tabular numerals for timer values.
 
-## Spacing (4dp base grid)
-4dp micro-gap; 8dp compact; 12dp component padding; 16dp screen gutter; 24dp section gap; 32dp major separation; 48dp large breathing space. Avoid arbitrary values without reason.
+## 5. Spacing and layout
+Use a 4dp base grid: 4dp micro-gap, 8dp compact, 12dp component padding, 16dp standard gutter, 24dp section gap, 32dp major separation, 48dp breathing space. Define maximum content widths and responsive gutters. Do not stretch content across a wide tablet.
 
-## Shape and elevation
-Small controls 10–12dp; cards/sheets 16–20dp; hero surfaces up to 24dp when justified. Prefer tonal separation over shadows. Avoid nested cards.
+## 6. Shape, elevation and surfaces
+Small controls 10–12dp; standard grouped surfaces 16–20dp; hero surfaces up to 24dp only when justified. Prefer tonal layering over shadows. No card-in-card by default. Use open sections, dividers and typographic grouping where content belongs together.
 
-## Icons and motion
-Use one coherent Material icon family. Standard icon 24dp, compact 20dp. Describe meaningful icons for accessibility. Motion must explain a transition or confirmation, remain subtle, and respect system animation settings.
+## 7. Icons, illustration and imagery
+Use one coherent Material icon family. Standard 24dp, compact 20dp. No emoji-only controls. Custom illustration should be rare, consistent and purposeful. Use original or properly licensed assets; never copy reference-site artwork.
 
-## States
-Every interactive component defines default, pressed, focused, disabled, selected and applicable loading/error states.
+## 8. Motion
+Motion explains state, hierarchy or feedback. Keep it short and calm, avoid continuous dashboard motion, and respect system animation settings. Do not animate essential data into view in a way that delays access.
 
-## Themes
-Support Light, Dark and System; preserve OLED as optional. Semantic meaning and contrast remain consistent across themes.
+## 9. Component states
+Every interactive component defines default, pressed, focused, disabled, selected, loading and error states as applicable. Include empty, first-run, permission-denied, offline, stale-data and success states at screen level.
+
+## 10. Adaptive design
+Use window size classes / available window size rather than device-brand checks. Design compact phone, medium, expanded tablet, landscape and resizable-window compositions. On tablets, use intentional two-pane or max-width content, not merely two long card columns.
