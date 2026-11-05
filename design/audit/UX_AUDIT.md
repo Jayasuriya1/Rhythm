@@ -2,61 +2,67 @@
 
 Date: 2026-11-05
 Branch: docs/product-design-system
-Baseline inspected: main commit bfde88ce799579f0a215e47d641e4266312347a2 plus current feature-branch docs.
-Status: source inspection only. Screenshots are present in public/assets/aistudio but have not yet been visually inspected in this audit. No device run, build or user test has been performed.
+Baseline: main commit bfde88ce799579f0a215e47d641e4266312347a2; follow-up code fixes are on this branch.
+Status: source inspection only. Screenshots exist in public/assets/aistudio but have not yet been visually inspected. No app build, test execution, device run or user test has been performed.
 
-## Confirmed findings
+## Confirmed findings and current branch changes
 
-### P0 — Cloud sync can report success without syncing
-CloudSyncManager.triggerManualSync() sets SYNCING and then SYNC_SUCCESS with a timestamp when Google Services is configured. The inspected method performs no authentication, upload, download, conflict resolution or repository transfer. This can mislead users into trusting a backup that does not exist. Do not expose a successful sync state or last-sync timestamp until a real verified transfer completes. Add a blocking issue and fix before claiming cloud sync.
+### P0 — Cloud sync previously reported success without transfer
+Original CloudSyncManager.triggerManualSync() set SYNC_SUCCESS and a timestamp when Google Services was configured, without authentication or data transfer.
+**Branch change:** CloudSyncManager now fails closed, stays UNCONFIGURED and returns an explicit unsupported result until real sync exists. Settings copy now says sync is not implemented and no longer presents it as active.
+**Remaining:** add/verify tests; implement real authenticated transfer only after backend, consent, conflict and privacy design.
 
-### P0 — Routine target-time edit appears not to persist the new target
-RoutineScreen's EditAnchorTargetDialog onConfirm receives newTargetMinutes but calls viewModel.markRoutineDoneNow(anchor), then closes. The inspected callback does not pass newTargetMinutes to a target-update operation. The edit UI therefore appears to mark the anchor complete instead of saving the selected target. Verify the intended repository API and fix/test before release.
+### P1 — Routine target-time editor previously saved the wrong action
+Original RoutineScreen callback received newTargetMinutes but called markRoutineDoneNow(anchor).
+**Branch change:** added MainViewModel.updateRoutineAnchorTarget(), which validates 0..1439, persists anchor.copy(defaultTargetMinutes=...), and updates feedback. Dialog now calls that method. Added a Room-backed regression test to verify persistence without creating a completion entry.
+**Remaining:** run tests/build and verify the UI on device.
 
 ### P1 — Privacy messaging and integrations need reconciliation
-Settings copy says all health, sleep, routine and study records are 100% local and no personal telemetry is transmitted. The project includes Firebase AI, Firebase App Check and Gemini API configuration, and a CloudSyncManager. Document exactly which data stays local, which requests leave the device, what data is sent to AI services, and what is currently unconfigured. Do not make an unconditional “no data transmitted” claim without verifying every network path.
+Settings previously claimed no personal telemetry was transmitted. Firebase AI, App Check and Gemini API configuration exist in the project, but actual AI network call paths and payloads have not been fully verified.
+**Branch change:** softened Settings copy to describe local Room storage, permission-based Health Connect and the current absence of cloud sync. This is interim copy, not a completed data-flow audit.
+**Remaining:** inventory all network clients/SDK calls and disclose exact payloads, destinations, opt-in and fallback behavior.
 
 ### P1 — F-Droid release blockers
-README declares Apache 2.0 but the inspected repository tree contains no LICENSE file. The applicationId is AI Studio-generated (com.aistudio.rhythmfocus.mnyrqp). Build plugins/dependencies include Google Services, Firebase AI, Firebase App Check Recaptcha and debug artifacts, and Secrets Gradle Plugin. These require a separate F-Droid-compatible build/dependency audit and likely build flavors. See F_DROID_AUDIT.md.
+README declares Apache 2.0 but repository tree has no LICENSE file. ApplicationId is AI Studio-generated (com.aistudio.rhythmfocus.mnyrqp). Google Services, Firebase AI, Firebase App Check and Secrets plugins/dependencies need a resolved dependency/license audit. See F_DROID_AUDIT.md.
 
 ### P1 — Today dashboard is dense and card-heavy
-TodayScreen contains a wide-screen two-column dashboard with next event, wearable summary, routine, sleep, mood/energy, mindfulness, reminders, priority study, brain dump and hydration. The phone layout also has multiple sections. The current implementation has a large 1,586-line screen file. Risk: too many equal-weight modules and duplicated information. Redesign around the next action and progressive disclosure; keep tablet content max-width and intentionally grouped.
+TodayScreen has phone and wide two-column layouts with next event, wearable summary, routine, sleep, mood/energy, mindfulness, reminders, priority study, brain dump, hydration and medication. It is approximately 1,586 lines. Redesign around the next action and progressive disclosure; avoid repeating metrics and keep tablet content max-width.
 
-### P1 — Focus screen mixes core session and configuration
-StudyScreen is approximately 1,936 lines and holds timer, task selection, category management, protocol configuration, sound/music, focus studio, brain dump and multiple dialogs. The timer should dominate; move low-frequency configuration into separate screens/sheets and extract composables without changing behavior.
+### P1 — Focus screen mixes session and configuration
+StudyScreen is approximately 1,936 lines and combines timer, task selection, category management, protocol, sound/music, focus studio, brain dump and dialogs. Timer should dominate; move low-frequency configuration to contextual surfaces and extract composables without behavior changes.
 
-### P1 — Typography system incomplete
-Type.kt only customizes bodyLarge while the rest of Material defaults are implicit. Define the complete scale and check tabular timer numerals, font scaling and long labels.
-
-### P1 — Theme intent and current palette need alignment
-The source defaults to OLED Pitch Black, matching the original app brief. Existing OLED accents include bright emerald #10B981 and #34D399. Refine toward muted mint/sage and establish all semantic roles. Previous design foundation's light-first/warm-ivory direction was inconsistent with the original brief; v1.1 corrects this.
+### P1 — Typography and palette need completion
+Type.kt only customizes bodyLarge. Existing OLED scheme uses bright emerald #10B981 and #34D399. The original app brief specifies OLED as default; design foundation v1.1 now reflects this and proposes restrained mint/sage.
 
 ### P1 — Navigation has many primary choices
-Current compact nav exposes six destinations: Today, Routine, Health, Study, Meditation, Insights. Expanded nav exposes additional Brain Dump, Reminders, Alarms and Settings. Validate a simpler hierarchy without hiding frequent tasks or removing capabilities.
+Compact navigation exposes Today, Routine, Health, Study, Meditation and Insights. Expanded navigation exposes Brain Dump, Reminders, Alarms and Settings. Validate hierarchy with task-based user testing before moving or removing destinations.
 
 ### P2 — Shared component governance
-CommonComponents.kt has shared UI such as RhythmTopBar, but screens still define many local cards and controls. Inventory and standardize before adding new wrappers. Avoid a universal card component.
+CommonComponents.kt contains reusable elements, but screens define many local cards and controls. Inventory and standardize; avoid a universal card wrapper.
 
-### P2 — Adaptive layouts need device-independent rules
-The app has a 600dp expanded breakpoint and a two-column Today layout. Good foundation for tablets, but test Xiaomi Pad 7 portrait/landscape, split-screen, resizable windows and content max-width. Avoid relying on a brand-specific device check.
+### P2 — Adaptive layouts
+The app uses a 600dp expanded breakpoint, NavigationRail and two-column Today. Test Xiaomi Pad 7 portrait/landscape, split-screen, resizable windows and font scaling. Prefer window size classes and max content widths over brand-specific checks.
 
-### P2 — Insights includes a planned export notice
-InsightsScreen renders PlannedExportCard. A visible “planned” feature can reduce trust. Either implement it, move it to a roadmap/help area, or remove the placeholder after product approval.
+### P2 — Planned export notice
+InsightsScreen renders PlannedExportCard. A visible planned feature can reduce trust. Implement it, move it to roadmap/help, or remove the placeholder after product approval.
 
-### P2 — Large composable files increase iteration risk
-TodayScreen, StudyScreen, HealthScreen, SettingsScreen and AlarmEditDialog are large. Extract by feature responsibility and UI state, not arbitrary line count. Keep business logic in ViewModels/repositories.
+### P2 — Large composable files
+TodayScreen, StudyScreen, HealthScreen, SettingsScreen and AlarmEditDialog are large. Extract by responsibility after visual/behavioral audit, preserving tests and state ownership.
+
+## Build tooling finding
+The inspected repository tree contains gradle-wrapper.properties but does not show gradlew, gradlew.bat or gradle-wrapper.jar. Do not claim the checked-in wrapper can run until these files are added or confirmed. Establish a reproducible build path.
 
 ## Factual boundaries
-- This audit did not run the app, inspect screenshots visually, execute tests or validate every click path.
-- Health Connect manager has real SDK integration code, but end-to-end device sync and all metrics are not verified here.
-- CloudSyncManager's inspected manual sync method is a placeholder success path, not evidence of cloud synchronization.
-- README's local encryption claim and backup/restore correctness still require implementation-level verification.
+- No visual screenshot inspection, app build, tests, lint, device validation or user testing has been performed in this audit.
+- Health Connect manager contains real SDK integration code, but end-to-end device sync and every metric are not verified.
+- CloudSyncManager's current branch behavior is intentionally unavailable; no cloud sync is implemented.
+- README's encryption claim and backup/restore correctness still require implementation-level verification.
 
 ## Next actions
-1. Fix or explicitly disable false-positive cloud sync success.
-2. Fix routine target editing and add regression test.
-3. Reconcile privacy copy and AI/network disclosure.
+1. Run tests/build after restoring a reproducible Gradle wrapper/build environment.
+2. Verify cloud sync fail-closed and routine target persistence fixes.
+3. Complete privacy/network data-flow audit.
 4. Complete F-Droid dependency, license and build-flavor audit.
-5. Redesign Today and Focus first, with screenshots on phone and tablet.
-6. Complete health, alarm, medication, reminder and settings screen audits.
-7. Run build, unit tests, lint and physical-device QA.
+5. Capture and visually inspect Today and Focus screenshots on phone and tablet.
+6. Redesign Today and Focus from approved specs.
+7. Complete health, alarm, medication, reminder and settings audits.
