@@ -56,6 +56,9 @@ jobs:
       - name: Assemble debug APK and run lint
         run: gradle :app:assembleDebug :app:lintDebug --stacktrace
 
+      - name: Run Robolectric unit tests
+        run: gradle :app:testDebugUnitTest -ProbolectricOffline=false --stacktrace
+
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
         with:
