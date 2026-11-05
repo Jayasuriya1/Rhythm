@@ -50,7 +50,7 @@ InsightsScreen renders PlannedExportCard. A visible planned feature can reduce t
 TodayScreen, StudyScreen, HealthScreen, SettingsScreen and AlarmEditDialog are large. Extract by responsibility after visual/behavioral audit, preserving tests and state ownership.
 
 ## Build tooling finding
-The inspected repository tree contains gradle-wrapper.properties but does not show gradlew, gradlew.bat or gradle-wrapper.jar. A GitHub Actions workflow was added to install Gradle 9.3.1 directly and run debug assembly plus lint. No workflow run has yet been observed. Unit tests remain unverified; make the Robolectric offline configuration CI-compatible.
+The inspected repository tree contains gradle-wrapper.properties but does not show gradlew, gradlew.bat or gradle-wrapper.jar. A GitHub Actions workflow was added to install Gradle 9.3.1 directly and run debug assembly plus lint. No workflow run has yet been observed. Robolectric offline mode is now configurable: local builds remain offline by default and CI opts into online runtime downloads. The workflow includes unit tests; final result is still pending.
 
 ## Factual boundaries
 - A subset of repository screenshots has been visually inspected; see VISUAL_SCREENSHOT_REVIEW.md. These captures may predate current branch code.
