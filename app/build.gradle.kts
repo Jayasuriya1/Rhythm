@@ -63,12 +63,17 @@ android {
     compose = true
     buildConfig = true
   }
+  // Keep the local AI Studio environment offline by default, but allow CI to
+  // download the matching Robolectric Android runtime from Maven Central.
+  val robolectricOffline = providers.gradleProperty("robolectricOffline").orNull?.toBoolean() ?: true
   testOptions {
     unitTests {
       isIncludeAndroidResources = true
       all {
-        it.systemProperty("robolectric.offline", "true")
-        it.systemProperty("robolectric.dependency.dir", "/home/appuser/.m2/repository/org/robolectric/android-all-instrumented/16-robolectric-13921718-i7")
+        it.systemProperty("robolectric.offline", robolectricOffline.toString())
+        if (robolectricOffline) {
+          it.systemProperty("robolectric.dependency.dir", "/home/appuser/.m2/repository/org/robolectric/android-all-instrumented/16-robolectric-13921718-i7")
+        }
       }
     }
   }
