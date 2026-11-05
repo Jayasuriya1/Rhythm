@@ -14,7 +14,7 @@
 - [ ] Documentation updated.
 
 ## Build and test
-A GitHub Actions workflow now installs Gradle 9.3.1 directly and runs :app:assembleDebug plus :app:lintDebug. The repository tree currently lacks gradlew, gradlew.bat and gradle-wrapper.jar, so local wrapper commands are not available. Unit tests remain a separate required gate; the existing Robolectric offline path is environment-specific and must be made CI-compatible before claiming test coverage. Record actual run results; a successful compile is not proof of correct behavior.
+A GitHub Actions workflow installs Gradle 9.3.1 directly, runs :app:assembleDebug and :app:lintDebug, then runs :app:testDebugUnitTest with Robolectric online mode. The app keeps offline Robolectric mode as the local default and CI opts into Maven downloads. The repository tree currently lacks gradlew, gradlew.bat and gradle-wrapper.jar, so local wrapper commands are not available. Await a successful workflow result before claiming verification. Record actual run results; a successful compile is not proof of correct behavior.
 
 ## Privacy and data
 - [ ] Local storage claims verified against implementation.
