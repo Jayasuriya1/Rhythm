@@ -28,8 +28,15 @@ jobs:
           # The legacy "tools" SDK package is no longer published.
           packages: "platform-tools"
 
+      - name: Inspect available Android SDK packages
+        run: |
+          sdkmanager --list | grep -E "platforms;android-36|build-tools;36" || true
+
       - name: Install Android platform
-        run: sdkmanager "platforms;android-36.1" "build-tools;36.0.0" "platform-tools"
+        run: |
+          sdkmanager "platforms;android-36.1"
+          sdkmanager "build-tools;36.0.0"
+          sdkmanager "platform-tools"
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
