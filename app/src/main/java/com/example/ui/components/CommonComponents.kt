@@ -22,9 +22,12 @@ import androidx.compose.material.icons.filled.Alarm
 import androidx.compose.material.icons.filled.Lightbulb
 import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -35,6 +38,11 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -62,119 +70,163 @@ fun RhythmTopBar(
     modifier: Modifier = Modifier
 ) {
     val isToday = selectedDate == DateTimeUtils.todayDateString()
+    val isDateRelevant = title in listOf("Today", "Routine", "Health", "Insights")
+    var showMoreMenu by remember { mutableStateOf(false) }
 
     TopAppBar(
         title = {
             Column {
                 Text(
                     text = title,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                     style = MaterialTheme.typography.titleLarge.copy(
                         fontWeight = FontWeight.Bold,
                         letterSpacing = (-0.5).sp
                     ),
                     color = MaterialTheme.colorScheme.onSurface
                 )
-                Text(
-                    text = DateTimeUtils.formatDisplayDate(selectedDate),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                if (isDateRelevant) {
+                    Text(
+                        text = DateTimeUtils.formatDisplayDate(selectedDate),
+                        style = MaterialTheme.typography.bodySmall,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
         },
         actions = {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                horizontalArrangement = Arrangement.spacedBy(2.dp)
             ) {
-                IconButton(
-                    onClick = onPreviousDay,
-                    modifier = Modifier.testTag("prev_day_button")
-                ) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = "Previous Day",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-
-                if (!isToday) {
-                    Surface(
-                        shape = RoundedCornerShape(12.dp),
-                        color = MaterialTheme.colorScheme.primaryContainer,
-                        modifier = Modifier
-                            .clickable { onTodayClick() }
-                            .padding(horizontal = 4.dp, vertical = 2.dp)
-                            .testTag("go_to_today_chip")
+                if (isDateRelevant) {
+                    IconButton(
+                        onClick = onPreviousDay,
+                        modifier = Modifier.size(40.dp).testTag("prev_day_button")
                     ) {
-                        Text(
-                            text = "Today",
-                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
-                            color = MaterialTheme.colorScheme.onPrimaryContainer,
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Previous Day",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(20.dp)
                         )
                     }
-                }
 
-                IconButton(
-                    onClick = onNextDay,
-                    enabled = !isToday,
-                    modifier = Modifier.testTag("next_day_button")
-                ) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                        contentDescription = "Next Day",
-                        tint = if (!isToday) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.outlineVariant
-                    )
+                    if (!isToday) {
+                        Surface(
+                            shape = RoundedCornerShape(10.dp),
+                            color = MaterialTheme.colorScheme.primaryContainer,
+                            modifier = Modifier
+                                .clickable { onTodayClick() }
+                                .padding(horizontal = 2.dp, vertical = 2.dp)
+                                .testTag("go_to_today_chip")
+                        ) {
+                            Text(
+                                text = "Today",
+                                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+                                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp)
+                            )
+                        }
+                    }
+
+                    IconButton(
+                        onClick = onNextDay,
+                        enabled = !isToday,
+                        modifier = Modifier.size(40.dp).testTag("next_day_button")
+                    ) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                            contentDescription = "Next Day",
+                            tint = if (!isToday) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.outlineVariant,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
                 }
 
                 if (onBrainDumpClick != null) {
                     IconButton(
                         onClick = onBrainDumpClick,
-                        modifier = Modifier.testTag("top_bar_brain_dump_button")
+                        modifier = Modifier.size(40.dp).testTag("top_bar_brain_dump_button")
                     ) {
                         Icon(
                             imageVector = Icons.Default.Lightbulb,
                             contentDescription = "Quick Brain Dump",
-                            tint = MaterialTheme.colorScheme.primary
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(20.dp)
                         )
                     }
                 }
 
-                if (onAlarmsClick != null) {
+                if (onAlarmsClick != null && !isDateRelevant) {
                     IconButton(
                         onClick = onAlarmsClick,
-                        modifier = Modifier.testTag("top_bar_alarms_button")
+                        modifier = Modifier.size(40.dp).testTag("top_bar_alarms_button")
                     ) {
                         Icon(
                             imageVector = Icons.Default.Alarm,
                             contentDescription = "Alarms",
-                            tint = MaterialTheme.colorScheme.primary
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(20.dp)
                         )
                     }
                 }
 
-                if (onRemindersClick != null) {
+                Box {
                     IconButton(
-                        onClick = onRemindersClick,
-                        modifier = Modifier.testTag("top_bar_reminders_button")
+                        onClick = { showMoreMenu = true },
+                        modifier = Modifier.size(40.dp).testTag("settings_button")
                     ) {
                         Icon(
-                            imageVector = Icons.Default.NotificationsActive,
-                            contentDescription = "Reminder Center",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            imageVector = Icons.Default.MoreVert,
+                            contentDescription = "More Options",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(20.dp)
                         )
                     }
-                }
 
-                IconButton(
-                    onClick = onSettingsClick,
-                    modifier = Modifier.testTag("settings_button")
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Settings,
-                        contentDescription = "Settings",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    DropdownMenu(
+                        expanded = showMoreMenu,
+                        onDismissRequest = { showMoreMenu = false }
+                    ) {
+                        if (onAlarmsClick != null && isDateRelevant) {
+                            DropdownMenuItem(
+                                text = { Text("Alarms & QR Missions") },
+                                onClick = {
+                                    showMoreMenu = false
+                                    onAlarmsClick()
+                                },
+                                leadingIcon = {
+                                    Icon(Icons.Default.Alarm, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                                }
+                            )
+                        }
+                        if (onRemindersClick != null) {
+                            DropdownMenuItem(
+                                text = { Text("Reminder Center") },
+                                onClick = {
+                                    showMoreMenu = false
+                                    onRemindersClick()
+                                },
+                                leadingIcon = {
+                                    Icon(Icons.Default.NotificationsActive, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                                }
+                            )
+                        }
+                        DropdownMenuItem(
+                            text = { Text("Settings & Integrations") },
+                            onClick = {
+                                showMoreMenu = false
+                                onSettingsClick()
+                            },
+                            leadingIcon = {
+                                Icon(Icons.Default.Settings, contentDescription = null)
+                            }
+                        )
+                    }
                 }
             }
         },

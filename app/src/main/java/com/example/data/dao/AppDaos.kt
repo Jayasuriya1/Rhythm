@@ -235,6 +235,9 @@ interface StudyCategoryDao {
     @Query("DELETE FROM study_categories WHERE id = :id")
     suspend fun deleteCategory(id: Long)
 
+    @Query("DELETE FROM study_categories WHERE id NOT IN (SELECT MIN(id) FROM study_categories GROUP BY LOWER(TRIM(name)))")
+    suspend fun deduplicateCategories()
+
     @Query("UPDATE study_categories SET isArchived = :isArchived WHERE id = :id")
     suspend fun setCategoryArchived(id: Long, isArchived: Boolean)
 

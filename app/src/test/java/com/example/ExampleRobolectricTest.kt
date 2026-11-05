@@ -29,7 +29,7 @@ import org.robolectric.annotation.Config
 
 @OptIn(ExperimentalCoroutinesApi::class)
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [34])
+@Config(sdk = [36])
 class ExampleRobolectricTest {
 
     private lateinit var db: AppDatabase
@@ -1344,6 +1344,106 @@ class ExampleRobolectricTest {
 
         val stats = com.example.util.DataBackupManager.getDatabaseIntegrityStats(db)
         assertTrue(stats.totalRegisteredCodes >= 1)
+    }
+
+    @Test
+    fun `healthConnectDao persists and retrieves daily summary and stages with source attribution`() = runTest {
+        val healthConnectDao = db.healthConnectDao()
+
+        val summary = com.example.data.entity.HealthConnectDailySummaryEntity(
+            date = "2026-11-01",
+            steps = 8450,
+            distanceMeters = 6210.5,
+            activeCaloriesKcal = 420.0,
+            totalCaloriesKcal = 1950.0,
+            sleepDurationMinutes = 440,
+            sleepStartTimeEpoch = 1761955200000L,
+            sleepEndTimeEpoch = 1761981600000L,
+            restingHeartRateBpm = 58.0,
+            avgHeartRateBpm = 72.0,
+            minHeartRateBpm = 52.0,
+            maxHeartRateBpm = 135.0,
+            hrvRmssdMs = 45.5,
+            respiratoryRateRpm = 14.2,
+            oxygenSaturationPercent = 98.0,
+            waterMl = 1500,
+            exerciseMinutes = 45,
+            exerciseSessionsCount = 1,
+            primarySourceApp = "com.google.android.apps.fitness",
+            sourcesListJson = "[\"com.google.android.apps.fitness\"]",
+            lastSyncedAt = System.currentTimeMillis(),
+            hasSleepStages = true
+        )
+
+        healthConnectDao.upsertDailySummary(summary)
+
+        val retrieved = healthConnectDao.getSummaryForDateSync("2026-11-01")
+        assertNotNull(retrieved)
+        assertEquals(8450L, retrieved?.steps)
+        assertEquals(58.0, retrieved?.restingHeartRateBpm)
+        assertEquals(45.5, retrieved?.hrvRmssdMs)
+        assertEquals("com.google.android.apps.fitness", retrieved?.primarySourceApp)
+
+        // Test sleep stages insertion without fabrication
+        val stages = listOf(
+            com.example.data.entity.HealthConnectSleepStageEntity(
+                date = "2026-11-01",
+                sessionStartTimeEpoch = 1761955200000L,
+                stageStartTimeEpoch = 1761955200000L,
+                stageEndTimeEpoch = 1761958800000L,
+                stageType = "LIGHT",
+                durationMinutes = 60,
+                sourceApp = "com.google.android.apps.fitness"
+            ),
+            com.example.data.entity.HealthConnectSleepStageEntity(
+                date = "2026-11-01",
+                sessionStartTimeEpoch = 1761955200000L,
+                stageStartTimeEpoch = 1761958800000L,
+                stageEndTimeEpoch = 1761964200000L,
+                stageType = "DEEP",
+                durationMinutes = 90,
+                sourceApp = "com.google.android.apps.fitness"
+            )
+        )
+
+        healthConnectDao.insertSleepStages(stages)
+        val retrievedStages = healthConnectDao.getSleepStagesForDateSync("2026-11-01")
+        assertEquals(2, retrievedStages.size)
+        assertEquals("LIGHT", retrievedStages[0].stageType)
+        assertEquals("DEEP", retrievedStages[1].stageType)
+    }
+
+    @Test
+    fun `healthCategory permissions mapping contains correct read record permissions`() {
+        val activityPerms = com.example.health.HealthConnectManager.getPermissionsForCategories(
+            setOf(com.example.health.HealthCategory.ACTIVITY)
+        )
+        assertTrue(activityPerms.isNotEmpty())
+        assertTrue(activityPerms.any { it.contains("STEPS") })
+
+        val sleepPerms = com.example.health.HealthConnectManager.getPermissionsForCategories(
+            setOf(com.example.health.HealthCategory.SLEEP)
+        )
+        assertTrue(sleepPerms.any { it.contains("SLEEP") })
+    }
+
+    @Test
+    fun `theme defaults to OLED pitch black and persists user selection`() = runTest {
+        val defaultMode = com.example.ui.theme.AppThemeMode.OLED_DARK
+        assertEquals("OLED Pitch Black (Default)", defaultMode.displayName)
+
+        repository.saveSetting("app_theme_mode", com.example.ui.theme.AppThemeMode.DARK.name)
+        val saved = repository.getSetting("app_theme_mode").first()
+        assertEquals(com.example.ui.theme.AppThemeMode.DARK.name, saved?.value)
+    }
+
+    @Test
+    fun `cloudSyncManager reports unconfigured status when google-services is absent`() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val syncManager = com.example.sync.CloudSyncManager(context, repository)
+        val state = syncManager.syncState.value
+        assertEquals(com.example.sync.CloudSyncStatus.UNCONFIGURED, state.status)
+        assertNotNull(state.errorMessage)
     }
 }
 

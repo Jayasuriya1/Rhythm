@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -90,6 +91,16 @@ fun AlarmSectionScreen(
     var selectedAlarmForEdit by remember { mutableStateOf<CustomAlarmEntity?>(null) }
     var alarmToDelete by remember { mutableStateOf<CustomAlarmEntity?>(null) }
 
+    // Exact alarm capability check
+    val alarmManager = remember { context.getSystemService(Context.ALARM_SERVICE) as? android.app.AlarmManager }
+    val canScheduleExact = remember(alarms) {
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+            alarmManager?.canScheduleExactAlarms() ?: true
+        } else {
+            true
+        }
+    }
+
     // Find next upcoming enabled alarm
     val nextAlarm = remember(alarms) {
         alarms.filter { it.isEnabled }
@@ -161,8 +172,65 @@ fun AlarmSectionScreen(
                         modifier = Modifier
                             .fillMaxSize()
                             .padding(horizontal = 16.dp, vertical = 12.dp),
+                        contentPadding = PaddingValues(bottom = 96.dp),
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
+                        // Exact Alarm Permission Warning Banner (if exact scheduling is not granted)
+                        if (!canScheduleExact) {
+                            item {
+                                Card(
+                                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
+                                    shape = RoundedCornerShape(16.dp),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(16.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Warning,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.error,
+                                            modifier = Modifier.size(28.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(12.dp))
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Text(
+                                                text = "Exact Alarm Permission Required",
+                                                style = MaterialTheme.typography.titleSmall,
+                                                fontWeight = FontWeight.Bold,
+                                                color = MaterialTheme.colorScheme.onErrorContainer
+                                            )
+                                            Text(
+                                                text = "To guarantee alarms trigger on time while your device is locked, allow 'Alarms & reminders'.",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.85f)
+                                            )
+                                            Spacer(modifier = Modifier.height(8.dp))
+                                            Button(
+                                                onClick = {
+                                                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+                                                        try {
+                                                            val settingsIntent = Intent(android.provider.Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM).apply {
+                                                                data = android.net.Uri.parse("package:${context.packageName}")
+                                                            }
+                                                            context.startActivity(settingsIntent)
+                                                        } catch (_: Exception) {}
+                                                    }
+                                                },
+                                                colors = ButtonDefaults.buttonColors(
+                                                    containerColor = MaterialTheme.colorScheme.error,
+                                                    contentColor = MaterialTheme.colorScheme.onError
+                                                )
+                                            ) {
+                                                Text("Allow Exact Alarms", fontSize = 12.sp)
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
                         // 1. Hero Overview Header Card
                         item {
                             Card(
@@ -241,12 +309,13 @@ fun AlarmSectionScreen(
                                         )
                                     }
 
-                                    Spacer(modifier = Modifier.height(12.dp))
+                                    Spacer(modifier = Modifier.height(14.dp))
 
-                                    // Quick Test Button
-                                    Row(
+                                    // Quick Verification & Test Buttons
+                                    FlowRow(
                                         modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.End
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                        verticalArrangement = Arrangement.spacedBy(8.dp)
                                     ) {
                                         OutlinedButton(
                                             onClick = {
@@ -260,7 +329,26 @@ fun AlarmSectionScreen(
                                         ) {
                                             Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(16.dp))
                                             Spacer(modifier = Modifier.width(6.dp))
-                                            Text("Test Alarm Screen Now", fontSize = 12.sp)
+                                            Text("Preview Screen", fontSize = 12.sp)
+                                        }
+
+                                        Button(
+                                            onClick = {
+                                                val testTarget = nextAlarm ?: alarms.firstOrNull() ?: CustomAlarmEntity(
+                                                    title = "5-Second Test Alarm",
+                                                    timeMinutes = 420,
+                                                    crescendoDurationSeconds = 15
+                                                )
+                                                viewModel.testAlarmAfterDelay(context, testTarget, 5)
+                                            },
+                                            colors = ButtonDefaults.buttonColors(
+                                                containerColor = MaterialTheme.colorScheme.primary,
+                                                contentColor = MaterialTheme.colorScheme.onPrimary
+                                            )
+                                        ) {
+                                            Icon(Icons.Default.FlashOn, contentDescription = null, modifier = Modifier.size(16.dp))
+                                            Spacer(modifier = Modifier.width(6.dp))
+                                            Text("Test Real Ring in 5s", fontSize = 12.sp)
                                         }
                                     }
                                 }

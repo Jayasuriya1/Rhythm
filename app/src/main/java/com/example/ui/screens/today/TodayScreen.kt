@@ -62,6 +62,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.launch
 import com.example.data.entity.HealthCheckinEntity
 import com.example.data.entity.MedicationEntity
 import com.example.data.entity.MedicationIntakeEntity
@@ -93,6 +94,10 @@ fun TodayScreen(
     val medicationIntakes by viewModel.medicationIntakesForDate.collectAsStateWithLifecycle()
     val dailyPriorityTask by viewModel.dailyPriorityTask.collectAsStateWithLifecycle()
     val brainDumpNotes by viewModel.activeBrainDumpNotes.collectAsStateWithLifecycle()
+
+    val healthConnectState by viewModel.healthConnectManager.uiState.collectAsStateWithLifecycle()
+    val healthSummary by viewModel.getHealthConnectSummaryForDate(selectedDate).collectAsStateWithLifecycle(initialValue = null)
+    val coroutineScope = androidx.compose.runtime.rememberCoroutineScope()
 
     var showQuickCaptureDialog by remember { mutableStateOf(false) }
     var showQuickActionsDialog by remember { mutableStateOf(false) }
@@ -134,11 +139,17 @@ fun TodayScreen(
                     }
                     item {
                         WearableHealthConnectCard(
-                            sleepEntry = sleepEntry,
-                            waterVolumeMl = totalWaterMl,
-                            waterTargetMl = 2000,
-                            onRefreshSync = { /* Refreshes local DB views */ },
-                            onNavigateHealth = { viewModel.navigateTo(AppDestination.HEALTH) }
+                            healthSummary = healthSummary,
+                            isHealthConnectAuthorized = healthConnectState.grantedPermissions.isNotEmpty(),
+                            isSyncing = healthConnectState.isSyncing,
+                            lastSyncTimestamp = healthConnectState.lastSyncTime,
+                            onRefreshSync = {
+                                coroutineScope.launch {
+                                    val today = java.time.LocalDate.now()
+                                    viewModel.healthConnectManager.syncDateRange(today, today)
+                                }
+                            },
+                            onNavigateHealth = { viewModel.navigateTo(AppDestination.HEALTH_CONNECT) }
                         )
                     }
                     item {
@@ -231,6 +242,7 @@ fun TodayScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(horizontal = 16.dp),
+                contentPadding = androidx.compose.foundation.layout.PaddingValues(top = 8.dp, bottom = 96.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 item {
@@ -252,11 +264,17 @@ fun TodayScreen(
                 }
                 item {
                     WearableHealthConnectCard(
-                        sleepEntry = sleepEntry,
-                        waterVolumeMl = totalWaterMl,
-                        waterTargetMl = 2000,
-                        onRefreshSync = { /* Refreshes local DB views */ },
-                        onNavigateHealth = { viewModel.navigateTo(AppDestination.HEALTH) }
+                        healthSummary = healthSummary,
+                        isHealthConnectAuthorized = healthConnectState.grantedPermissions.isNotEmpty(),
+                        isSyncing = healthConnectState.isSyncing,
+                        lastSyncTimestamp = healthConnectState.lastSyncTime,
+                        onRefreshSync = {
+                            coroutineScope.launch {
+                                val today = java.time.LocalDate.now()
+                                viewModel.healthConnectManager.syncDateRange(today, today)
+                            }
+                        },
+                        onNavigateHealth = { viewModel.navigateTo(AppDestination.HEALTH_CONNECT) }
                     )
                 }
                 item {
@@ -335,18 +353,19 @@ fun TodayScreen(
             }
         }
 
-        // Quick Actions Extended Floating Action Button
-        ExtendedFloatingActionButton(
+        // Quick Actions Floating Action Button (Compact, sleek, unobtrusive)
+        androidx.compose.material3.FloatingActionButton(
             onClick = { showQuickActionsDialog = true },
-            icon = { Icon(Icons.Default.Add, contentDescription = "Quick Actions") },
-            text = { Text("Quick Action") },
+            shape = CircleShape,
             containerColor = MaterialTheme.colorScheme.primary,
             contentColor = MaterialTheme.colorScheme.onPrimary,
             modifier = Modifier
                 .align(Alignment.BottomEnd)
-                .padding(24.dp)
+                .padding(20.dp)
                 .testTag("today_quick_action_fab")
-        )
+        ) {
+            Icon(Icons.Default.Add, contentDescription = "Quick Actions", modifier = Modifier.size(24.dp))
+        }
     }
 
     if (showQuickActionsDialog) {

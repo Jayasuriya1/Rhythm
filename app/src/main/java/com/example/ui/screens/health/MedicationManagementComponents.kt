@@ -255,7 +255,7 @@ private fun TodayMedicationsSubTab(
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         verticalArrangement = Arrangement.spacedBy(14.dp),
-        contentPadding = PaddingValues(bottom = 32.dp)
+        contentPadding = PaddingValues(top = 4.dp, bottom = 96.dp)
     ) {
         item {
             Card(
@@ -501,7 +501,7 @@ private fun MedicationsListSubTab(
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         verticalArrangement = Arrangement.spacedBy(14.dp),
-        contentPadding = PaddingValues(bottom = 32.dp)
+        contentPadding = PaddingValues(top = 4.dp, bottom = 96.dp)
     ) {
         item {
             Row(
@@ -667,7 +667,7 @@ private fun IntakeHistorySubTab(
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         verticalArrangement = Arrangement.spacedBy(12.dp),
-        contentPadding = PaddingValues(bottom = 32.dp)
+        contentPadding = PaddingValues(top = 4.dp, bottom = 96.dp)
     ) {
         item {
             Card(

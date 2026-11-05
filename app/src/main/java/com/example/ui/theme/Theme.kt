@@ -83,15 +83,15 @@ private val OledDarkColorScheme =
   )
 
 enum class AppThemeMode(val displayName: String) {
-    SYSTEM("Follow System"),
-    LIGHT("Calming Sage Light"),
-    DARK("Calming Sage Dark"),
-    OLED_DARK("OLED Pitch Black")
+    OLED_DARK("OLED Pitch Black (Default)"),
+    DARK("Standard Dark"),
+    LIGHT("Light"),
+    SYSTEM("Follow System")
 }
 
 @Composable
 fun RhythmFocusTheme(
-  themeMode: AppThemeMode = AppThemeMode.SYSTEM,
+  themeMode: AppThemeMode = AppThemeMode.OLED_DARK,
   dynamicColor: Boolean = false,
   content: @Composable () -> Unit,
 ) {
@@ -108,7 +108,7 @@ fun RhythmFocusTheme(
       themeMode == AppThemeMode.DARK -> DarkColorScheme
       themeMode == AppThemeMode.LIGHT -> LightColorScheme
       themeMode == AppThemeMode.SYSTEM -> if (isSystemDark) DarkColorScheme else LightColorScheme
-      else -> if (isSystemDark) DarkColorScheme else LightColorScheme
+      else -> OledDarkColorScheme
     }
 
   MaterialTheme(colorScheme = colorScheme, typography = Typography, content = content)
@@ -117,12 +117,12 @@ fun RhythmFocusTheme(
 // Backwards compatibility alias
 @Composable
 fun MyApplicationTheme(
-  darkTheme: Boolean = isSystemInDarkTheme(),
+  darkTheme: Boolean = true,
   dynamicColor: Boolean = false,
   content: @Composable () -> Unit,
 ) {
   RhythmFocusTheme(
-    themeMode = if (darkTheme) AppThemeMode.DARK else AppThemeMode.LIGHT,
+    themeMode = if (darkTheme) AppThemeMode.OLED_DARK else AppThemeMode.LIGHT,
     dynamicColor = dynamicColor,
     content = content
   )

@@ -44,6 +44,9 @@ enum class AppDestination(val label: String) {
     TODAY("Today"),
     ROUTINE("Routine"),
     HEALTH("Health"),
+    HEALTH_CONNECT("Health & Wearables"),
+    SLEEP_ANALYTICS("Sleep Analytics"),
+    HEART_RATE_ANALYTICS("Heart Rate Analytics"),
     STUDY("Study"),
     MEDITATION("Meditation"),
     BRAIN_DUMP("Brain Dump"),
@@ -87,7 +90,21 @@ data class TimerState(
 )
 
 @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
-class MainViewModel(private val repository: AppRepository) : ViewModel() {
+class MainViewModel(
+    private val repository: AppRepository,
+    private val context: Context? = null
+) : ViewModel() {
+
+    private val appContext: Context get() = context ?: com.example.data.database.AppDatabase.appContext
+        ?: throw IllegalStateException("Application context not available")
+
+    val healthConnectManager: com.example.health.HealthConnectManager by lazy {
+        com.example.health.HealthConnectManager(appContext, repository)
+    }
+
+    val cloudSyncManager: com.example.sync.CloudSyncManager by lazy {
+        com.example.sync.CloudSyncManager(appContext, repository)
+    }
 
     private val _currentDestination = MutableStateFlow(AppDestination.TODAY)
     val currentDestination: StateFlow<AppDestination> = _currentDestination.asStateFlow()
@@ -167,6 +184,14 @@ class MainViewModel(private val repository: AppRepository) : ViewModel() {
     val timerState: StateFlow<TimerState> = _timerState.asStateFlow()
     private var timerTickerJob: Job? = null
 
+    // Immersive Fullscreen Focus Mode State (Overlays entire screen without rail or footer)
+    private val _isStudyFocusModeActive = MutableStateFlow(false)
+    val isStudyFocusModeActive: StateFlow<Boolean> = _isStudyFocusModeActive.asStateFlow()
+
+    fun setStudyFocusMode(active: Boolean) {
+        _isStudyFocusModeActive.value = active
+    }
+
     // Brain Dump Notes
     val activeBrainDumpNotes: StateFlow<List<com.example.data.entity.BrainDumpNoteEntity>> = repository.activeBrainDumpNotes
         .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
@@ -236,9 +261,9 @@ class MainViewModel(private val repository: AppRepository) : ViewModel() {
         .map { setting ->
             setting?.value?.let {
                 try { com.example.ui.theme.AppThemeMode.valueOf(it) } catch (_: Exception) { null }
-            } ?: com.example.ui.theme.AppThemeMode.SYSTEM
+            } ?: com.example.ui.theme.AppThemeMode.OLED_DARK
         }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), com.example.ui.theme.AppThemeMode.SYSTEM)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), com.example.ui.theme.AppThemeMode.OLED_DARK)
 
     fun setAppThemeMode(mode: com.example.ui.theme.AppThemeMode) {
         viewModelScope.launch {
@@ -1158,7 +1183,11 @@ class MainViewModel(private val repository: AppRepository) : ViewModel() {
                         if (pendingBreak != null) {
                             val newPassed = current.passedBreakPointIds + pendingBreak.id
                             val breakPhase = if (pendingBreak.isLongBreak) TimerPhase.LONG_BREAK else TimerPhase.SHORT_BREAK
-                            val breakTargetSec = pendingBreak.breakDurationMinutes * 60
+                            val breakTargetSec = if (pendingBreak.breakDurationSeconds > 0) {
+                                pendingBreak.breakDurationSeconds
+                            } else {
+                                pendingBreak.breakDurationMinutes * 60
+                            }
 
                             _timerState.value = current.copy(
                                 accumulatedElapsedSeconds = focusElapsed,
@@ -1176,7 +1205,12 @@ class MainViewModel(private val repository: AppRepository) : ViewModel() {
                             if (studyBreakStartSoundEnabled.value) {
                                 _studySoundEvents.tryEmit(StudySoundType.BREAK_START)
                             }
-                            _userFeedbackMessage.value = "Time for a ${pendingBreak.label} (${pendingBreak.breakDurationMinutes}m). Step away and stretch!"
+                            val durationLabel = if (pendingBreak.breakDurationSeconds < 60) {
+                                "${pendingBreak.breakDurationSeconds}s"
+                            } else {
+                                "${pendingBreak.breakDurationSeconds / 60}m"
+                            }
+                            _userFeedbackMessage.value = "Time for ${pendingBreak.label} ($durationLabel). Step away and rest!"
                             continue
                         }
                     }
@@ -1562,6 +1596,47 @@ class MainViewModel(private val repository: AppRepository) : ViewModel() {
         context.startActivity(activityIntent)
     }
 
+    fun testAlarmAfterDelay(
+        context: Context,
+        alarm: com.example.data.entity.CustomAlarmEntity,
+        delaySeconds: Int = 5
+    ) {
+        val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as? android.app.AlarmManager ?: return
+        val triggerMillis = System.currentTimeMillis() + (delaySeconds * 1000L)
+        val intent = Intent(context, com.example.receiver.CustomAlarmReceiver::class.java).apply {
+            action = "com.example.action.CUSTOM_ALARM_TRIGGER"
+            putExtra(com.example.util.CustomAlarmScheduler.EXTRA_ALARM_ID, alarm.id)
+            putExtra(com.example.util.CustomAlarmScheduler.EXTRA_ALARM_TITLE, alarm.title)
+            putExtra(com.example.util.CustomAlarmScheduler.EXTRA_IS_BACKUP, false)
+        }
+        val requestCode = 999999
+        val pendingIntent = android.app.PendingIntent.getBroadcast(
+            context,
+            requestCode,
+            intent,
+            android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE
+        )
+        val showIntent = Intent(context, com.example.MainActivity::class.java)
+        val showPendingIntent = android.app.PendingIntent.getActivity(
+            context,
+            requestCode + 1,
+            showIntent,
+            android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE
+        )
+        try {
+            val clockInfo = android.app.AlarmManager.AlarmClockInfo(triggerMillis, showPendingIntent)
+            alarmManager.setAlarmClock(clockInfo, pendingIntent)
+            _userFeedbackMessage.value = "Real alarm scheduled in $delaySeconds sec! Lock screen or minimize to verify."
+        } catch (e: Exception) {
+            try {
+                alarmManager.setExactAndAllowWhileIdle(android.app.AlarmManager.RTC_WAKEUP, triggerMillis, pendingIntent)
+                _userFeedbackMessage.value = "Real alarm scheduled in $delaySeconds sec! Lock screen or minimize to verify."
+            } catch (e2: Exception) {
+                _userFeedbackMessage.value = "Could not schedule exact alarm: ${e2.message}"
+            }
+        }
+    }
+
     // --- Registered Household & QR Studio Codes ---
     fun saveRegisteredCode(
         code: com.example.data.entity.RegisteredCodeEntity,
@@ -1754,6 +1829,23 @@ class MainViewModel(private val repository: AppRepository) : ViewModel() {
 
     fun setBreathingDurations(inhale: Int, pause: Int, exhale: Int) {
         setMeditationBreathingPacing(inhale, pause, exhale, pause)
+    }
+
+    // Health Connect Imported Data Helpers
+    fun getHealthConnectSummaryForDate(date: String): kotlinx.coroutines.flow.Flow<com.example.data.entity.HealthConnectDailySummaryEntity?> {
+        return repository.getHealthConnectSummary(date)
+    }
+
+    fun getHealthConnectSleepStagesForDate(date: String): kotlinx.coroutines.flow.Flow<List<com.example.data.entity.HealthConnectSleepStageEntity>> {
+        return repository.getHealthConnectSleepStages(date)
+    }
+
+    fun getHealthConnectHeartSamplesForDate(date: String): kotlinx.coroutines.flow.Flow<List<com.example.data.entity.HealthConnectHeartSampleEntity>> {
+        return repository.getHealthConnectHeartSamples(date)
+    }
+
+    fun getRecentHealthConnectSummaries(limit: Int = 7): kotlinx.coroutines.flow.Flow<List<com.example.data.entity.HealthConnectDailySummaryEntity>> {
+        return repository.getRecentHealthConnectSummaries(limit)
     }
 
     fun clearAllUserData() {

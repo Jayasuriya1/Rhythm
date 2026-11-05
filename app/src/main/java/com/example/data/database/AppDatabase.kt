@@ -38,6 +38,10 @@ import com.example.data.entity.WaterEntryEntity
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import com.example.data.dao.HealthConnectDao
+import com.example.data.entity.HealthConnectDailySummaryEntity
+import com.example.data.entity.HealthConnectHeartSampleEntity
+import com.example.data.entity.HealthConnectSleepStageEntity
 
 @Database(
     entities = [
@@ -57,9 +61,12 @@ import kotlinx.coroutines.launch
         ReminderEntity::class,
         MeditationSessionEntity::class,
         com.example.data.entity.CustomAlarmEntity::class,
-        RegisteredCodeEntity::class
+        RegisteredCodeEntity::class,
+        HealthConnectDailySummaryEntity::class,
+        HealthConnectSleepStageEntity::class,
+        HealthConnectHeartSampleEntity::class
     ],
-    version = 10,
+    version = 11,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -78,6 +85,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun meditationDao(): MeditationDao
     abstract fun customAlarmDao(): com.example.data.dao.CustomAlarmDao
     abstract fun registeredCodeDao(): RegisteredCodeDao
+    abstract fun healthConnectDao(): HealthConnectDao
 
     companion object {
         @Volatile
@@ -277,14 +285,84 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        val MIGRATION_10_11 = object : Migration(10, 11) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `health_connect_daily_summaries` (
+                        `date` TEXT NOT NULL PRIMARY KEY,
+                        `steps` INTEGER NOT NULL,
+                        `distanceMeters` REAL NOT NULL,
+                        `activeCaloriesKcal` REAL NOT NULL,
+                        `totalCaloriesKcal` REAL NOT NULL,
+                        `sleepDurationMinutes` INTEGER NOT NULL,
+                        `sleepStartTimeEpoch` INTEGER,
+                        `sleepEndTimeEpoch` INTEGER,
+                        `restingHeartRateBpm` REAL,
+                        `avgHeartRateBpm` REAL,
+                        `minHeartRateBpm` REAL,
+                        `maxHeartRateBpm` REAL,
+                        `hrvRmssdMs` REAL,
+                        `respiratoryRateRpm` REAL,
+                        `oxygenSaturationPercent` REAL,
+                        `waterMl` INTEGER NOT NULL,
+                        `exerciseMinutes` INTEGER NOT NULL,
+                        `exerciseSessionsCount` INTEGER NOT NULL,
+                        `primarySourceApp` TEXT,
+                        `sourcesListJson` TEXT NOT NULL,
+                        `lastSyncedAt` INTEGER NOT NULL,
+                        `hasSleepStages` INTEGER NOT NULL
+                    )
+                    """.trimIndent()
+                )
+                db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `index_health_connect_daily_summaries_date` ON `health_connect_daily_summaries` (`date`)")
+
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `health_connect_sleep_stages` (
+                        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `date` TEXT NOT NULL,
+                        `sessionStartTimeEpoch` INTEGER NOT NULL,
+                        `stageStartTimeEpoch` INTEGER NOT NULL,
+                        `stageEndTimeEpoch` INTEGER NOT NULL,
+                        `stageType` TEXT NOT NULL,
+                        `durationMinutes` INTEGER NOT NULL,
+                        `sourceApp` TEXT
+                    )
+                    """.trimIndent()
+                )
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_health_connect_sleep_stages_date` ON `health_connect_sleep_stages` (`date`)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_health_connect_sleep_stages_stageStartTimeEpoch_stageEndTimeEpoch` ON `health_connect_sleep_stages` (`stageStartTimeEpoch`, `stageEndTimeEpoch`)")
+
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `health_connect_heart_samples` (
+                        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `date` TEXT NOT NULL,
+                        `timestampEpoch` INTEGER NOT NULL,
+                        `bpm` REAL NOT NULL,
+                        `sourceApp` TEXT,
+                        `sampleType` TEXT NOT NULL
+                    )
+                    """.trimIndent()
+                )
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_health_connect_heart_samples_date` ON `health_connect_heart_samples` (`date`)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_health_connect_heart_samples_timestampEpoch` ON `health_connect_heart_samples` (`timestampEpoch`)")
+            }
+        }
+
+        @Volatile
+        var appContext: Context? = null
+
         fun getDatabase(context: Context): AppDatabase {
+            appContext = context.applicationContext
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
                     context.applicationContext,
                     AppDatabase::class.java,
                     "rhythm_focus_database"
                 )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11)
                     .fallbackToDestructiveMigrationOnDowngrade()
                     .addCallback(DatabaseCallback())
                     .build()

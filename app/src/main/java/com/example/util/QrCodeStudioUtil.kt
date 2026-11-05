@@ -246,14 +246,14 @@ object QrCodeStudioUtil {
         val borderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = config.template.accentColor
             style = Paint.Style.STROKE
-            strokeWidth = 6f
+            strokeWidth = (cardWidth * 0.008f).coerceIn(3f, 8f)
         }
-        val borderMargin = 28f
+        val borderMargin = cardWidth * 0.04f
         val cardRect = RectF(borderMargin, borderMargin, cardWidth - borderMargin, cardHeight - borderMargin)
-        canvas.drawRoundRect(cardRect, 24f, 24f, borderPaint)
+        canvas.drawRoundRect(cardRect, cardWidth * 0.035f, cardWidth * 0.035f, borderPaint)
 
         // Inner Card Background Header Banner
-        val headerHeight = 160f
+        val headerHeight = cardHeight * 0.14f
         val headerPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = config.template.accentColor
             alpha = 24
@@ -261,30 +261,30 @@ object QrCodeStudioUtil {
         }
         canvas.drawRoundRect(
             RectF(borderMargin + 4, borderMargin + 4, cardWidth - borderMargin - 4, borderMargin + headerHeight),
-            20f, 20f, headerPaint
+            cardWidth * 0.025f, cardWidth * 0.025f, headerPaint
         )
 
         // Header Title
         val titlePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = config.fgColor
-            textSize = 44f
+            textSize = (cardHeight * 0.035f).coerceIn(20f, 44f)
             typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
             textAlign = Paint.Align.CENTER
         }
-        canvas.drawText(config.title.take(32), cardWidth / 2f, borderMargin + 72f, titlePaint)
+        canvas.drawText(config.title.take(32), cardWidth / 2f, borderMargin + (headerHeight * 0.45f), titlePaint)
 
         // Location / Category Pill
         val locationText = if (!config.locationHint.isNullOrBlank()) "📍 ${config.locationHint}" else "⏰ Alarm Mission Target"
         val locationPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = config.template.accentColor
-            textSize = 26f
+            textSize = (cardHeight * 0.022f).coerceIn(14f, 26f)
             typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
             textAlign = Paint.Align.CENTER
         }
-        canvas.drawText(locationText.take(40), cardWidth / 2f, borderMargin + 124f, locationPaint)
+        canvas.drawText(locationText.take(40), cardWidth / 2f, borderMargin + (headerHeight * 0.82f), locationPaint)
 
-        // Render QR Code in center
-        val qrSize = 520
+        // Render QR Code in center (proportional to card size, leaving room for text)
+        val qrSize = (minOf(cardWidth * 0.72f, cardHeight * 0.44f)).toInt()
         val qrBitmap = generateQrBitmap(
             content = config.codeValue,
             size = qrSize,
@@ -293,38 +293,40 @@ object QrCodeStudioUtil {
             margin = 1
         )
         val qrLeft = (cardWidth - qrSize) / 2f
-        val qrTop = borderMargin + headerHeight + 50f
+        val qrTop = borderMargin + headerHeight + (cardHeight * 0.035f)
         canvas.drawBitmap(qrBitmap, qrLeft, qrTop, null)
 
         // Code Value label underneath QR
         val codeValPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = config.fgColor
-            textSize = 26f
+            textSize = (cardHeight * 0.024f).coerceIn(14f, 26f)
             typeface = Typeface.create(Typeface.MONOSPACE, Typeface.BOLD)
             textAlign = Paint.Align.CENTER
             alpha = 190
         }
         val displayCode = if (config.codeValue.length > 28) config.codeValue.take(28) + "…" else config.codeValue
-        canvas.drawText(displayCode, cardWidth / 2f, qrTop + qrSize + 48f, codeValPaint)
+        val codeY = qrTop + qrSize + (cardHeight * 0.045f)
+        canvas.drawText(displayCode, cardWidth / 2f, codeY, codeValPaint)
 
         // Subtext / Instructions
         val subtextPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = config.fgColor
-            textSize = 28f
+            textSize = (cardHeight * 0.022f).coerceIn(13f, 26f)
             typeface = Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
             textAlign = Paint.Align.CENTER
         }
-        canvas.drawText(config.subtext.take(48), cardWidth / 2f, qrTop + qrSize + 104f, subtextPaint)
+        val subtextY = codeY + (cardHeight * 0.042f)
+        canvas.drawText(config.subtext.take(48), cardWidth / 2f, subtextY, subtextPaint)
 
         // App Branding Footer
         val brandPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = config.template.accentColor
-            textSize = 22f
+            textSize = (cardHeight * 0.018f).coerceIn(12f, 22f)
             typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
             textAlign = Paint.Align.CENTER
             alpha = 170
         }
-        canvas.drawText("✦ Rhythm & Focus — Offline Verified Alarm Mission ✦", cardWidth / 2f, cardHeight - borderMargin - 30f, brandPaint)
+        canvas.drawText("✦ Rhythm & Focus — Offline Verified Alarm Mission ✦", cardWidth / 2f, cardHeight - borderMargin - 16f, brandPaint)
 
         return bitmap
     }

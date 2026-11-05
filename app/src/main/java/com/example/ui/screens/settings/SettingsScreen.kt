@@ -1,5 +1,6 @@
 package com.example.ui.screens.settings
 
+import com.example.ui.AppDestination
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -563,14 +564,17 @@ fun SettingsScreen(
         }
 
         item {
+            val healthState by viewModel.healthConnectManager.uiState.collectAsStateWithLifecycle()
+            val cloudState by viewModel.cloudSyncManager.syncState.collectAsStateWithLifecycle()
+
             Card(
                 shape = RoundedCornerShape(18.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)),
-                modifier = Modifier.fillMaxWidth()
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                modifier = Modifier.fillMaxWidth().testTag("integrations_settings_card")
             ) {
                 Column(modifier = Modifier.padding(18.dp)) {
                     Text(
-                        text = "Integration Architecture Roadmap",
+                        text = "Verified Integrations & Storage Architecture",
                         style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
                         color = MaterialTheme.colorScheme.onSurface
                     )
@@ -579,22 +583,55 @@ fun SettingsScreen(
                     IntegrationStatusRow(
                         icon = Icons.Default.Storage,
                         title = "Local Room SQLite Persistence",
-                        status = "Active & Verified",
+                        status = "Active & Offline-First (Schema v11)",
                         isActive = true
                     )
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    IntegrationStatusRow(
+                        icon = Icons.Default.Favorite,
+                        title = "Google Health Connect",
+                        status = when (healthState.availability) {
+                            com.example.health.HealthConnectAvailability.AVAILABLE ->
+                                if (healthState.grantedPermissions.isNotEmpty()) "Active & Verified (${healthState.grantedPermissions.size} permissions)"
+                                else "Available • Tap to Authorize"
+                            com.example.health.HealthConnectAvailability.UPDATE_REQUIRED -> "Provider Update Required"
+                            else -> "Install from Play Store"
+                        },
+                        isActive = healthState.grantedPermissions.isNotEmpty()
+                    )
+
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.End
+                    ) {
+                        TextButton(
+                            onClick = { viewModel.navigateTo(AppDestination.HEALTH_CONNECT) },
+                            modifier = Modifier.testTag("settings_open_health_connect_button")
+                        ) {
+                            Text("Open Health Hub", color = MaterialTheme.colorScheme.primary)
+                        }
+                    }
+
                     Spacer(modifier = Modifier.height(8.dp))
                     IntegrationStatusRow(
                         icon = Icons.Default.CloudQueue,
                         title = "Firebase Cloud Firestore Sync",
-                        status = "Prepared for Phase 2",
-                        isActive = false
+                        status = when (cloudState.status) {
+                            com.example.sync.CloudSyncStatus.SYNC_SUCCESS -> "Connected & Synced"
+                            com.example.sync.CloudSyncStatus.AUTHENTICATED_IDLE -> "Authenticated • Ready"
+                            com.example.sync.CloudSyncStatus.SYNCING -> "Synchronizing..."
+                            else -> "Unprovisioned • Local Room Active"
+                        },
+                        isActive = (cloudState.status == com.example.sync.CloudSyncStatus.SYNC_SUCCESS || cloudState.status == com.example.sync.CloudSyncStatus.AUTHENTICATED_IDLE)
                     )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    IntegrationStatusRow(
-                        icon = Icons.Default.Favorite,
-                        title = "Android Health Connect",
-                        status = "Prepared for Phase 2",
-                        isActive = false
+
+                    Text(
+                        text = "All routines, sleep logs, alarms, and notes remain 100% offline-first and private in your device's local database. Cloud sync requires provisioning Firebase.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 8.dp)
                     )
                 }
             }
@@ -655,7 +692,7 @@ fun SettingsScreen(
             }
         }
 
-        item { Spacer(modifier = Modifier.height(32.dp)) }
+        item { Spacer(modifier = Modifier.height(100.dp)) }
     }
 
     if (showResetConfirmDialog) {
@@ -928,38 +965,41 @@ fun IntegrationStatusRow(
     isActive: Boolean
 ) {
     Surface(
-        shape = RoundedCornerShape(10.dp),
+        shape = RoundedCornerShape(12.dp),
         color = MaterialTheme.colorScheme.surface,
         modifier = Modifier.fillMaxWidth()
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(12.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+            modifier = Modifier.fillMaxWidth().padding(14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    tint = if (isActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline,
-                    modifier = Modifier.size(20.dp)
-                )
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-            }
-            Surface(
-                shape = RoundedCornerShape(6.dp),
-                color = if (isActive) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = if (isActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline,
+                modifier = Modifier.size(22.dp)
+            )
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 Text(
-                    text = status,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = if (isActive) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                    text = title,
+                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                    color = MaterialTheme.colorScheme.onSurface
                 )
+                Surface(
+                    shape = RoundedCornerShape(6.dp),
+                    color = if (isActive) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant
+                ) {
+                    Text(
+                        text = status,
+                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Medium),
+                        color = if (isActive) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                    )
+                }
             }
         }
     }

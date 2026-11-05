@@ -195,7 +195,11 @@ object CustomAlarmScheduler {
     }
 
     private fun matchesDay(repeatDays: String, dayAbbr: String): Boolean {
-        if (repeatDays.equals("DAILY", ignoreCase = true) || repeatDays.isBlank()) return true
+        if (repeatDays.equals("DAILY", ignoreCase = true) ||
+            repeatDays.equals("ONCE", ignoreCase = true) ||
+            repeatDays.equals("ONETIME", ignoreCase = true) ||
+            repeatDays.isBlank()
+        ) return true
         if (repeatDays.equals("WEEKDAYS", ignoreCase = true)) {
             return listOf("MON", "TUE", "WED", "THU", "FRI").contains(dayAbbr)
         }

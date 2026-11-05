@@ -58,25 +58,49 @@ val StateWarning = Color(0xFFD97706)
 val StateInfo = Color(0xFF3B82F6)
 val StateMuted = Color(0xFF6B7280)
 
-// OLED Pitch Black Scheme (Xiaomi Pad 7 & OLED Battery Optimized)
+// OLED Pitch Black & Dark Luxe Scheme (Modern, vibrant, battery-optimized)
 val OledBackground = Color(0xFF000000)
-val OledSurface = Color(0xFF000000)
-val OledSurfaceVariant = Color(0xFF141414)
-val OledOnBackground = Color(0xFFF3F4F6)
-val OledOnSurface = Color(0xFFF3F4F6)
-val OledOnSurfaceVariant = Color(0xFF9CA3AF)
-val OledPrimary = Color(0xFF2DD4BF) // Luminous Teal
-val OledOnPrimary = Color(0xFF003830)
-val OledPrimaryContainer = Color(0xFF0D3D36)
-val OledOnPrimaryContainer = Color(0xFF99F6E4)
-val OledSecondary = Color(0xFFA7F3D0) // Mint Sage
-val OledOnSecondary = Color(0xFF064E3B)
-val OledSecondaryContainer = Color(0xFF133E2F)
+val OledSurface = Color(0xFF0D110F)
+val OledSurfaceVariant = Color(0xFF131916)
+val OledSurfaceElevated = Color(0xFF1A221E)
+val OledOnBackground = Color(0xFFF8FAFC)
+val OledOnSurface = Color(0xFFF8FAFC)
+val OledOnSurfaceVariant = Color(0xFF94A3B8)
+
+// Primary accent: Vibrant Modern Emerald Mint (energetic, polished, legible)
+val OledPrimary = Color(0xFF10B981)
+val OledOnPrimary = Color(0xFF022C22)
+val OledPrimaryContainer = Color(0xFF064E3B)
+val OledOnPrimaryContainer = Color(0xFFA7F3D0)
+
+// Secondary accent: Sleek Sage Jade
+val OledSecondary = Color(0xFF34D399)
+val OledOnSecondary = Color(0xFF022C22)
+val OledSecondaryContainer = Color(0xFF065F46)
 val OledOnSecondaryContainer = Color(0xFFD1FAE5)
-val OledTertiary = Color(0xFFFDBA74) // Warm Amber
-val OledOnTertiary = Color(0xFF431407)
-val OledTertiaryContainer = Color(0xFF451A03)
-val OledOnTertiaryContainer = Color(0xFFFFEDD5)
-val OledOutline = Color(0xFF27272A)
-val OledOutlineVariant = Color(0xFF18181B)
+
+// Tertiary accent: Vibrant Warm Amber for timers, alerts, routines
+val OledTertiary = Color(0xFFF59E0B)
+val OledOnTertiary = Color(0xFF451A03)
+val OledTertiaryContainer = Color(0xFF78350F)
+val OledOnTertiaryContainer = Color(0xFFFEF3C7)
+
+// Luminous lavender for reflective & mindfulness accents
+val OledLavender = Color(0xFFA78BFA)
+
+// Neutral subtle borders & dividers
+val OledOutline = Color(0xFF24322A)
+val OledOutlineVariant = Color(0xFF17201B)
+
+// Dedicated Semantic Health & Wearable Metric Colors (consistent across all charts & dashboards)
+val HealthMetricSteps = Color(0xFF86B393)      // Soft Sage
+val HealthMetricSleep = Color(0xFF9D97C4)      // Gentle Lavender
+val HealthMetricHeart = Color(0xFFE27B7B)      // Soft Coral / Rose
+val HealthMetricRestingHeart = Color(0xFFE06666) // Deeper Crimson Rose
+val HealthMetricHrv = Color(0xFFA389D4)        // Violet
+val HealthMetricEnergy = Color(0xFFE5A970)     // Warm Amber
+val HealthMetricHydration = Color(0xFF76A9CF)  // Muted Sky Blue
+val HealthMetricOxygen = Color(0xFF67B5BE)     // Cyan Frost
+val HealthMetricRespiratory = Color(0xFF75BCA7) // Seafoam
+val HealthMetricExercise = Color(0xFF67B982)   // Fresh Green
 

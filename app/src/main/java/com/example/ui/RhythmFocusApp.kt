@@ -1,6 +1,14 @@
 package com.example.ui
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.FastOutLinearInEasing
+import androidx.compose.animation.core.LinearOutSlowInEasing
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -10,7 +18,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.ui.unit.sp
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Analytics
 import androidx.compose.material.icons.filled.Alarm
@@ -47,6 +57,8 @@ import com.example.ui.screens.health.HealthScreen
 import com.example.ui.screens.insights.InsightsScreen
 import com.example.ui.screens.routine.RoutineScreen
 import com.example.ui.screens.settings.SettingsScreen
+import com.example.ui.screens.study.FocusAestheticTheme
+import com.example.ui.screens.study.FullScreenFocusTimerScreen
 import com.example.ui.screens.study.StudyScreen
 import com.example.ui.screens.today.TodayScreen
 import com.example.util.DateTimeUtils
@@ -66,6 +78,9 @@ fun RhythmFocusApp(viewModel: MainViewModel) {
     val currentDestination by viewModel.currentDestination.collectAsStateWithLifecycle()
     val selectedDate by viewModel.selectedDate.collectAsStateWithLifecycle()
     val userFeedbackMessage by viewModel.userFeedbackMessage.collectAsStateWithLifecycle()
+    val isStudyFocusModeActive by viewModel.isStudyFocusModeActive.collectAsStateWithLifecycle()
+    val timerState by viewModel.timerState.collectAsStateWithLifecycle()
+    var currentAestheticTheme by remember { mutableStateOf(FocusAestheticTheme.ZEN_FOREST) }
 
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -83,8 +98,8 @@ fun RhythmFocusApp(viewModel: MainViewModel) {
         }
     }
 
-    // Handle system back navigation to return to TODAY tab
-    BackHandler(enabled = currentDestination != AppDestination.TODAY) {
+    // Handle system back navigation to return to TODAY tab when not in focus mode
+    BackHandler(enabled = !isStudyFocusModeActive && currentDestination != AppDestination.TODAY) {
         viewModel.navigateTo(AppDestination.TODAY)
     }
 
@@ -102,7 +117,18 @@ fun RhythmFocusApp(viewModel: MainViewModel) {
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
         val isExpandedScreen = maxWidth >= 600.dp
 
-        if (isExpandedScreen) {
+        if (isStudyFocusModeActive) {
+            // Immersive Full-Screen Focus Mode: 100% viewport coverage, zero sidebar or footer
+            FullScreenFocusTimerScreen(
+                timerState = timerState,
+                viewModel = viewModel,
+                currentTheme = currentAestheticTheme,
+                onSelectTheme = { currentAestheticTheme = it },
+                onExitFullScreen = { viewModel.setStudyFocusMode(false) },
+                onParkDistraction = { showGlobalQuickCapture = true },
+                modifier = Modifier.fillMaxSize()
+            )
+        } else if (isExpandedScreen) {
             // Tablet & Landscape Layout: Side NavigationRail + Main Content Area
             Row(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
                 NavigationRail(
@@ -214,11 +240,29 @@ fun RhythmFocusApp(viewModel: MainViewModel) {
                     ) {
                         navItems.forEach { item ->
                             val isSelected = currentDestination == item.destination
+                            val displayLabel = if (item.destination == AppDestination.MEDITATION) "Mind" else item.label
                             NavigationBarItem(
                                 selected = isSelected,
                                 onClick = { viewModel.navigateTo(item.destination) },
-                                icon = { Icon(item.icon, contentDescription = item.label) },
-                                label = { Text(item.label) },
+                                icon = {
+                                    Icon(
+                                        imageVector = item.icon,
+                                        contentDescription = item.label,
+                                        modifier = Modifier.size(22.dp)
+                                    )
+                                },
+                                label = {
+                                    Text(
+                                        text = displayLabel,
+                                        maxLines = 1,
+                                        softWrap = false,
+                                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                                        style = MaterialTheme.typography.labelSmall.copy(
+                                            fontSize = 11.sp,
+                                            fontWeight = if (isSelected) androidx.compose.ui.text.font.FontWeight.Bold else androidx.compose.ui.text.font.FontWeight.Medium
+                                        )
+                                    )
+                                },
                                 modifier = Modifier.testTag("bottom_nav_${item.label.lowercase()}")
                             )
                         }
@@ -260,17 +304,46 @@ fun AppScreenContent(
     viewModel: MainViewModel,
     isExpandedScreen: Boolean
 ) {
-    when (destination) {
-        AppDestination.TODAY -> TodayScreen(viewModel = viewModel, isExpandedScreen = isExpandedScreen)
-        AppDestination.ROUTINE -> RoutineScreen(viewModel = viewModel)
-        AppDestination.HEALTH -> HealthScreen(viewModel = viewModel)
-        AppDestination.STUDY -> StudyScreen(viewModel = viewModel)
-        AppDestination.MEDITATION -> com.example.ui.screens.meditation.MeditationScreen(viewModel = viewModel)
-        AppDestination.BRAIN_DUMP -> com.example.ui.screens.braindump.BrainDumpScreen(viewModel = viewModel)
-        AppDestination.REMINDERS -> com.example.ui.screens.reminders.ReminderCenterScreen(viewModel = viewModel)
-        AppDestination.ALARMS -> com.example.ui.screens.alarm.AlarmSectionScreen(viewModel = viewModel)
-        AppDestination.INSIGHTS -> InsightsScreen(viewModel = viewModel)
-        AppDestination.SETTINGS -> SettingsScreen(viewModel = viewModel)
+    AnimatedContent(
+        targetState = destination,
+        transitionSpec = {
+            (fadeIn(animationSpec = tween(180, easing = LinearOutSlowInEasing)) +
+                    scaleIn(initialScale = 0.985f, animationSpec = tween(180, easing = LinearOutSlowInEasing)))
+                .togetherWith(
+                    fadeOut(animationSpec = tween(120, easing = FastOutLinearInEasing))
+                )
+        },
+        label = "AppScreenTransition"
+    ) { targetDestination ->
+        when (targetDestination) {
+            AppDestination.TODAY -> TodayScreen(viewModel = viewModel, isExpandedScreen = isExpandedScreen)
+            AppDestination.ROUTINE -> RoutineScreen(viewModel = viewModel)
+            AppDestination.HEALTH -> HealthScreen(viewModel = viewModel)
+            AppDestination.HEALTH_CONNECT -> com.example.ui.screens.health.HealthConnectDashboardScreen(
+                viewModel = viewModel,
+                isExpandedScreen = isExpandedScreen,
+                onNavigateBack = { viewModel.navigateTo(AppDestination.TODAY) },
+                onNavigateSleepAnalytics = { viewModel.navigateTo(AppDestination.SLEEP_ANALYTICS) },
+                onNavigateHeartRateAnalytics = { viewModel.navigateTo(AppDestination.HEART_RATE_ANALYTICS) }
+            )
+            AppDestination.SLEEP_ANALYTICS -> com.example.ui.screens.health.SleepAnalyticsScreen(
+                viewModel = viewModel,
+                isExpandedScreen = isExpandedScreen,
+                onNavigateBack = { viewModel.navigateTo(AppDestination.HEALTH_CONNECT) }
+            )
+            AppDestination.HEART_RATE_ANALYTICS -> com.example.ui.screens.health.HeartRateAnalyticsScreen(
+                viewModel = viewModel,
+                isExpandedScreen = isExpandedScreen,
+                onNavigateBack = { viewModel.navigateTo(AppDestination.HEALTH_CONNECT) }
+            )
+            AppDestination.STUDY -> StudyScreen(viewModel = viewModel)
+            AppDestination.MEDITATION -> com.example.ui.screens.meditation.MeditationScreen(viewModel = viewModel)
+            AppDestination.BRAIN_DUMP -> com.example.ui.screens.braindump.BrainDumpScreen(viewModel = viewModel)
+            AppDestination.REMINDERS -> com.example.ui.screens.reminders.ReminderCenterScreen(viewModel = viewModel)
+            AppDestination.ALARMS -> com.example.ui.screens.alarm.AlarmSectionScreen(viewModel = viewModel)
+            AppDestination.INSIGHTS -> InsightsScreen(viewModel = viewModel)
+            AppDestination.SETTINGS -> SettingsScreen(viewModel = viewModel)
+        }
     }
 }
 

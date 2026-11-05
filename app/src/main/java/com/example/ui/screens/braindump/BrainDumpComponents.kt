@@ -68,6 +68,7 @@ import com.example.util.DateTimeUtils
 
 val BRAIN_DUMP_TAGS = listOf("Idea", "Study", "Todo", "Health", "Personal", "Distraction")
 
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 fun QuickCaptureDialog(
     noteToEdit: BrainDumpNoteEntity? = null,
@@ -181,8 +182,11 @@ fun QuickCaptureDialog(
                 )
 
                 Text("Tag", style = MaterialTheme.typography.labelSmall)
-                LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    items(BRAIN_DUMP_TAGS) { tag ->
+                androidx.compose.foundation.layout.FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    BRAIN_DUMP_TAGS.forEach { tag ->
                         FilterChip(
                             selected = selectedTag == tag,
                             onClick = { selectedTag = tag },

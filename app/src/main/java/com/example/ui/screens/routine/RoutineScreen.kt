@@ -75,6 +75,7 @@ fun RoutineScreen(
         modifier = modifier
             .fillMaxSize()
             .padding(horizontal = 16.dp),
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(top = 8.dp, bottom = 96.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         item {
@@ -97,8 +98,6 @@ fun RoutineScreen(
         item {
             CircadianNoticeCard()
         }
-
-        item { Spacer(modifier = Modifier.height(32.dp)) }
     }
 
     // Dialog for logging custom time & disruption notes

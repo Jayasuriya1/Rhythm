@@ -84,7 +84,11 @@ class CustomAlarmReceiver : BroadcastReceiver() {
 
                 // 5. Reschedule recurring alarm for next occurrence if enabled
                 if (alarm != null && alarm.isEnabled && !isBackup) {
-                    CustomAlarmScheduler.scheduleAlarm(context, alarm)
+                    if (alarm.repeatDays.equals("ONCE", ignoreCase = true) || alarm.repeatDays.equals("ONETIME", ignoreCase = true)) {
+                        db.customAlarmDao().setAlarmEnabled(alarm.id, false)
+                    } else {
+                        CustomAlarmScheduler.scheduleAlarm(context, alarm)
+                    }
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Error in CustomAlarmReceiver handling", e)

@@ -366,6 +366,9 @@ class CustomAlarmPlaybackService : Service() {
                 setSound(null, null) // Audio is handled independently by MediaPlayer
                 enableVibration(false)
                 lockscreenVisibility = Notification.VISIBILITY_PUBLIC
+                try {
+                    setBypassDnd(true)
+                } catch (_: Exception) {}
             }
             val manager = getSystemService(NotificationManager::class.java)
             manager.createNotificationChannel(channel)

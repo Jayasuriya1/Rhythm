@@ -34,6 +34,7 @@ class AppRepository(private val database: AppDatabase) {
     private val meditationDao = database.meditationDao()
     val customAlarmDao = database.customAlarmDao()
     val registeredCodeDao = database.registeredCodeDao()
+    val healthConnectDao = database.healthConnectDao()
 
     // Routine
     val routineAnchors: Flow<List<RoutineAnchorEntity>> = routineDao.getAllAnchors()
@@ -174,7 +175,23 @@ class AppRepository(private val database: AppDatabase) {
     val activeCategories: Flow<List<StudyCategoryEntity>> = studyCategoryDao.getActiveCategories()
 
     suspend fun ensureDefaultCategories() {
-        studyCategoryDao.insertDefaultCategories(AppDatabase.DEFAULT_CATEGORIES)
+        // 1. Instantly purge all duplicate records created by prior app runs
+        studyCategoryDao.deduplicateCategories()
+
+        // 2. Query distinct existing category names (case-insensitive)
+        val existingCategories = studyCategoryDao.getAllCategoriesSync()
+        val existingNames = existingCategories.map { it.name.trim().lowercase() }.toSet()
+
+        // 3. Only insert default categories that do not already exist
+        for (category in AppDatabase.DEFAULT_CATEGORIES) {
+            if (!existingNames.contains(category.name.trim().lowercase())) {
+                studyCategoryDao.insertCategory(category)
+            }
+        }
+    }
+
+    suspend fun cleanupDuplicateCategories() {
+        studyCategoryDao.deduplicateCategories()
     }
 
     suspend fun findCategoryByName(name: String): StudyCategoryEntity? {
@@ -573,6 +590,59 @@ class AppRepository(private val database: AppDatabase) {
 
     suspend fun updateRegisteredCodeScanned(id: Long) {
         registeredCodeDao.updateLastScanned(id, System.currentTimeMillis())
+    }
+
+    // Health Connect Imported Data Access
+    fun getHealthConnectSummary(date: String): Flow<com.example.data.entity.HealthConnectDailySummaryEntity?> {
+        return healthConnectDao.getSummaryForDate(date)
+    }
+
+    suspend fun getHealthConnectSummarySync(date: String): com.example.data.entity.HealthConnectDailySummaryEntity? {
+        return healthConnectDao.getSummaryForDateSync(date)
+    }
+
+    fun getHealthConnectSummariesInRange(startDate: String, endDate: String): Flow<List<com.example.data.entity.HealthConnectDailySummaryEntity>> {
+        return healthConnectDao.getSummariesInRange(startDate, endDate)
+    }
+
+    suspend fun getHealthConnectSummariesInRangeSync(startDate: String, endDate: String): List<com.example.data.entity.HealthConnectDailySummaryEntity> {
+        return healthConnectDao.getSummariesInRangeSync(startDate, endDate)
+    }
+
+    fun getRecentHealthConnectSummaries(limit: Int = 30): Flow<List<com.example.data.entity.HealthConnectDailySummaryEntity>> {
+        return healthConnectDao.getRecentSummaries(limit)
+    }
+
+    fun getHealthConnectSleepStages(date: String): Flow<List<com.example.data.entity.HealthConnectSleepStageEntity>> {
+        return healthConnectDao.getSleepStagesForDate(date)
+    }
+
+    suspend fun getHealthConnectSleepStagesSync(date: String): List<com.example.data.entity.HealthConnectSleepStageEntity> {
+        return healthConnectDao.getSleepStagesForDateSync(date)
+    }
+
+    fun getHealthConnectHeartSamples(date: String): Flow<List<com.example.data.entity.HealthConnectHeartSampleEntity>> {
+        return healthConnectDao.getHeartSamplesForDate(date)
+    }
+
+    suspend fun getHealthConnectHeartSamplesSync(date: String): List<com.example.data.entity.HealthConnectHeartSampleEntity> {
+        return healthConnectDao.getHeartSamplesForDateSync(date)
+    }
+
+    suspend fun saveHealthConnectData(
+        summary: com.example.data.entity.HealthConnectDailySummaryEntity,
+        sleepStages: List<com.example.data.entity.HealthConnectSleepStageEntity> = emptyList(),
+        heartSamples: List<com.example.data.entity.HealthConnectHeartSampleEntity> = emptyList()
+    ) {
+        healthConnectDao.upsertDailySummary(summary)
+        if (sleepStages.isNotEmpty()) {
+            healthConnectDao.deleteSleepStagesForDate(summary.date)
+            healthConnectDao.insertSleepStages(sleepStages)
+        }
+        if (heartSamples.isNotEmpty()) {
+            healthConnectDao.deleteHeartSamplesForDate(summary.date)
+            healthConnectDao.insertHeartSamples(heartSamples)
+        }
     }
 
     // Database Reset / Management for Settings

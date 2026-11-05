@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -574,22 +575,56 @@ fun MeditationScreen(
                         color = MaterialTheme.colorScheme.primary
                     )
 
-                    // 4 Selectable Audio Modes
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        MeditationAudioMode.values().forEach { mode ->
-                            val isSelected = audioMode == mode
-                            FilterChip(
-                                selected = isSelected,
-                                onClick = {
-                                    audioMode = mode
-                                    viewModel.setMeditationAudioMode(mode)
-                                },
-                                label = { Text(mode.displayName, style = MaterialTheme.typography.labelSmall) },
-                                modifier = Modifier.weight(1f)
-                            )
+                    // 4 Selectable Audio Modes (2x2 responsive grid)
+                    val allModes = MeditationAudioMode.values().toList()
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            allModes.take(2).forEach { mode ->
+                                val isSelected = audioMode == mode
+                                FilterChip(
+                                    selected = isSelected,
+                                    onClick = {
+                                        audioMode = mode
+                                        viewModel.setMeditationAudioMode(mode)
+                                    },
+                                    label = {
+                                        Text(
+                                            text = mode.displayName,
+                                            maxLines = 1,
+                                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                                            style = MaterialTheme.typography.labelSmall
+                                        )
+                                    },
+                                    modifier = Modifier.weight(1f)
+                                )
+                            }
+                        }
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            allModes.drop(2).forEach { mode ->
+                                val isSelected = audioMode == mode
+                                FilterChip(
+                                    selected = isSelected,
+                                    onClick = {
+                                        audioMode = mode
+                                        viewModel.setMeditationAudioMode(mode)
+                                    },
+                                    label = {
+                                        Text(
+                                            text = mode.displayName,
+                                            maxLines = 1,
+                                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                                            style = MaterialTheme.typography.labelSmall
+                                        )
+                                    },
+                                    modifier = Modifier.weight(1f)
+                                )
+                            }
                         }
                     }
 
@@ -738,17 +773,19 @@ fun MeditationScreen(
                         color = MaterialTheme.colorScheme.primary
                     )
 
-                    // Presets Row
-                    Row(
+                    // Presets Row (Scrollable to prevent squishing)
+                    LazyRow(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        listOf(
-                            "Box (4-4-4-4)" to listOf(4, 4, 4, 4),
-                            "4-7-8 Relax" to listOf(4, 7, 8, 0),
-                            "Calm (5-2-6)" to listOf(5, 2, 6, 0),
-                            "Natural (3-0-3)" to listOf(3, 0, 3, 0)
-                        ).forEach { (presetName, values) ->
+                        items(
+                            listOf(
+                                "Box (4-4-4-4)" to listOf(4, 4, 4, 4),
+                                "4-7-8 Relax" to listOf(4, 7, 8, 0),
+                                "Calm (5-2-6)" to listOf(5, 2, 6, 0),
+                                "Natural (3-0-3)" to listOf(3, 0, 3, 0)
+                            )
+                        ) { (presetName, values) ->
                             val isPresetMatch = inhaleSeconds == values[0] && holdInhaleSeconds == values[1] &&
                                     exhaleSeconds == values[2] && holdExhaleSeconds == values[3]
                             FilterChip(

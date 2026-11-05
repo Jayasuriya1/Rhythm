@@ -1,10 +1,20 @@
 package com.example.ui.screens.study
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -15,20 +25,23 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
+import androidx.compose.material.icons.filled.Air
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Coffee
+import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.Lightbulb
+import androidx.compose.material.icons.filled.Notes
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.ui.platform.LocalContext
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.material.icons.filled.SkipNext
+import androidx.compose.material.icons.filled.Spa
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -50,30 +63,46 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.data.model.TimerPhase
 import com.example.ui.MainViewModel
 import com.example.ui.TimerMode
 import com.example.ui.TimerState
+import com.example.util.ConcentrationSoundscapeHelper
+import com.example.util.SoundscapeType
+import com.example.util.StudyMusicPlayer
+import kotlin.math.cos
+import kotlin.math.sin
 
 /**
- * Phase 4 — Distraction-Free Full-Screen Study Timer Screen.
+ * 100% Immersive Full-Screen Focus Mode & Break Sanctuary.
+ *
  * Requirements:
- * - Highly readable, large timer
- * - Current study task & category
- * - Clear exit button (with BackHandler)
- * - Start, pause, resume, reset, finish controls
- * - Optional session notes input
- * - Minimal visual distractions
- * - Restores active state seamlessly from timestamp-anchored timer
+ * - Covers the entire display (overlays tablet NavigationRail & mobile footer)
+ * - Zero scroll: perfectly responsive proportional fit on phones & tablets
+ * - Custom Named Breaks with live countdown
+ * - Animated Visual Break Effects (Breathing Guide Pulse, Ambient Ripple, Zen Glow, Minimal)
+ * - Start, pause, resume, reset, finish & notes
+ * - Instant escape via BackHandler or close icon
  */
 @Composable
 fun FullScreenFocusTimerScreen(
     timerState: TimerState,
     viewModel: MainViewModel,
+    currentTheme: FocusAestheticTheme = FocusAestheticTheme.ZEN_FOREST,
+    onSelectTheme: (FocusAestheticTheme) -> Unit = {},
     onExitFullScreen: () -> Unit,
     onParkDistraction: () -> Unit,
     modifier: Modifier = Modifier
@@ -88,52 +117,78 @@ fun FullScreenFocusTimerScreen(
     val studyBreakStartSoundEnabled by viewModel.studyBreakStartSoundEnabled.collectAsStateWithLifecycle()
     val studyBreakEndSoundEnabled by viewModel.studyBreakEndSoundEnabled.collectAsStateWithLifecycle()
     val studyKeepScreenOnEnabled by viewModel.studyKeepScreenOnEnabled.collectAsStateWithLifecycle()
-    var showSoundSettingsDialog by remember { mutableStateOf(false) }
 
-    // Screen awake effect: prevents display timeout while focus or break timer is running
+    var showSoundSettingsDialog by remember { mutableStateOf(false) }
+    var showStudioDialog by remember { mutableStateOf(false) }
+    var showNotesDialog by remember { mutableStateOf(false) }
+    var sessionNotes by remember { mutableStateOf("") }
+    var showRecordConfirmation by remember { mutableStateOf(false) }
+
+    val activeSoundscape by ConcentrationSoundscapeHelper.currentSoundscape.collectAsStateWithLifecycle()
+    val isSoundscapePlaying by ConcentrationSoundscapeHelper.isPlaying.collectAsStateWithLifecycle()
+    val musicTitle by StudyMusicPlayer.currentTrackTitle.collectAsStateWithLifecycle()
+    val isMusicPlaying by StudyMusicPlayer.isPlaying.collectAsStateWithLifecycle()
+
+    // Screen awake effect: prevents display timeout while timer is active
     com.example.util.KeepScreenOnEffect(
         enabled = studyKeepScreenOnEnabled,
         isTimerActive = timerState.isRunning
     )
 
-    var showNotesField by remember { mutableStateOf(false) }
-    var sessionNotes by remember { mutableStateOf("") }
-    var showRecordConfirmation by remember { mutableStateOf(false) }
+    val isBreakActive = timerState.currentPhase == TimerPhase.SHORT_BREAK ||
+            timerState.currentPhase == TimerPhase.LONG_BREAK
 
-    val displaySeconds = if (timerState.mode == TimerMode.STOPWATCH) {
+    val activeBreak = timerState.activeBreakPoint
+    val breakEffect = activeBreak?.effectStyle ?: timerState.protocol.breakEffectStyle
+
+    val displaySeconds = if (isBreakActive) {
+        val totalBreakTarget = timerState.currentPhaseTargetSeconds + timerState.activeBreakExtensionSeconds
+        maxOf(0, totalBreakTarget - timerState.currentPhaseElapsedSeconds)
+    } else if (timerState.mode == TimerMode.STOPWATCH) {
         timerState.elapsedSeconds
     } else {
         timerState.remainingSeconds
     }
+
     val safeSeconds = maxOf(0, displaySeconds)
     val minutes = safeSeconds / 60
     val seconds = safeSeconds % 60
     val timeFormatted = String.format(java.util.Locale.getDefault(), "%02d:%02d", minutes, seconds)
 
-    val progress = if (timerState.targetSeconds > 0 && timerState.mode != TimerMode.STOPWATCH) {
+    val progress = if (isBreakActive) {
+        val totalBreakTarget = timerState.currentPhaseTargetSeconds + timerState.activeBreakExtensionSeconds
+        if (totalBreakTarget > 0) (timerState.currentPhaseElapsedSeconds.toFloat() / totalBreakTarget.toFloat()).coerceIn(0f, 1f) else 0f
+    } else if (timerState.targetSeconds > 0 && timerState.mode != TimerMode.STOPWATCH) {
         (timerState.elapsedSeconds.toFloat() / timerState.targetSeconds.toFloat()).coerceIn(0f, 1f)
     } else 0f
     val animatedProgress by animateFloatAsState(targetValue = progress, label = "progress")
 
-    Box(
+    BoxWithConstraints(
         modifier = modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
             .testTag("fullscreen_study_timer_screen")
     ) {
+        val isWideScreen = maxWidth >= 600.dp
+
+        // 1. Ambient Animated Background
+        AestheticBackdropCanvas(
+            theme = currentTheme,
+            isTimerRunning = timerState.isRunning
+        )
+
+        // 2. Main Content Container (No Scroll — Proportional Fit)
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 24.dp, vertical = 20.dp)
-                .verticalScroll(rememberScrollState()),
+                .padding(horizontal = 24.dp, vertical = 18.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.SpaceBetween
         ) {
-            // Top Bar: Exit button & Task context
+            // Top Bar: Status, Audio Controls & Close Button
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .widthIn(max = 600.dp),
+                    .widthIn(max = 700.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -148,11 +203,22 @@ fun FullScreenFocusTimerScreen(
                     ) {
                         Surface(
                             shape = CircleShape,
-                            color = if (timerState.isRunning) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline,
+                            color = when {
+                                isBreakActive -> Color(0xFF64B5F6)
+                                timerState.isRunning -> currentTheme.primaryAccent
+                                timerState.isPaused -> Color(0xFFFFB74D)
+                                else -> MaterialTheme.colorScheme.outline
+                            },
                             modifier = Modifier.size(8.dp)
                         ) {}
+                        val badgeText = when {
+                            isBreakActive -> if (timerState.currentPhase == TimerPhase.LONG_BREAK) "LONG BREAK" else "MICRO-BREAK"
+                            timerState.isRunning -> "FOCUS ACTIVE"
+                            timerState.isPaused -> "PAUSED"
+                            else -> "READY"
+                        }
                         Text(
-                            text = if (timerState.isRunning) "FOCUS ACTIVE" else if (timerState.isPaused) "PAUSED" else "READY",
+                            text = badgeText,
                             style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, letterSpacing = 1.sp),
                             color = MaterialTheme.colorScheme.onSurface
                         )
@@ -160,6 +226,17 @@ fun FullScreenFocusTimerScreen(
                 }
 
                 Row(verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(
+                        onClick = { showStudioDialog = true },
+                        modifier = Modifier.testTag("fullscreen_focus_studio_button")
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.GraphicEq,
+                            contentDescription = "Focus Studio & Music",
+                            tint = if (isSoundscapePlaying || isMusicPlaying) currentTheme.primaryAccent else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+
                     IconButton(
                         onClick = { showSoundSettingsDialog = true },
                         modifier = Modifier.testTag("fullscreen_sound_settings_button")
@@ -184,256 +261,191 @@ fun FullScreenFocusTimerScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Main Focus Body: Circular Progress Ring & High-Contrast Digits
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center,
-                modifier = Modifier.widthIn(max = 480.dp)
+            // Center Stage: Either Break Experience (with visual effects) or Focus Ring
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth(),
+                contentAlignment = Alignment.Center
             ) {
-                // Task Title & Category Badge
-                Text(
-                    text = timerState.selectedTaskTitle,
-                    style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
-                    color = MaterialTheme.colorScheme.onBackground,
-                    modifier = Modifier.padding(bottom = 6.dp)
-                )
-
-                Surface(
-                    shape = RoundedCornerShape(8.dp),
-                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
-                ) {
-                    Text(
-                        text = "${timerState.selectedCategory} • ${timerState.mode.title}",
-                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
-                        color = MaterialTheme.colorScheme.onPrimaryContainer,
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                if (isBreakActive) {
+                    BreakExperienceView(
+                        breakPoint = activeBreak,
+                        phase = timerState.currentPhase,
+                        timeFormatted = timeFormatted,
+                        safeSeconds = safeSeconds,
+                        effectStyle = breakEffect,
+                        accentColor = currentTheme.primaryAccent,
+                        onSkipBreak = { viewModel.skipBreak() },
+                        onExtendBreak = { secs -> viewModel.extendBreak(secs) }
+                    )
+                } else {
+                    FocusTimerCenterView(
+                        timerState = timerState,
+                        timeFormatted = timeFormatted,
+                        animatedProgress = animatedProgress,
+                        accentColor = currentTheme.primaryAccent,
+                        isWideScreen = isWideScreen
                     )
                 }
+            }
 
-                // Micro-break active banner
-                val isBreakActive = timerState.currentPhase == com.example.data.model.TimerPhase.SHORT_BREAK ||
-                        timerState.currentPhase == com.example.data.model.TimerPhase.LONG_BREAK
-                if (isBreakActive) {
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 8.dp),
-                        shape = RoundedCornerShape(14.dp),
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer)
+            // Bottom Actions & Controls (Non-scrolling, touch-friendly)
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .widthIn(max = 600.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                if (!isBreakActive) {
+                    // Focus Session Play/Pause/Reset Controls
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Column(
-                            modifier = Modifier.padding(12.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
+                        val hasRecordButton = timerState.elapsedSeconds > 30 || timerState.isCompleted
+                        if (timerState.isRunning) {
+                            FilledTonalButton(
+                                onClick = {
+                                    viewModel.pauseTimer()
+                                    StudyMusicPlayer.onStudyTimerPaused()
+                                },
+                                shape = RoundedCornerShape(16.dp),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(52.dp)
+                                    .testTag("fullscreen_pause_button")
+                            ) {
+                                Icon(Icons.Default.Pause, contentDescription = "Pause", modifier = Modifier.size(20.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text("Pause", style = MaterialTheme.typography.titleMedium, maxLines = 1)
+                            }
+                        } else {
+                            Button(
+                                onClick = {
+                                    viewModel.startTimer(context)
+                                    StudyMusicPlayer.onStudyTimerStarted()
+                                    if (activeSoundscape != SoundscapeType.NONE && !isSoundscapePlaying) {
+                                        ConcentrationSoundscapeHelper.playCurrent()
+                                    }
+                                },
+                                shape = RoundedCornerShape(16.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(52.dp)
+                                    .testTag("fullscreen_start_button")
+                            ) {
+                                Icon(Icons.Default.PlayArrow, contentDescription = "Start", modifier = Modifier.size(20.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    if (timerState.isPaused) "Resume" else "Start",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    maxLines = 1
+                                )
+                            }
+                        }
+
+                        FilledTonalButton(
+                            onClick = {
+                                viewModel.stopTimer()
+                                StudyMusicPlayer.onStudyTimerPaused()
+                            },
+                            shape = RoundedCornerShape(16.dp),
+                            modifier = Modifier
+                                .weight(if (hasRecordButton) 0.85f else 1f)
+                                .height(52.dp)
+                                .testTag("fullscreen_reset_button")
                         ) {
-                            Text(
-                                text = "🌿 ${timerState.currentPhase.displayName} in Progress",
-                                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
-                                color = MaterialTheme.colorScheme.onTertiaryContainer
-                            )
-                            val breakRem = maxOf(0, timerState.currentPhaseTargetSeconds - timerState.currentPhaseElapsedSeconds)
-                            val bMin = breakRem / 60
-                            val bSec = breakRem % 60
-                            Text(
-                                text = String.format(java.util.Locale.getDefault(), "Break Remaining: %02d:%02d", bMin, bSec),
-                                style = MaterialTheme.typography.bodyMedium.copy(fontFamily = FontFamily.Monospace),
-                                color = MaterialTheme.colorScheme.onTertiaryContainer
-                            )
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                OutlinedButton(
-                                    onClick = { viewModel.skipBreak() },
-                                    shape = RoundedCornerShape(8.dp),
-                                    modifier = Modifier.testTag("fullscreen_skip_break_button")
-                                ) {
-                                    Text("Skip Break", style = MaterialTheme.typography.labelSmall)
-                                }
-                                FilledTonalButton(
-                                    onClick = { viewModel.extendBreak(60) },
-                                    shape = RoundedCornerShape(8.dp),
-                                    modifier = Modifier.testTag("fullscreen_extend_break_1m_button")
-                                ) {
-                                    Text("+1m", style = MaterialTheme.typography.labelSmall)
-                                }
-                                FilledTonalButton(
-                                    onClick = { viewModel.extendBreak(300) },
-                                    shape = RoundedCornerShape(8.dp),
-                                    modifier = Modifier.testTag("fullscreen_extend_break_5m_button")
-                                ) {
-                                    Text("+5m", style = MaterialTheme.typography.labelSmall)
-                                }
+                            Icon(Icons.Default.Refresh, contentDescription = "Reset", modifier = Modifier.size(20.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Reset", style = MaterialTheme.typography.titleMedium, maxLines = 1)
+                        }
+
+                        if (hasRecordButton) {
+                            Button(
+                                onClick = { showRecordConfirmation = true },
+                                shape = RoundedCornerShape(16.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(52.dp)
+                                    .testTag("fullscreen_record_button")
+                            ) {
+                                Icon(Icons.Default.CheckCircle, contentDescription = "Record", modifier = Modifier.size(20.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text("Record", style = MaterialTheme.typography.titleMedium, maxLines = 1)
                             }
                         }
                     }
                 }
 
-                Spacer(modifier = Modifier.height(28.dp))
+                Spacer(modifier = Modifier.height(10.dp))
 
-                // Circular Progress + Digital Clock
-                Box(
-                    contentAlignment = Alignment.Center,
-                    modifier = Modifier.size(260.dp)
-                ) {
-                    if (timerState.mode != TimerMode.STOPWATCH) {
-                        CircularProgressIndicator(
-                            progress = { 1f },
-                            modifier = Modifier.fillMaxSize(),
-                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
-                            strokeWidth = 10.dp
-                        )
-                        CircularProgressIndicator(
-                            progress = { animatedProgress },
-                            modifier = Modifier.fillMaxSize(),
-                            color = if (timerState.isCompleted) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.primary,
-                            strokeWidth = 10.dp
-                        )
-                    }
-
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center
-                    ) {
-                        Text(
-                            text = timeFormatted,
-                            style = MaterialTheme.typography.displayLarge.copy(
-                                fontSize = 56.sp,
-                                fontFamily = FontFamily.Monospace,
-                                fontWeight = FontWeight.Bold,
-                                letterSpacing = 2.sp
-                            ),
-                            color = MaterialTheme.colorScheme.onBackground
-                        )
-
-                        Text(
-                            text = if (timerState.mode == TimerMode.STOPWATCH) "Elapsed Time" else "Remaining Time",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(32.dp))
-
-                // Primary Controls
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(16.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    if (timerState.isRunning) {
-                        FilledTonalButton(
-                            onClick = { viewModel.pauseTimer() },
-                            shape = RoundedCornerShape(16.dp),
-                            modifier = Modifier.height(52.dp).testTag("fullscreen_pause_button")
-                        ) {
-                            Icon(Icons.Default.Pause, contentDescription = "Pause", modifier = Modifier.size(24.dp))
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("Pause", style = MaterialTheme.typography.titleMedium)
-                        }
-                    } else {
-                        Button(
-                            onClick = { viewModel.startTimer(context) },
-                            shape = RoundedCornerShape(16.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
-                            modifier = Modifier.height(52.dp).testTag("fullscreen_start_button")
-                        ) {
-                            Icon(Icons.Default.PlayArrow, contentDescription = "Start", modifier = Modifier.size(24.dp))
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                if (timerState.isPaused) "Resume" else "Start Focus",
-                                style = MaterialTheme.typography.titleMedium
-                            )
-                        }
-                    }
-
-                    FilledTonalButton(
-                        onClick = { viewModel.stopTimer() },
-                        shape = RoundedCornerShape(16.dp),
-                        modifier = Modifier.height(52.dp).testTag("fullscreen_reset_button")
-                    ) {
-                        Icon(Icons.Default.Refresh, contentDescription = "Reset", modifier = Modifier.size(22.dp))
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text("Reset")
-                    }
-
-                    if (timerState.elapsedSeconds > 30 || timerState.isCompleted) {
-                        Button(
-                            onClick = { showRecordConfirmation = true },
-                            shape = RoundedCornerShape(16.dp),
-                            modifier = Modifier.height(52.dp).testTag("fullscreen_finish_button")
-                        ) {
-                            Icon(Icons.Default.CheckCircle, contentDescription = "Finish", modifier = Modifier.size(22.dp))
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text("Finish")
-                        }
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            // Bottom Actions: Notes & Thought Parking
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .widthIn(max = 500.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                if (showNotesField) {
-                    Card(
-                        shape = RoundedCornerShape(14.dp),
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Column(modifier = Modifier.padding(14.dp)) {
-                            OutlinedTextField(
-                                value = sessionNotes,
-                                onValueChange = { sessionNotes = it },
-                                label = { Text("Session Notes / Reflections") },
-                                placeholder = { Text("What did you solve or accomplish?") },
-                                minLines = 2,
-                                maxLines = 4,
-                                modifier = Modifier.fillMaxWidth().testTag("fullscreen_session_notes_input")
-                            )
-                        }
-                    }
-                } else {
-                    TextButton(
-                        onClick = { showNotesField = true },
-                        modifier = Modifier.testTag("fullscreen_add_notes_btn")
-                    ) {
-                        Text("+ Add Session Notes")
-                    }
-                }
-
+                // Bottom Meta Bar: Notes, Park Distraction, and Exit
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     TextButton(
+                        onClick = { showNotesDialog = true },
+                        modifier = Modifier.testTag("fullscreen_add_notes_btn")
+                    ) {
+                        Icon(Icons.Default.Notes, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(if (sessionNotes.isBlank()) "+ Session Notes" else "Edit Notes (${sessionNotes.length}c)", fontSize = 12.sp)
+                    }
+
+                    TextButton(
                         onClick = onParkDistraction,
                         modifier = Modifier.testTag("fullscreen_park_distraction_btn")
                     ) {
                         Icon(Icons.Default.Lightbulb, contentDescription = null, modifier = Modifier.size(16.dp))
                         Spacer(modifier = Modifier.width(6.dp))
-                        Text("Park Distraction (Brain Dump)")
+                        Text("Park Distraction", fontSize = 12.sp)
                     }
 
-                    TextButton(
-                        onClick = onExitFullScreen
-                    ) {
-                        Text("Exit Full Screen")
+                    TextButton(onClick = onExitFullScreen) {
+                        Text("Exit Focus Mode", fontSize = 12.sp)
                     }
                 }
             }
         }
     }
 
+    // Session Notes Modal Dialog
+    if (showNotesDialog) {
+        AlertDialog(
+            onDismissRequest = { showNotesDialog = false },
+            title = { Text("Study Session Notes") },
+            text = {
+                OutlinedTextField(
+                    value = sessionNotes,
+                    onValueChange = { sessionNotes = it },
+                    placeholder = { Text("What did you achieve, solve, or learn?") },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(130.dp),
+                    maxLines = 5
+                )
+            },
+            confirmButton = {
+                Button(onClick = { showNotesDialog = false }) {
+                    Text("Save Notes")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showNotesDialog = false }) {
+                    Text("Close")
+                }
+            }
+        )
+    }
+
     if (showRecordConfirmation) {
-        androidx.compose.material3.AlertDialog(
+        AlertDialog(
             onDismissRequest = { showRecordConfirmation = false },
             title = { Text("Finish & Save Session?") },
             text = {
@@ -478,5 +490,367 @@ fun FullScreenFocusTimerScreen(
             onPreviewSound = { type -> com.example.util.StudySoundHelper.previewSound(context, type) },
             onDismiss = { showSoundSettingsDialog = false }
         )
+    }
+
+    if (showStudioDialog) {
+        FocusBackdropAudioStudioDialog(
+            currentTheme = currentTheme,
+            onThemeSelected = onSelectTheme,
+            onDismiss = { showStudioDialog = false }
+        )
+    }
+}
+
+/**
+ * Break Experience: Displays the custom break name, calming screen effects,
+ * remaining break countdown, and quick extension/skip buttons.
+ */
+@Composable
+private fun BreakExperienceView(
+    breakPoint: com.example.data.model.BreakPoint?,
+    phase: TimerPhase,
+    timeFormatted: String,
+    safeSeconds: Int,
+    effectStyle: String,
+    accentColor: Color,
+    onSkipBreak: () -> Unit,
+    onExtendBreak: (Int) -> Unit
+) {
+    val breakLabel = breakPoint?.label ?: if (phase == TimerPhase.LONG_BREAK) "Section Recharge Break" else "Micro-Break"
+
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+        modifier = Modifier
+            .fillMaxWidth()
+            .widthIn(max = 480.dp)
+            .padding(12.dp)
+    ) {
+        // Break Title Badge
+        Surface(
+            shape = RoundedCornerShape(12.dp),
+            color = MaterialTheme.colorScheme.tertiaryContainer,
+            modifier = Modifier.padding(bottom = 12.dp)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp)
+            ) {
+                Icon(
+                    imageVector = if (phase == TimerPhase.LONG_BREAK) Icons.Default.Coffee else Icons.Default.Spa,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onTertiaryContainer,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = breakLabel,
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                    color = MaterialTheme.colorScheme.onTertiaryContainer,
+                    textAlign = TextAlign.Center
+                )
+            }
+        }
+
+        // Visual Break Screen Effect Centerpiece
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier
+                .size(240.dp)
+                .padding(8.dp)
+        ) {
+            when (effectStyle) {
+                "BREATHING_GUIDE" -> BreathingGuideEffect(accentColor)
+                "AMBIENT_RIPPLE" -> AmbientRippleEffect(accentColor)
+                "ZEN_GLOW" -> ZenGlowEffect(accentColor)
+                else -> MinimalBreakEffect(accentColor)
+            }
+
+            // High-Contrast Countdown Digits
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                Text(
+                    text = timeFormatted,
+                    style = MaterialTheme.typography.displayMedium.copy(
+                        fontFamily = FontFamily.Monospace,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 1.sp
+                    ),
+                    color = Color.White
+                )
+                Text(
+                    text = if (safeSeconds < 60) "${safeSeconds}s remaining" else "Rest & Step Away",
+                    fontSize = 12.sp,
+                    color = Color.White.copy(alpha = 0.85f)
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(14.dp))
+
+        // Quick Break Actions
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            OutlinedButton(
+                onClick = onSkipBreak,
+                shape = RoundedCornerShape(10.dp),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White),
+                border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.4f)),
+                modifier = Modifier.testTag("fullscreen_skip_break_button")
+            ) {
+                Icon(Icons.Default.SkipNext, contentDescription = null, modifier = Modifier.size(16.dp))
+                Spacer(modifier = Modifier.width(4.dp))
+                Text("Skip Break", fontSize = 12.sp)
+            }
+
+            FilledTonalButton(
+                onClick = { onExtendBreak(30) },
+                shape = RoundedCornerShape(10.dp),
+                modifier = Modifier.testTag("fullscreen_extend_break_30s_button")
+            ) {
+                Text("+30s", fontSize = 12.sp)
+            }
+
+            FilledTonalButton(
+                onClick = { onExtendBreak(60) },
+                shape = RoundedCornerShape(10.dp),
+                modifier = Modifier.testTag("fullscreen_extend_break_1m_button")
+            ) {
+                Text("+1m", fontSize = 12.sp)
+            }
+
+            FilledTonalButton(
+                onClick = { onExtendBreak(300) },
+                shape = RoundedCornerShape(10.dp),
+                modifier = Modifier.testTag("fullscreen_extend_break_5m_button")
+            ) {
+                Text("+5m", fontSize = 12.sp)
+            }
+        }
+    }
+}
+
+/**
+ * Animated Breathing Guide Circle with gentle expanding/contracting rhythm.
+ */
+@Composable
+private fun BreathingGuideEffect(accentColor: Color) {
+    val transition = rememberInfiniteTransition(label = "breathing")
+    val pulseScale by transition.animateFloat(
+        initialValue = 0.72f,
+        targetValue = 1.05f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 4000, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "pulse_scale"
+    )
+
+    Canvas(modifier = Modifier.fillMaxSize()) {
+        val center = Offset(size.width / 2f, size.height / 2f)
+        val baseRadius = (size.minDimension / 2f) * pulseScale
+
+        // Outer Glow
+        drawCircle(
+            brush = Brush.radialGradient(
+                colors = listOf(accentColor.copy(alpha = 0.35f), Color.Transparent),
+                center = center,
+                radius = baseRadius * 1.3f
+            ),
+            radius = baseRadius * 1.3f,
+            center = center
+        )
+
+        // Inner Circle Ring
+        drawCircle(
+            color = accentColor.copy(alpha = 0.5f),
+            radius = baseRadius,
+            center = center,
+            style = Stroke(width = 4.dp.toPx())
+        )
+    }
+}
+
+/**
+ * Concentric Ambient Ripple Waves Effect
+ */
+@Composable
+private fun AmbientRippleEffect(accentColor: Color) {
+    val transition = rememberInfiniteTransition(label = "ripple")
+    val rippleProgress by transition.animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 3000, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "ripple"
+    )
+
+    Canvas(modifier = Modifier.fillMaxSize()) {
+        val center = Offset(size.width / 2f, size.height / 2f)
+        val maxRadius = size.minDimension / 2f
+
+        for (i in 0..2) {
+            val progress = (rippleProgress + (i * 0.33f)) % 1f
+            val radius = maxRadius * progress
+            val alpha = (1f - progress) * 0.4f
+
+            drawCircle(
+                color = accentColor.copy(alpha = alpha),
+                radius = radius,
+                center = center,
+                style = Stroke(width = 3.dp.toPx())
+            )
+        }
+    }
+}
+
+/**
+ * Zen Starlight Ambient Glow Effect
+ */
+@Composable
+private fun ZenGlowEffect(accentColor: Color) {
+    val transition = rememberInfiniteTransition(label = "zen")
+    val rotation by transition.animateFloat(
+        initialValue = 0f,
+        targetValue = 360f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 10000, easing = LinearEasing)
+        ),
+        label = "zen_rotation"
+    )
+
+    Canvas(modifier = Modifier.fillMaxSize()) {
+        val center = Offset(size.width / 2f, size.height / 2f)
+        val radius = size.minDimension / 2.2f
+
+        drawCircle(
+            brush = Brush.sweepGradient(
+                colors = listOf(
+                    accentColor.copy(alpha = 0.6f),
+                    Color(0xFF818CF8).copy(alpha = 0.3f),
+                    Color(0xFF38BDF8).copy(alpha = 0.5f),
+                    accentColor.copy(alpha = 0.6f)
+                ),
+                center = center
+            ),
+            radius = radius,
+            center = center,
+            style = Stroke(width = 6.dp.toPx())
+        )
+    }
+}
+
+/**
+ * Minimalist Clean Progress Indicator
+ */
+@Composable
+private fun MinimalBreakEffect(accentColor: Color) {
+    Canvas(modifier = Modifier.fillMaxSize()) {
+        val center = Offset(size.width / 2f, size.height / 2f)
+        val radius = size.minDimension / 2.3f
+
+        drawCircle(
+            color = Color.White.copy(alpha = 0.2f),
+            radius = radius,
+            center = center,
+            style = Stroke(width = 4.dp.toPx())
+        )
+        drawCircle(
+            color = accentColor,
+            radius = radius,
+            center = center,
+            style = Stroke(width = 4.dp.toPx())
+        )
+    }
+}
+
+/**
+ * Center Focus View during active study sprints
+ */
+@Composable
+private fun FocusTimerCenterView(
+    timerState: TimerState,
+    timeFormatted: String,
+    animatedProgress: Float,
+    accentColor: Color,
+    isWideScreen: Boolean
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+        modifier = Modifier.widthIn(max = 500.dp)
+    ) {
+        // Task Title & Category Badge
+        Text(
+            text = timerState.selectedTaskTitle,
+            style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
+            color = Color.White,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.padding(bottom = 6.dp)
+        )
+
+        Surface(
+            shape = RoundedCornerShape(8.dp),
+            color = Color.White.copy(alpha = 0.15f)
+        ) {
+            Text(
+                text = "${timerState.selectedCategory} • ${timerState.mode.title}",
+                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+                color = Color.White.copy(alpha = 0.9f),
+                modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+            )
+        }
+
+        Spacer(modifier = Modifier.height(20.dp))
+
+        // Circular Progress Ring & High-Contrast Digits
+        val circleSize = if (isWideScreen) 250.dp else 220.dp
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier.size(circleSize)
+        ) {
+            if (timerState.mode != TimerMode.STOPWATCH) {
+                CircularProgressIndicator(
+                    progress = { 1f },
+                    modifier = Modifier.fillMaxSize(),
+                    color = Color.White.copy(alpha = 0.15f),
+                    strokeWidth = 8.dp
+                )
+                CircularProgressIndicator(
+                    progress = { animatedProgress },
+                    modifier = Modifier.fillMaxSize(),
+                    color = accentColor,
+                    strokeWidth = 8.dp
+                )
+            }
+
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                Text(
+                    text = timeFormatted,
+                    style = MaterialTheme.typography.displayLarge.copy(
+                        fontSize = if (isWideScreen) 54.sp else 46.sp,
+                        fontFamily = FontFamily.Monospace,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 2.sp
+                    ),
+                    color = Color.White
+                )
+
+                Text(
+                    text = if (timerState.mode == TimerMode.STOPWATCH) "Elapsed Focus" else "Remaining Focus",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color.White.copy(alpha = 0.75f)
+                )
+            }
+        }
     }
 }

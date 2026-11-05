@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -37,7 +38,12 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material.icons.filled.Unarchive
+import androidx.compose.material.icons.filled.GraphicEq
+import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.outlined.StarBorder
+import com.example.util.ConcentrationSoundscapeHelper
+import com.example.util.SoundscapeType
+import com.example.util.StudyMusicPlayer
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -111,6 +117,15 @@ fun StudyScreen(
     var showInterruptedSessionDialog by remember { mutableStateOf(false) }
     var showBrainDumpCaptureDialog by remember { mutableStateOf(false) }
     var showSoundSettingsDialog by remember { mutableStateOf(false) }
+    var showFocusStudioDialog by remember { mutableStateOf(false) }
+    var currentAestheticTheme by remember { mutableStateOf(FocusAestheticTheme.ZEN_FOREST) }
+
+    // Soundscape & Music Player states
+    val activeSoundscape by ConcentrationSoundscapeHelper.currentSoundscape.collectAsStateWithLifecycle()
+    val isSoundscapePlaying by ConcentrationSoundscapeHelper.isPlaying.collectAsStateWithLifecycle()
+    val activeMusicTitle by StudyMusicPlayer.currentTrackTitle.collectAsStateWithLifecycle()
+    val isMusicPlaying by StudyMusicPlayer.isPlaying.collectAsStateWithLifecycle()
+    val activeMusicUri by StudyMusicPlayer.currentTrackUri.collectAsStateWithLifecycle()
 
     // Screen awake effect: prevents display sleep during active focus when enabled
     com.example.util.KeepScreenOnEffect(
@@ -127,33 +142,65 @@ fun StudyScreen(
         }
     }
 
-    var isFullScreenFocusActive by remember { mutableStateOf(false) }
+    val filteredTasks = remember(tasks, selectedCategoryFilter) {
+        tasks.filter {
+            if (selectedCategoryFilter == "All") true else it.category.equals(selectedCategoryFilter, ignoreCase = true)
+        }
+    }
 
-    if (isFullScreenFocusActive) {
-        FullScreenFocusTimerScreen(
-            timerState = timerState,
-            viewModel = viewModel,
-            onExitFullScreen = { isFullScreenFocusActive = false },
-            onParkDistraction = { showBrainDumpCaptureDialog = true }
-        )
-    } else {
-        LazyColumn(
-            modifier = modifier
-                .fillMaxSize()
-                .padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
+    val distinctActiveCategories = remember(activeCategories) {
+        activeCategories.distinctBy { it.name.trim().lowercase() }
+    }
+
+    LazyColumn(
+        modifier = modifier
+            .fillMaxSize()
+            .padding(horizontal = 16.dp),
+        contentPadding = PaddingValues(bottom = 96.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
             // Focus Timer Card
             item {
                 FocusTimerCard(
                     timerState = timerState,
-                    onStart = { viewModel.startTimer(context) },
-                    onPause = { viewModel.pauseTimer() },
+                    activeTheme = currentAestheticTheme,
+                    activeSoundscape = activeSoundscape,
+                    activeMusicTitle = activeMusicTitle,
+                    isAudioPlaying = isSoundscapePlaying || isMusicPlaying,
+                    isMusicActive = activeMusicUri != null,
+                    onOpenStudio = { showFocusStudioDialog = true },
+                    onToggleSoundPlayback = {
+                        if (isSoundscapePlaying) {
+                            ConcentrationSoundscapeHelper.pause()
+                        } else if (isMusicPlaying) {
+                            StudyMusicPlayer.pause()
+                        } else {
+                            if (activeSoundscape != SoundscapeType.NONE) {
+                                ConcentrationSoundscapeHelper.playCurrent()
+                            } else if (activeMusicUri != null) {
+                                StudyMusicPlayer.play()
+                            } else {
+                                showFocusStudioDialog = true
+                            }
+                        }
+                    },
+                    onStart = {
+                        viewModel.startTimer(context)
+                        StudyMusicPlayer.onStudyTimerStarted()
+                        if (activeSoundscape != SoundscapeType.NONE && !isSoundscapePlaying) {
+                            ConcentrationSoundscapeHelper.playCurrent()
+                        }
+                    },
+                    onPause = {
+                        viewModel.pauseTimer()
+                        StudyMusicPlayer.onStudyTimerPaused()
+                    },
                     onReset = {
                         if (timerState.elapsedSeconds > 60) {
                             showInterruptedSessionDialog = true
                         } else {
                             viewModel.stopTimer()
+                            StudyMusicPlayer.onStudyTimerPaused()
                         }
                     },
                     onModeChange = { mode, defaultMins ->
@@ -168,7 +215,7 @@ fun StudyScreen(
                     },
                     onCompleteSession = { showSessionCompleteDialog = true },
                     onParkDistraction = { showBrainDumpCaptureDialog = true },
-                    onOpenFullScreen = { isFullScreenFocusActive = true },
+                    onOpenFullScreen = { viewModel.setStudyFocusMode(true) },
                     onOpenSoundSettings = { showSoundSettingsDialog = true },
                     onOpenProtocolConfig = { showProtocolConfigDialog = true },
                     onSkipBreak = { viewModel.skipBreak() },
@@ -184,14 +231,18 @@ fun StudyScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Study Priority & Tasks",
+                    text = "Tasks & Priorities",
                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                     color = MaterialTheme.colorScheme.onSurface
                 )
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                     FilledTonalButton(
                         onClick = { showCategoryManagerDialog = true },
                         shape = RoundedCornerShape(10.dp),
+                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
                         modifier = Modifier.testTag("manage_categories_button")
                     ) {
                         Icon(Icons.Default.Folder, contentDescription = null, modifier = Modifier.size(16.dp))
@@ -202,11 +253,12 @@ fun StudyScreen(
                     Button(
                         onClick = { showAddTaskDialog = true },
                         shape = RoundedCornerShape(10.dp),
+                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
                         modifier = Modifier.testTag("add_study_task_button")
                     ) {
                         Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text("New Task")
+                        Text("New Task", style = MaterialTheme.typography.labelSmall)
                     }
                 }
             }
@@ -214,11 +266,13 @@ fun StudyScreen(
 
         // Category Filter Chips
         item {
-            val filterOptions = listOf("All") + activeCategories.map { it.name }
+            val filterOptions = remember(distinctActiveCategories) {
+                listOf("All") + distinctActiveCategories.map { it.name }
+            }
             LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 items(filterOptions) { catName ->
                     val isSelected = selectedCategoryFilter == catName
-                    val catEntity = activeCategories.firstOrNull { it.name == catName }
+                    val catEntity = distinctActiveCategories.firstOrNull { it.name == catName }
                     val colorMarker = catEntity?.colorHex?.let { parseHexColor(it) } ?: MaterialTheme.colorScheme.primary
 
                     FilterChip(
@@ -238,11 +292,6 @@ fun StudyScreen(
                     )
                 }
             }
-        }
-
-        // Filtered Tasks List
-        val filteredTasks = tasks.filter {
-            if (selectedCategoryFilter == "All") true else it.category.equals(selectedCategoryFilter, ignoreCase = true)
         }
 
         if (filteredTasks.isEmpty()) {
@@ -331,12 +380,11 @@ fun StudyScreen(
 
         item { Spacer(modifier = Modifier.height(28.dp)) }
     }
-    }
 
     // Add Task Dialog
     if (showAddTaskDialog) {
         AddStudyTaskDialog(
-            activeCategories = activeCategories,
+            activeCategories = distinctActiveCategories,
             onDismiss = { showAddTaskDialog = false },
             onConfirm = { title, cat, mins, priority ->
                 viewModel.createStudyTask(title, cat, mins, priority)
@@ -476,6 +524,14 @@ fun StudyScreen(
                 showProtocolConfigDialog = false
             },
             onDismiss = { showProtocolConfigDialog = false }
+        )
+    }
+
+    if (showFocusStudioDialog) {
+        FocusBackdropAudioStudioDialog(
+            currentTheme = currentAestheticTheme,
+            onThemeSelected = { currentAestheticTheme = it },
+            onDismiss = { showFocusStudioDialog = false }
         )
     }
 }
@@ -660,6 +716,13 @@ private fun SoundSettingCard(
 @Composable
 fun FocusTimerCard(
     timerState: com.example.ui.TimerState,
+    activeTheme: FocusAestheticTheme = FocusAestheticTheme.ZEN_FOREST,
+    activeSoundscape: SoundscapeType = SoundscapeType.NONE,
+    activeMusicTitle: String? = null,
+    isAudioPlaying: Boolean = false,
+    isMusicActive: Boolean = false,
+    onOpenStudio: () -> Unit = {},
+    onToggleSoundPlayback: () -> Unit = {},
     onStart: () -> Unit,
     onPause: () -> Unit,
     onReset: () -> Unit,
@@ -675,11 +738,16 @@ fun FocusTimerCard(
     Card(
         shape = RoundedCornerShape(22.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
+            containerColor = activeTheme.cardBackground
         ),
         modifier = Modifier
             .fillMaxWidth()
             .padding(top = 8.dp)
+            .border(
+                1.dp,
+                activeTheme.primaryAccent.copy(alpha = 0.25f),
+                RoundedCornerShape(22.dp)
+            )
             .testTag("focus_timer_card")
     ) {
         Column(
@@ -786,16 +854,19 @@ fun FocusTimerCard(
                         modifier = Modifier.padding(12.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
+                        val breakLabel = timerState.activeBreakPoint?.label ?: timerState.currentPhase.displayName
                         Text(
-                            text = "🌿 ${timerState.currentPhase.displayName} in Progress",
+                            text = "🌿 $breakLabel in Progress",
                             style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
                             color = MaterialTheme.colorScheme.onTertiaryContainer
                         )
-                        val breakRem = maxOf(0, timerState.currentPhaseTargetSeconds - timerState.currentPhaseElapsedSeconds)
+                        val totalTarget = timerState.currentPhaseTargetSeconds + timerState.activeBreakExtensionSeconds
+                        val breakRem = maxOf(0, totalTarget - timerState.currentPhaseElapsedSeconds)
                         val bMin = breakRem / 60
                         val bSec = breakRem % 60
+                        val timeStr = if (breakRem < 60) "${bSec}s remaining" else String.format(java.util.Locale.getDefault(), "%02d:%02d remaining", bMin, bSec)
                         Text(
-                            text = String.format(java.util.Locale.getDefault(), "Break Remaining: %02d:%02d", bMin, bSec),
+                            text = "Break Remaining: $timeStr",
                             style = MaterialTheme.typography.bodyMedium.copy(fontFamily = FontFamily.Monospace),
                             color = MaterialTheme.colorScheme.onTertiaryContainer
                         )
@@ -807,6 +878,13 @@ fun FocusTimerCard(
                                 modifier = Modifier.testTag("skip_break_button")
                             ) {
                                 Text("Skip Break", style = MaterialTheme.typography.labelSmall)
+                            }
+                            FilledTonalButton(
+                                onClick = { onExtendBreak(30) },
+                                shape = RoundedCornerShape(8.dp),
+                                modifier = Modifier.testTag("extend_break_30s_button")
+                            ) {
+                                Text("+30s", style = MaterialTheme.typography.labelSmall)
                             }
                             FilledTonalButton(
                                 onClick = { onExtendBreak(60) },
@@ -876,52 +954,140 @@ fun FocusTimerCard(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Timer Buttons
+            // Timer Buttons - Responsive weighted layout so Record button never squishes
             Row(
-                horizontalArrangement = Arrangement.spacedBy(14.dp),
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                val hasRecordButton = timerState.elapsedSeconds > 30 || timerState.isCompleted
                 if (timerState.isRunning) {
                     FilledTonalButton(
                         onClick = onPause,
-                        shape = RoundedCornerShape(14.dp),
-                        modifier = Modifier.testTag("pause_timer_button")
+                        shape = RoundedCornerShape(12.dp),
+                        contentPadding = PaddingValues(horizontal = 6.dp, vertical = 8.dp),
+                        modifier = Modifier.weight(1f).testTag("pause_timer_button")
                     ) {
-                        Icon(Icons.Default.Pause, contentDescription = "Pause")
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text("Pause")
+                        Icon(Icons.Default.Pause, contentDescription = "Pause", modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Pause", maxLines = 1, style = MaterialTheme.typography.labelMedium)
                     }
                 } else {
                     Button(
                         onClick = onStart,
-                        shape = RoundedCornerShape(14.dp),
-                        modifier = Modifier.testTag("start_timer_button")
+                        shape = RoundedCornerShape(12.dp),
+                        contentPadding = PaddingValues(horizontal = 6.dp, vertical = 8.dp),
+                        modifier = Modifier.weight(1f).testTag("start_timer_button")
                     ) {
-                        Icon(Icons.Default.PlayArrow, contentDescription = "Start")
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(if (timerState.isPaused) "Resume" else "Start Focus")
+                        Icon(Icons.Default.PlayArrow, contentDescription = "Start", modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(if (timerState.isPaused) "Resume" else "Start", maxLines = 1, style = MaterialTheme.typography.labelMedium)
                     }
                 }
 
                 FilledTonalButton(
                     onClick = onReset,
-                    shape = RoundedCornerShape(14.dp),
-                    modifier = Modifier.testTag("reset_timer_button")
+                    shape = RoundedCornerShape(12.dp),
+                    contentPadding = PaddingValues(horizontal = 6.dp, vertical = 8.dp),
+                    modifier = Modifier.weight(if (hasRecordButton) 0.85f else 1f).testTag("reset_timer_button")
                 ) {
-                    Icon(Icons.Default.Refresh, contentDescription = "Reset")
+                    Icon(Icons.Default.Refresh, contentDescription = "Reset", modifier = Modifier.size(18.dp))
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("Reset")
+                    Text("Reset", maxLines = 1, style = MaterialTheme.typography.labelMedium)
                 }
 
-                if (timerState.elapsedSeconds > 30 || timerState.isCompleted) {
+                if (hasRecordButton) {
                     Button(
                         onClick = onCompleteSession,
-                        shape = RoundedCornerShape(14.dp),
-                        modifier = Modifier.testTag("complete_session_button")
+                        shape = RoundedCornerShape(12.dp),
+                        contentPadding = PaddingValues(horizontal = 6.dp, vertical = 8.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary
+                        ),
+                        modifier = Modifier.weight(1f).testTag("complete_session_button")
                     ) {
-                        Icon(Icons.Default.CheckCircle, contentDescription = "Record")
+                        Icon(Icons.Default.CheckCircle, contentDescription = "Record", modifier = Modifier.size(18.dp))
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text("Record")
+                        Text("Record", maxLines = 1, style = MaterialTheme.typography.labelMedium)
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            // Focus Backdrop Studio, Soundscape & Music Bar (Flocus & Wonderspace)
+            Surface(
+                onClick = onOpenStudio,
+                shape = RoundedCornerShape(12.dp),
+                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.85f),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("open_focus_studio_pill")
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 12.dp, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.GraphicEq,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Column {
+                            val soundscapeText = if (activeSoundscape != SoundscapeType.NONE) {
+                                "${activeSoundscape.iconEmoji} ${activeSoundscape.displayName}"
+                            } else if (!activeMusicTitle.isNullOrBlank() && activeMusicTitle != "No Song Selected") {
+                                "🎵 $activeMusicTitle"
+                            } else {
+                                "✨ Concentration Soundscapes & Music"
+                            }
+                            Text(
+                                text = soundscapeText,
+                                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+                                color = MaterialTheme.colorScheme.onSurface,
+                                maxLines = 1
+                            )
+                            Text(
+                                text = "Theme: ${activeTheme.displayName}",
+                                style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1
+                            )
+                        }
+                    }
+
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        if (activeSoundscape != SoundscapeType.NONE || isMusicActive) {
+                            IconButton(
+                                onClick = onToggleSoundPlayback,
+                                modifier = Modifier.size(32.dp)
+                            ) {
+                                Icon(
+                                    if (isAudioPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                                    contentDescription = "Toggle Audio",
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                        }
+                        FilledTonalButton(
+                            onClick = onOpenStudio,
+                            shape = RoundedCornerShape(8.dp),
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+                            modifier = Modifier.height(28.dp)
+                        ) {
+                            Text("Studio", style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp))
+                        }
                     }
                 }
             }
@@ -930,38 +1096,52 @@ fun FocusTimerCard(
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                TextButton(
+                OutlinedButton(
                     onClick = onParkDistraction,
-                    modifier = Modifier.testTag("park_distraction_button")
+                    shape = RoundedCornerShape(10.dp),
+                    contentPadding = PaddingValues(horizontal = 6.dp, vertical = 6.dp),
+                    modifier = Modifier.weight(1f).testTag("park_distraction_button")
                 ) {
                     Icon(Icons.Default.Lightbulb, contentDescription = null, modifier = Modifier.size(16.dp))
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("Park Thought", style = MaterialTheme.typography.labelSmall)
+                    Text(
+                        text = "Park",
+                        maxLines = 1,
+                        style = MaterialTheme.typography.labelSmall
+                    )
                 }
 
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    FilledTonalButton(
-                        onClick = onOpenSoundSettings,
-                        shape = RoundedCornerShape(10.dp),
-                        modifier = Modifier.testTag("study_sound_settings_button")
-                    ) {
-                        Icon(Icons.AutoMirrored.Filled.VolumeUp, contentDescription = null, modifier = Modifier.size(16.dp))
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("Signals", style = MaterialTheme.typography.labelSmall)
-                    }
+                FilledTonalButton(
+                    onClick = onOpenSoundSettings,
+                    shape = RoundedCornerShape(10.dp),
+                    contentPadding = PaddingValues(horizontal = 6.dp, vertical = 6.dp),
+                    modifier = Modifier.weight(1f).testTag("study_sound_settings_button")
+                ) {
+                    Icon(Icons.AutoMirrored.Filled.VolumeUp, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = "Signals",
+                        maxLines = 1,
+                        style = MaterialTheme.typography.labelSmall
+                    )
+                }
 
-                    FilledTonalButton(
-                        onClick = onOpenFullScreen,
-                        shape = RoundedCornerShape(10.dp),
-                        modifier = Modifier.testTag("open_fullscreen_timer_button")
-                    ) {
-                        Icon(Icons.Default.Timer, contentDescription = null, modifier = Modifier.size(16.dp))
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("Full-Screen", style = MaterialTheme.typography.labelSmall)
-                    }
+                FilledTonalButton(
+                    onClick = onOpenFullScreen,
+                    shape = RoundedCornerShape(10.dp),
+                    contentPadding = PaddingValues(horizontal = 6.dp, vertical = 6.dp),
+                    modifier = Modifier.weight(1.1f).testTag("open_fullscreen_timer_button")
+                ) {
+                    Icon(Icons.Default.Timer, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = "Focus Mode",
+                        maxLines = 1,
+                        style = MaterialTheme.typography.labelSmall
+                    )
                 }
             }
         }

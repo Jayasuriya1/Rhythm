@@ -23,7 +23,7 @@ class MainActivity : ComponentActivity() {
             override fun <T : ViewModel> create(modelClass: Class<T>): T {
                 val database = AppDatabase.getDatabase(applicationContext)
                 val repository = AppRepository(database)
-                return MainViewModel(repository) as T
+                return MainViewModel(repository, applicationContext) as T
             }
         }
     }
