@@ -8,6 +8,9 @@ plugins {
   alias(libs.plugins.google.services)
 }
 
+// Keep local AI Studio builds offline by default; CI can opt into Maven downloads.
+val robolectricOffline = providers.gradleProperty("robolectricOffline").orNull?.toBoolean() ?: true
+
 android {
   namespace = "com.example"
   compileSdk { version = release(36) { minorApiLevel = 1 } }
@@ -63,9 +66,6 @@ android {
     compose = true
     buildConfig = true
   }
-  // Keep the local AI Studio environment offline by default, but allow CI to
-  // download the matching Robolectric Android runtime from Maven Central.
-  val robolectricOffline = providers.gradleProperty("robolectricOffline").orNull?.toBoolean() ?: true
   testOptions {
     unitTests {
       isIncludeAndroidResources = true
