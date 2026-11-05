@@ -118,8 +118,7 @@ fun RoutineScreen(
             anchor = anchor,
             onDismiss = { selectedAnchorForEditTarget = null },
             onConfirm = { newTargetMinutes ->
-                // Update anchor in repository
-                viewModel.markRoutineDoneNow(anchor) // ensure state consistency
+                viewModel.updateRoutineAnchorTarget(anchor, newTargetMinutes)
                 selectedAnchorForEditTarget = null
             }
         )
