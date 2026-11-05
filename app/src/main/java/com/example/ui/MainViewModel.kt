@@ -535,6 +535,17 @@ class MainViewModel(
         }
     }
 
+    fun updateRoutineAnchorTarget(anchor: RoutineAnchorEntity, targetMinutes: Int) {
+        if (targetMinutes !in 0..1439) {
+            _userFeedbackMessage.value = "Choose a valid target time"
+            return
+        }
+        viewModelScope.launch {
+            repository.updateAnchor(anchor.copy(defaultTargetMinutes = targetMinutes))
+            _userFeedbackMessage.value = "${anchor.name} target updated to ${DateTimeUtils.formatMinutesToTime(targetMinutes)}"
+        }
+    }
+
     fun markRoutineCustomTime(anchor: RoutineAnchorEntity, actualMinutes: Int, notes: String?) {
         viewModelScope.launch {
             repository.saveRoutineEntry(
