@@ -9,6 +9,8 @@ import com.example.data.entity.BrainDumpNoteEntity
 import com.example.data.entity.ReminderEntity
 import com.example.data.entity.StudyTaskEntity
 import com.example.data.repository.AppRepository
+import com.example.sync.CloudSyncManager
+import com.example.sync.CloudSyncStatus
 import com.example.ui.MainViewModel
 import com.example.ui.TimerMode
 import com.example.util.AlarmScheduler
@@ -78,6 +80,20 @@ class ExampleRobolectricTest {
         assertTrue(anchorIds.contains("main_activity"))
         assertTrue(anchorIds.contains("dinner"))
         assertTrue(anchorIds.contains("getting_into_bed"))
+    }
+
+    @Test
+    fun `cloud sync remains unavailable and never reports false success`() = runTest {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val manager = CloudSyncManager(context, repository)
+
+        assertEquals(CloudSyncStatus.UNCONFIGURED, manager.syncState.value.status)
+
+        val result = manager.triggerManualSync()
+
+        assertTrue(result.isFailure)
+        assertEquals(CloudSyncStatus.UNCONFIGURED, manager.syncState.value.status)
+        assertEquals(null, manager.syncState.value.lastSyncTimestamp)
     }
 
     @Test
