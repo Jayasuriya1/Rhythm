@@ -1,45 +1,46 @@
 # F-Droid Readiness Audit — Initial Findings
 
 Date: 2026-11-05
-Status: source-level preliminary audit. No F-Droid build or metadata validation was run.
+Status: preliminary source audit; no F-Droid build or metadata validation was run.
 
-## Blockers / decisions required
+## Blockers / decisions
 
 ### 1. License file
-README says Apache 2.0, but the inspected repository tree has no root LICENSE file. Add the full license text and any required NOTICE/attribution material before submission. Confirm all bundled assets and dependencies are compatible.
+README declares Apache 2.0, but the inspected repository tree has no root LICENSE file. Add the full Apache-2.0 text and required attribution/NOTICE material. Verify all bundled assets and dependencies.
 
 ### 2. Application ID
-Current applicationId: com.aistudio.rhythmfocus.mnyrqp. This appears AI Studio generated. Choose a stable public package ID before first public release. Changing it after users install will be a different Android app and cannot update the existing installation.
+Current applicationId is com.aistudio.rhythmfocus.mnyrqp. Choose a stable public package ID before the first public release. Changing it later creates a different Android app and cannot update existing installs.
 
-### 3. Google/Firebase dependencies and plugins
-app/build.gradle.kts applies Google Services and Secrets plugins and includes Firebase AI, Firebase App Check Recaptcha and debug dependencies. The version catalog includes Firebase BOM and related libraries. Audit the complete resolved dependency graph and licenses. A separate F-Droid build flavor may be needed to exclude Google/Firebase-specific components and AI features. Do not assume a library is acceptable based on its wrapper alone.
+### 3. Google/Firebase dependencies
+app/build.gradle.kts applies Google Services and Secrets plugins and includes Firebase AI, Firebase App Check Recaptcha and debug dependencies. Audit the resolved dependency graph and licenses. A dedicated F-Droid flavor may be required to exclude Google/Firebase-specific components. Do not infer compatibility from the top-level artifact alone.
 
 ### 4. AI service and privacy
-metadata.json identifies a server-side Gemini API capability. .env.example documents GEMINI_API_KEY. Any AI feature that sends user text or other data off-device needs explicit opt-in, clear payload disclosure, privacy documentation and a no-AI offline fallback. Do not claim all personal data never leaves the device unless this is verified.
+metadata.json declares a server-side Gemini API capability and .env.example documents GEMINI_API_KEY. Any feature sending user content off-device needs explicit opt-in, payload disclosure, privacy documentation and offline fallback where feasible. The complete call path is not verified.
 
-### 5. Cloud sync is not implemented
-The inspected CloudSyncManager.triggerManualSync() returns SYNC_SUCCESS when Google Services is configured without performing data transfer or authentication. This must be corrected before any sync claim. For an offline-first F-Droid release, disable or omit this feature until genuine open and auditable sync is available.
+### 5. Cloud sync
+The original manual sync path falsely reported success without transfer. Current feature branch changes it to fail closed and report that cloud sync is not implemented. Keep it disabled until genuine authenticated, auditable sync exists.
 
 ### 6. Permissions
-Manifest declares exact alarms, full-screen intent, overlay, foreground services, wake lock, camera and Health Connect read permissions. Document the user-facing purpose of each, request in context, and remove unused permissions. F-Droid review may scrutinize permissions and background behavior.
+Manifest declares exact alarms, full-screen intent, overlay, foreground services, wake lock, camera and Health Connect read permissions. Document each user-facing purpose, request in context and remove unused permissions. Review background behavior and F-Droid policy.
 
 ### 7. Signing and secrets
-Release signing uses environment-provided secrets with a fallback keystore path; ensure no private keystore, API key or service config is committed. Check ignore rules and CI secrets. Never publish developer signing keys.
+Release signing uses environment-provided secrets with a fallback keystore path. Ensure no private keystore, API key or service configuration is committed. Verify ignore rules and CI secret handling.
 
-## Additional release checks
-- [ ] Confirm Apache-2.0 license and add LICENSE file.
-- [ ] Choose stable applicationId before first release.
-- [ ] Produce an F-Droid-specific variant without incompatible dependencies.
-- [ ] Inspect full resolved dependency tree and licenses.
-- [ ] Verify no trackers/analytics or undisclosed network traffic.
-- [ ] Document Gemini data flow and opt-in.
-- [ ] Disable fake cloud-sync status.
-- [ ] Review every manifest permission and background service.
-- [ ] Add F-Droid metadata (application ID, categories, summary, description, license, source, issue tracker, changelog).
+### 8. Reproducible build tooling
+The inspected tree contains gradle-wrapper.properties but no gradlew, gradlew.bat or gradle-wrapper.jar. Add and verify the standard wrapper or document a reproducible accepted build process. Do not assume wrapper commands work.
+
+## Additional checklist
+- [ ] Add full LICENSE and required notices.
+- [ ] Choose stable applicationId before public release.
+- [ ] Audit all resolved dependencies and licenses.
+- [ ] Add F-Droid flavor excluding incompatible dependencies/features if needed.
+- [ ] Review every manifest permission and network path.
+- [ ] Document Gemini data flow and explicit opt-in.
+- [ ] Keep cloud sync disabled until real implementation.
+- [ ] Add F-Droid metadata: package ID, categories, summary, description, license, source, issue tracker and changelog.
 - [ ] Verify reproducible build and source-build instructions.
-- [ ] Verify versionCode/versionName strategy and release signing.
-- [ ] Test clean install, upgrade and data preservation.
-- [ ] Verify app works without Google Play Services where claimed.
+- [ ] Verify clean install, upgrade and data preservation.
+- [ ] Verify offline functionality and operation without Google Play Services where claimed.
 
 References:
 - https://f-droid.org/en/docs/Inclusion_Policy/
