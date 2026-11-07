@@ -1549,7 +1549,9 @@ class ExampleRobolectricTest {
         val startWallClock = viewModel.timerState.value.startWallClockMillis
 
         // Park thought
-        viewModel.saveBrainDumpNote(
+        // Use the suspend save path so the assertion waits for Room persistence.
+        // The UI-facing saveBrainDumpNote launches asynchronously in viewModelScope.
+        viewModel.saveBrainDumpNoteSync(
             title = "Focus Distraction",
             content = "Pay credit card bill before midnight",
             tag = "Focus"
