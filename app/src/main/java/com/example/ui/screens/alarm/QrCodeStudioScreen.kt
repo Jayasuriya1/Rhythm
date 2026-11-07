@@ -138,6 +138,7 @@ fun QrCodeStudioScreen(
         QrCodeStudioUtil.calculateContrastRatio(currentConfig.fgColor, currentConfig.bgColor)
     }
     val isContrastGood = contrastRatio >= 4.5
+    val contrastStatusColor = if (isContrastGood) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
 
     LazyColumn(
         modifier = modifier
@@ -214,7 +215,7 @@ fun QrCodeStudioScreen(
 
                         // Contrast Safety Indicator
                         Surface(
-                            color = if (isContrastGood) Color(0xFF2E7D32).copy(alpha = 0.15f) else Color(0xFFC62828).copy(alpha = 0.15f),
+                            color = contrastStatusColor.copy(alpha = 0.14f),
                             shape = RoundedCornerShape(12.dp)
                         ) {
                             Row(
@@ -224,13 +225,13 @@ fun QrCodeStudioScreen(
                                 Icon(
                                     imageVector = if (isContrastGood) Icons.Default.Check else Icons.Default.Warning,
                                     contentDescription = null,
-                                    tint = if (isContrastGood) Color(0xFF2E7D32) else Color(0xFFC62828),
+                                    tint = contrastStatusColor,
                                     modifier = Modifier.size(12.dp)
                                 )
                                 Spacer(modifier = Modifier.width(4.dp))
                                 Text(
                                     text = if (isContrastGood) "Contrast Pass (%.1f:1)".format(contrastRatio) else "Low Contrast!",
-                                    color = if (isContrastGood) Color(0xFF2E7D32) else Color(0xFFC62828),
+                                    color = contrastStatusColor,
                                     fontSize = 10.sp,
                                     fontWeight = FontWeight.Bold
                                 )
