@@ -531,6 +531,7 @@ fun StudyScreen(
 
     if (showFocusStudioDialog) {
         FocusBackdropAudioStudioDialog(
+            viewModel = viewModel,
             currentTheme = currentAestheticTheme,
             onThemeSelected = { currentAestheticTheme = it },
             onDismiss = { showFocusStudioDialog = false }

@@ -256,6 +256,43 @@ class MainViewModel(
         .map { setting -> StudyProtocol.fromJson(setting?.value) }
         .stateIn(viewModelScope, SharingStarted.Eagerly, StudyProtocol())
 
+    // Focus Background Experience State (OLED, Curated Builtin, Custom Gallery Image)
+    val focusBgType: StateFlow<com.example.ui.screens.study.FocusBgType> = repository.getSetting("focus_bg_type")
+        .map { setting ->
+            setting?.value?.let {
+                try { com.example.ui.screens.study.FocusBgType.valueOf(it) } catch (_: Exception) { null }
+            } ?: com.example.ui.screens.study.FocusBgType.OLED
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), com.example.ui.screens.study.FocusBgType.OLED)
+
+    val focusBgBuiltinId: StateFlow<String> = repository.getSetting("focus_bg_builtin_id")
+        .map { it?.value ?: "minimal_oled" }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "minimal_oled")
+
+    val focusBgCustomUri: StateFlow<String?> = repository.getSetting("focus_bg_custom_uri")
+        .map { it?.value?.ifBlank { null } }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+
+    val focusBgOverlayOpacity: StateFlow<Float> = repository.getSetting("focus_bg_overlay_opacity")
+        .map { it?.value?.toFloatOrNull() ?: 0.60f }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0.60f)
+
+    val focusBgBrightness: StateFlow<Float> = repository.getSetting("focus_bg_brightness")
+        .map { it?.value?.toFloatOrNull() ?: 0.85f }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0.85f)
+
+    val focusBgBlur: StateFlow<Boolean> = repository.getSetting("focus_bg_blur")
+        .map { it?.value?.toBooleanStrictOrNull() ?: false }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+
+    val focusBgFit: StateFlow<String> = repository.getSetting("focus_bg_fit")
+        .map { it?.value ?: "CROP" }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "CROP")
+
+    val focusAmbientAnimationEnabled: StateFlow<Boolean> = repository.getSetting("focus_ambient_animation_enabled")
+        .map { it?.value?.toBooleanStrictOrNull() ?: true }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
+
     // App Theme Preference (OLED Pitch Black, Standard Dark, Light, Follow System)
     val appThemeMode: StateFlow<com.example.ui.theme.AppThemeMode> = repository.getSetting("app_theme_mode")
         .map { setting ->
@@ -1044,6 +1081,65 @@ class MainViewModel(
                 setTimerConfig(TimerMode.PROTOCOL, protocol.totalFocusMinutes)
             }
             _userFeedbackMessage.value = "Study protocol saved (${protocol.totalFocusMinutes}m, ${protocol.resolvedBreakPoints().size} breaks)"
+        }
+    }
+
+    fun setFocusBgType(type: com.example.ui.screens.study.FocusBgType) {
+        viewModelScope.launch {
+            repository.saveSetting("focus_bg_type", type.name)
+        }
+    }
+
+    fun setFocusBgBuiltinId(id: String) {
+        viewModelScope.launch {
+            repository.saveSetting("focus_bg_builtin_id", id)
+            repository.saveSetting("focus_bg_type", com.example.ui.screens.study.FocusBgType.BUILTIN.name)
+        }
+    }
+
+    fun setFocusBgCustomUri(uri: String?) {
+        viewModelScope.launch {
+            repository.saveSetting("focus_bg_custom_uri", uri ?: "")
+            if (!uri.isNullOrBlank()) {
+                repository.saveSetting("focus_bg_type", com.example.ui.screens.study.FocusBgType.CUSTOM.name)
+            }
+        }
+    }
+
+    fun clearFocusBgCustomUri() {
+        viewModelScope.launch {
+            repository.saveSetting("focus_bg_custom_uri", "")
+            repository.saveSetting("focus_bg_type", com.example.ui.screens.study.FocusBgType.OLED.name)
+        }
+    }
+
+    fun setFocusBgOverlayOpacity(opacity: Float) {
+        viewModelScope.launch {
+            repository.saveSetting("focus_bg_overlay_opacity", opacity.toString())
+        }
+    }
+
+    fun setFocusBgBrightness(brightness: Float) {
+        viewModelScope.launch {
+            repository.saveSetting("focus_bg_brightness", brightness.toString())
+        }
+    }
+
+    fun setFocusBgBlur(blur: Boolean) {
+        viewModelScope.launch {
+            repository.saveSetting("focus_bg_blur", blur.toString())
+        }
+    }
+
+    fun setFocusBgFit(fit: String) {
+        viewModelScope.launch {
+            repository.saveSetting("focus_bg_fit", fit)
+        }
+    }
+
+    fun setFocusAmbientAnimationEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            repository.saveSetting("focus_ambient_animation_enabled", enabled.toString())
         }
     }
 

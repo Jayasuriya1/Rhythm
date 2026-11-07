@@ -31,7 +31,7 @@ import org.robolectric.annotation.Config
 
 @OptIn(ExperimentalCoroutinesApi::class)
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [35])
+@Config(sdk = [36])
 class ExampleRobolectricTest {
 
     private lateinit var db: AppDatabase
@@ -1474,6 +1474,96 @@ class ExampleRobolectricTest {
         val state = syncManager.syncState.value
         assertEquals(com.example.sync.CloudSyncStatus.UNCONFIGURED, state.status)
         assertNotNull(state.errorMessage)
+    }
+
+    @Test
+    fun `focus aesthetic themes collection contains 10 curated themes with default minimal oled`() {
+        val themes = com.example.ui.screens.study.FocusAestheticTheme.values()
+        assertEquals(10, themes.size)
+
+        val defaultTheme = com.example.ui.screens.study.FocusAestheticTheme.MINIMAL_OLED
+        assertEquals("minimal_oled", defaultTheme.id)
+        assertEquals("Minimal OLED Black", defaultTheme.displayName)
+
+        // Check specific themes requested
+        val ids = themes.map { it.id }
+        assertTrue(ids.contains("minimal_oled"))
+        assertTrue(ids.contains("misty_forest"))
+        assertTrue(ids.contains("rainy_window"))
+        assertTrue(ids.contains("dark_bamboo"))
+        assertTrue(ids.contains("mountain_mist"))
+        assertTrue(ids.contains("quiet_ocean"))
+        assertTrue(ids.contains("starry_night"))
+        assertTrue(ids.contains("cozy_study"))
+        assertTrue(ids.contains("green_garden"))
+        assertTrue(ids.contains("soft_sunset"))
+
+        // Backward compatibility lookup
+        assertEquals(defaultTheme, com.example.ui.screens.study.FocusAestheticTheme.fromId(null))
+        assertEquals(com.example.ui.screens.study.FocusAestheticTheme.DARK_BAMBOO, com.example.ui.screens.study.FocusAestheticTheme.fromId("zen_forest"))
+    }
+
+    @Test
+    fun `focus background preferences persist and update cleanly in viewModel`() = runTest {
+        // Save builtin theme
+        repository.saveSetting("focus_bg_builtin_id", "misty_forest")
+        repository.saveSetting("focus_bg_type", com.example.ui.screens.study.FocusBgType.BUILTIN.name)
+        val savedBuiltin = repository.getSetting("focus_bg_builtin_id").first()
+        assertEquals("misty_forest", savedBuiltin?.value)
+        val savedType = repository.getSetting("focus_bg_type").first()
+        assertEquals(com.example.ui.screens.study.FocusBgType.BUILTIN.name, savedType?.value)
+
+        // Save custom URI
+        repository.saveSetting("focus_bg_custom_uri", "content://media/external/images/media/42")
+        repository.saveSetting("focus_bg_type", com.example.ui.screens.study.FocusBgType.CUSTOM.name)
+        val savedCustom = repository.getSetting("focus_bg_custom_uri").first()
+        assertEquals("content://media/external/images/media/42", savedCustom?.value)
+
+        // Adjust presentation controls
+        repository.saveSetting("focus_bg_overlay_opacity", "0.65")
+        repository.saveSetting("focus_bg_brightness", "0.90")
+        repository.saveSetting("focus_bg_blur", "true")
+        repository.saveSetting("focus_bg_fit", "FIT")
+        repository.saveSetting("focus_ambient_animation_enabled", "false")
+
+        assertEquals("0.65", repository.getSetting("focus_bg_overlay_opacity").first()?.value)
+        assertEquals("0.90", repository.getSetting("focus_bg_brightness").first()?.value)
+        assertEquals("true", repository.getSetting("focus_bg_blur").first()?.value)
+        assertEquals("FIT", repository.getSetting("focus_bg_fit").first()?.value)
+        assertEquals("false", repository.getSetting("focus_ambient_animation_enabled").first()?.value)
+
+        // Revert custom background to OLED
+        repository.saveSetting("focus_bg_custom_uri", "")
+        repository.saveSetting("focus_bg_type", com.example.ui.screens.study.FocusBgType.OLED.name)
+        assertEquals("", repository.getSetting("focus_bg_custom_uri").first()?.value)
+        assertEquals(com.example.ui.screens.study.FocusBgType.OLED.name, repository.getSetting("focus_bg_type").first()?.value)
+    }
+
+    @Test
+    fun `park a thought persists note to brain dump without mutating active timer draft`() = runTest {
+        val viewModel = MainViewModel(repository)
+        viewModel.setTimerConfig(TimerMode.POMODORO, 25)
+        viewModel.startTimer()
+
+        assertTrue(viewModel.timerState.value.isRunning)
+        val startWallClock = viewModel.timerState.value.startWallClockMillis
+
+        // Park thought
+        viewModel.saveBrainDumpNote(
+            title = "Focus Distraction",
+            content = "Pay credit card bill before midnight",
+            tag = "Focus"
+        )
+
+        // Verify note saved in Brain Dump table
+        val notes = repository.activeBrainDumpNotes.first()
+        val parked = notes.firstOrNull { it.content == "Pay credit card bill before midnight" }
+        assertNotNull(parked)
+        assertEquals("Focus", parked?.tag)
+
+        // Verify timer state is completely uninterrupted
+        assertTrue(viewModel.timerState.value.isRunning)
+        assertEquals(startWallClock, viewModel.timerState.value.startWallClockMillis)
     }
 }
 
