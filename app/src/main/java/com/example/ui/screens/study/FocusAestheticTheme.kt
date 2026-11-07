@@ -226,8 +226,16 @@ fun FocusBackgroundLayer(
                         .fillMaxSize()
                         .then(if (isBlurEnabled) Modifier.blur(16.dp) else Modifier)
 
+                    val imageModel = remember(customImageUri) {
+                        if (customImageUri.startsWith("content://") || customImageUri.startsWith("file://")) {
+                            Uri.parse(customImageUri)
+                        } else {
+                            java.io.File(customImageUri)
+                        }
+                    }
+
                     AsyncImage(
-                        model = Uri.parse(customImageUri),
+                        model = imageModel,
                         contentDescription = "Custom Focus Background",
                         contentScale = if (scaleMode.equals("FIT", ignoreCase = true)) ContentScale.Fit else ContentScale.Crop,
                         colorFilter = ColorFilter.colorMatrix(colorMatrix),

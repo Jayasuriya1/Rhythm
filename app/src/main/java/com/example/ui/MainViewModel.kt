@@ -293,6 +293,30 @@ class MainViewModel(
         .map { it?.value?.toBooleanStrictOrNull() ?: true }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
 
+    // Audio while studying in other apps (Off by default as required by specification)
+    val studyBackgroundAudioEnabled: StateFlow<Boolean> = repository.getSetting("study_background_audio_enabled")
+        .map { it?.value?.toBooleanStrictOrNull() ?: false }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+
+    // True Immersive Full-Screen Mode Preference (Enabled by default as required)
+    val studyImmersiveFullscreenEnabled: StateFlow<Boolean> = repository.getSetting("study_immersive_fullscreen_enabled")
+        .map { it?.value?.toBooleanStrictOrNull() ?: true }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
+
+    // Persistent Wallpapers Library JSON
+    val focusWallpapersList: StateFlow<String> = repository.getSetting("focus_wallpapers_list")
+        .map { it?.value ?: "[]" }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "[]")
+
+    // Wallpaper Slideshow Preference
+    val focusSlideshowEnabled: StateFlow<Boolean> = repository.getSetting("focus_slideshow_enabled")
+        .map { it?.value?.toBooleanStrictOrNull() ?: false }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+
+    val focusSlideshowIntervalMinutes: StateFlow<Int> = repository.getSetting("focus_slideshow_interval_minutes")
+        .map { it?.value?.toIntOrNull() ?: 5 }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 5)
+
     // App Theme Preference (OLED Pitch Black, Standard Dark, Light, Follow System)
     val appThemeMode: StateFlow<com.example.ui.theme.AppThemeMode> = repository.getSetting("app_theme_mode")
         .map { setting ->
@@ -375,6 +399,10 @@ class MainViewModel(
     val userFeedbackMessage: StateFlow<String?> = _userFeedbackMessage.asStateFlow()
 
     init {
+        try {
+            com.example.util.FocusAudioLifecycleManager.initialize(appContext)
+        } catch (_: Exception) {}
+
         viewModelScope.launch {
             repository.ensureDefaultAnchors()
             repository.ensureDefaultCategories()
@@ -383,6 +411,22 @@ class MainViewModel(
             repository.cleanupDuplicateReminders()
             restoreTimerStateFromDraft()
             refreshDatabaseIntegrityStats()
+        }
+
+        // Keep FocusAudioLifecycleManager background audio preference synchronized
+        viewModelScope.launch {
+            studyBackgroundAudioEnabled.collect { allowed ->
+                com.example.util.FocusAudioLifecycleManager.setBackgroundAudioAllowed(allowed)
+            }
+        }
+
+        // Keep persistent wallpapers list loaded in FocusWallpaperManager
+        viewModelScope.launch {
+            focusWallpapersList.collect { json ->
+                try {
+                    com.example.util.FocusWallpaperManager.loadWallpapers(appContext, json)
+                } catch (_: Exception) {}
+            }
         }
     }
 
@@ -540,7 +584,21 @@ class MainViewModel(
     }
 
     fun navigateTo(destination: AppDestination) {
+        val previous = _currentDestination.value
         _currentDestination.value = destination
+        if (previous == AppDestination.STUDY && destination != AppDestination.STUDY) {
+            com.example.util.FocusAudioLifecycleManager.onNavigatedAway(_timerState.value.isRunning)
+        } else if (previous != AppDestination.STUDY && destination == AppDestination.STUDY) {
+            com.example.util.FocusAudioLifecycleManager.onReturnedToStudy(_timerState.value.isRunning)
+        }
+    }
+
+    fun onAppBackgrounded() {
+        com.example.util.FocusAudioLifecycleManager.onAppBackgrounded(_timerState.value.isRunning)
+    }
+
+    fun onAppForegrounded() {
+        com.example.util.FocusAudioLifecycleManager.onAppForegrounded(_timerState.value.isRunning)
     }
 
     fun setSelectedDate(date: String) {
@@ -1147,6 +1205,37 @@ class MainViewModel(
         StudySoundHelper.previewSound(context, type)
     }
 
+    fun setStudyBackgroundAudioEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            repository.saveSetting("study_background_audio_enabled", enabled.toString())
+            com.example.util.FocusAudioLifecycleManager.setBackgroundAudioAllowed(enabled)
+        }
+    }
+
+    fun setStudyImmersiveFullscreenEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            repository.saveSetting("study_immersive_fullscreen_enabled", enabled.toString())
+        }
+    }
+
+    fun saveFocusWallpapersList(jsonString: String) {
+        viewModelScope.launch {
+            repository.saveSetting("focus_wallpapers_list", jsonString)
+        }
+    }
+
+    fun setFocusSlideshowEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            repository.saveSetting("focus_slideshow_enabled", enabled.toString())
+        }
+    }
+
+    fun setFocusSlideshowIntervalMinutes(mins: Int) {
+        viewModelScope.launch {
+            repository.saveSetting("focus_slideshow_interval_minutes", mins.coerceIn(1, 60).toString())
+        }
+    }
+
     fun startTimer(context: Context? = null) {
         if (_timerState.value.isRunning) return
 
@@ -1163,6 +1252,9 @@ class MainViewModel(
 
         persistTimerDraft()
         startTickerLoop()
+
+        // Sync Audio Lifecycle
+        com.example.util.FocusAudioLifecycleManager.onFocusTimerStarted()
 
         if (studyStartSoundEnabled.value) {
             _studySoundEvents.tryEmit(StudySoundType.SESSION_START)
@@ -1206,6 +1298,9 @@ class MainViewModel(
         }
 
         persistTimerDraft()
+
+        // Sync Audio Lifecycle: Immediately and idempotently pause all soundscapes & music
+        com.example.util.FocusAudioLifecycleManager.onFocusTimerPaused()
     }
 
     fun resumeTimer() {
@@ -1232,6 +1327,9 @@ class MainViewModel(
         viewModelScope.launch {
             repository.clearTimerDraft()
         }
+
+        // Sync Audio Lifecycle: Stop and release audio
+        com.example.util.FocusAudioLifecycleManager.onFocusTimerStopped()
     }
 
     fun skipBreak(context: Context? = null) {
@@ -1349,6 +1447,7 @@ class MainViewModel(
                                 currentPhase = TimerPhase.COMPLETED
                             )
                             persistTimerDraft()
+                            com.example.util.FocusAudioLifecycleManager.onFocusSessionCompleted()
                             if (studyEndSoundEnabled.value) {
                                 _studySoundEvents.tryEmit(StudySoundType.SESSION_END)
                             }
@@ -1378,6 +1477,7 @@ class MainViewModel(
                                 currentPhase = TimerPhase.COMPLETED
                             )
                             persistTimerDraft()
+                            com.example.util.FocusAudioLifecycleManager.onFocusSessionCompleted()
                             if (studyEndSoundEnabled.value) {
                                 _studySoundEvents.tryEmit(StudySoundType.SESSION_END)
                             }

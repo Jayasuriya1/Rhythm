@@ -14,18 +14,12 @@ import kotlinx.coroutines.launch
 import java.util.Random
 import kotlin.math.PI
 import kotlin.math.cos
-import kotlin.math.exp
 import kotlin.math.sin
 
 /**
- * Procedural ambient concentration soundscapes generator for deep focus and study.
- * Inspired by Flocus and Wonderspace.
- *
- * Highlights:
- * - 100% offline procedural PCM synthesis via hardware AudioTrack.MODE_STATIC.
- * - Zero internet / zero external audio assets required.
- * - Infinitely loops seamlessly with zero CPU load and zero audio popping.
- * - Independent volume and instant smooth switching.
+ * Curated authentic environmental soundscapes for deep focus and study.
+ * Designed with ADHD and mood stabilization in mind: non-jarring, seamless,
+ * organic audio synthesis with zero boundary clicks and zero network dependencies.
  */
 enum class SoundscapeType(
     val id: String,
@@ -35,19 +29,49 @@ enum class SoundscapeType(
     val vibeTag: String
 ) {
     NONE("none", "Mute Soundscape", "🔇", "Silence / Timer chimes only", "Silent"),
-    BROWN_NOISE("brown", "Deep Brown Noise", "🟤", "Heavy rumbling waterfall tone for ADHD & deep flow", "ADHD Focus"),
-    GENTLE_RAIN("rain", "Gentle Rain", "🌧️", "Soothing droplets tapping on autumn window leaves", "Cozy Calm"),
-    OCEAN_WAVES("ocean", "Midnight Ocean", "🌊", "Rhythmic Pacific tide swells washing on the shore", "Rhythm"),
-    FOREST_BREEZE("forest", "Zen Forest Breeze", "🌲", "Misty pine needles whispering in gentle mountain wind", "Clarity"),
-    COFFEE_SHOP("cafe", "Cozy Coffee House", "☕", "Warm low-frequency ambient murmur of a rainy cafe", "Warmth"),
-    WHITE_NOISE("white", "Pure White Noise", "⚪", "Crisp full-spectrum sound mask to block conversations", "Masking")
+    GENTLE_RAIN("rain", "Gentle Rain", "🌧️", "Natural steady rainfall soothing the mind", "Cozy Calm"),
+    RAIN_ON_WINDOW("rain_window", "Rain on Window", "🪟", "Raindrops tapping softly against glass in quiet twilight", "Comfort"),
+    FOREST_BIRDS("forest_birds", "Forest Birds", "🌲", "Misty pine needles whispering with gentle distant birdsong", "Clarity"),
+    FLOWING_RIVER("river", "Flowing River", "🌊", "Continuous natural water current washing away distraction", "Flow State"),
+    OCEAN_WAVES("ocean", "Ocean Waves", "🏖️", "Gentle rhythmic shoreline swells and peaceful tides", "Rhythm"),
+    FIREPLACE("fireplace", "Fireplace", "🔥", "Soft crackling hearth fire with gentle glowing embers", "Warmth"),
+    WIND_THROUGH_TREES("wind", "Wind Through Trees", "🍃", "Natural gust of wind through high mountain canopy", "Deep Rest"),
+    NIGHT_CRICKETS("crickets", "Night Crickets", "🦗", "Quiet nighttime meadow ambience under starry skies", "Night Calm"),
+    BROWN_NOISE("brown", "Brown Noise", "🟤", "Smooth, deep waterfall rumble ideal for ADHD & hyperfocus", "ADHD Focus"),
+    PINK_NOISE("pink", "Pink Noise", "🌸", "Balanced 1/f soothing frequency mask for background reading", "Masking");
+
+    companion object {
+        // Backward-compatibility aliases
+        val FOREST_BREEZE = WIND_THROUGH_TREES
+        val COFFEE_SHOP = FIREPLACE
+        val WHITE_NOISE = PINK_NOISE
+
+        fun fromId(id: String?): SoundscapeType {
+            if (id.isNullOrBlank()) return NONE
+            return values().firstOrNull { it.id.equals(id, ignoreCase = true) }
+                ?: when (id.lowercase()) {
+                    "forest" -> FOREST_BIRDS
+                    "cafe" -> FIREPLACE
+                    "white" -> PINK_NOISE
+                    else -> NONE
+                }
+        }
+    }
 }
 
+/**
+ * Procedural ambient concentration soundscapes generator.
+ * Highlights:
+ * - 100% offline procedural PCM synthesis via hardware AudioTrack.MODE_STATIC.
+ * - Infinitely loops seamlessly with zero CPU load and zero audio clicks.
+ * - Multi-stage digital filtering and Hann window crossfading.
+ * - Independent volume and instant smooth switching.
+ */
 object ConcentrationSoundscapeHelper {
 
     private const val TAG = "ConcentrationAudio"
     private const val SAMPLE_RATE = 22050
-    private const val DURATION_SECONDS = 4.0 // 4 second loop buffer
+    private const val DURATION_SECONDS = 5.0 // 5-second seamless buffer
     private val TOTAL_SAMPLES = (SAMPLE_RATE * DURATION_SECONDS).toInt()
 
     private val _currentSoundscape = MutableStateFlow(SoundscapeType.NONE)
@@ -95,7 +119,7 @@ object ConcentrationSoundscapeHelper {
             pause()
         } else {
             if (_currentSoundscape.value == SoundscapeType.NONE) {
-                selectSoundscape(SoundscapeType.BROWN_NOISE, autoPlay = true)
+                selectSoundscape(SoundscapeType.GENTLE_RAIN, autoPlay = true)
             } else {
                 playCurrent()
             }
@@ -110,8 +134,8 @@ object ConcentrationSoundscapeHelper {
         synthesisJob = scope.launch {
             try {
                 val samples = generateSamplesForType(type)
-                // Window the start and end of the buffer (smooth 50ms cosine fade) to guarantee click-free seamless loop
-                applyCrossfadeWindow(samples, (SAMPLE_RATE * 0.05).toInt())
+                // Window the start and end of the buffer (smooth 60ms cosine fade) to guarantee click-free seamless loop
+                applyCrossfadeWindow(samples, (SAMPLE_RATE * 0.06).toInt())
 
                 val track = AudioTrack.Builder()
                     .setAudioAttributes(
@@ -168,101 +192,188 @@ object ConcentrationSoundscapeHelper {
         val random = Random(42)
 
         when (type) {
-            SoundscapeType.BROWN_NOISE -> {
-                // Leaky integrator low-pass filter on white noise gives 1/f^2 Brown Noise
-                var accumulator = 0f
+            SoundscapeType.GENTLE_RAIN -> {
+                // Natural steady rain: dual pink-noise floor with Poisson-distributed droplet impulses
+                var pink1 = 0f
+                var pink2 = 0f
                 for (i in 0 until TOTAL_SAMPLES) {
-                    val white = (random.nextFloat() * 2f - 1f)
-                    accumulator = (accumulator + 0.035f * white) * 0.965f
-                    val sample = (accumulator * 0.38f * Short.MAX_VALUE).toInt()
-                    buffer[i] = sample.coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt()).toShort()
+                    val white = random.nextFloat() * 2f - 1f
+                    pink1 = pink1 * 0.94f + white * 0.06f
+                    pink2 = pink2 * 0.82f + white * 0.18f
+                    var sampleVal = (pink1 + pink2) * 0.48f
+
+                    // Soft droplet spatters
+                    if (random.nextFloat() < 0.003f) {
+                        val freq = 750.0 + random.nextDouble() * 950.0
+                        val droplet = sin(2.0 * PI * freq * (i.toDouble() / SAMPLE_RATE))
+                        sampleVal += (droplet * 0.22).toFloat()
+                    }
+
+                    val amp = (sampleVal * 0.38f * Short.MAX_VALUE).toInt()
+                    buffer[i] = amp.coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt()).toShort()
                 }
             }
 
-            SoundscapeType.GENTLE_RAIN -> {
-                // Rain = Pink noise base + Poisson random water droplet impulse resonances
-                var pinkAccum1 = 0f
-                var pinkAccum2 = 0f
+            SoundscapeType.RAIN_ON_WINDOW -> {
+                // Rain on glass: sharper mid-frequency impact taps over quiet ambient rain
+                var pink = 0f
                 for (i in 0 until TOTAL_SAMPLES) {
-                    val white = (random.nextFloat() * 2f - 1f)
-                    pinkAccum1 = pinkAccum1 * 0.95f + white * 0.05f
-                    pinkAccum2 = pinkAccum2 * 0.85f + white * 0.15f
-                    var sampleVal = (pinkAccum1 + pinkAccum2) * 0.5f
+                    val white = random.nextFloat() * 2f - 1f
+                    pink = pink * 0.92f + white * 0.08f
+                    var sampleVal = pink * 0.42f
 
-                    // Random droplet splatters
-                    if (random.nextFloat() < 0.0035f) {
-                        val dropletFreq = 800.0 + random.nextDouble() * 1200.0
-                        val dropletPhase = sin(2.0 * PI * dropletFreq * (i.toDouble() / SAMPLE_RATE))
-                        sampleVal += (dropletPhase * 0.28).toFloat()
+                    // Crisp window pane water clicks
+                    if (random.nextFloat() < 0.0045f) {
+                        val freq = 1200.0 + random.nextDouble() * 1600.0
+                        val click = sin(2.0 * PI * freq * (i.toDouble() / SAMPLE_RATE))
+                        sampleVal += (click * 0.32).toFloat()
                     }
 
-                    val amplitude = (sampleVal * 0.35f * Short.MAX_VALUE).toInt()
-                    buffer[i] = amplitude.coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt()).toShort()
+                    val amp = (sampleVal * 0.36f * Short.MAX_VALUE).toInt()
+                    buffer[i] = amp.coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt()).toShort()
+                }
+            }
+
+            SoundscapeType.FOREST_BIRDS -> {
+                // Misty pine breeze with natural subtle bird calls
+                var windAccum = 0f
+                for (i in 0 until TOTAL_SAMPLES) {
+                    val time = i.toDouble() / SAMPLE_RATE
+                    val white = random.nextFloat() * 2f - 1f
+                    windAccum = windAccum * 0.985f + white * 0.015f
+                    val gust = 0.5f + 0.5f * sin(2.0 * PI * 0.28 * time)
+                    var sampleVal = windAccum * gust.toFloat() * 0.55f
+
+                    // Distant subtle bird chirps (harmonic FM bursts)
+                    val birdWindow = (time % 2.5) in 0.8..1.0
+                    if (birdWindow) {
+                        val birdFreq = 2600.0 + 400.0 * sin(2.0 * PI * 12.0 * time)
+                        val chirp = sin(2.0 * PI * birdFreq * time) * 0.15
+                        sampleVal += chirp.toFloat()
+                    }
+
+                    val amp = (sampleVal * 0.50f * Short.MAX_VALUE).toInt()
+                    buffer[i] = amp.coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt()).toShort()
+                }
+            }
+
+            SoundscapeType.FLOWING_RIVER -> {
+                // Continuous turbulent water flow: dual-band lowpass noise with rhythmic gurgles
+                var riverLow = 0f
+                var riverMid = 0f
+                for (i in 0 until TOTAL_SAMPLES) {
+                    val time = i.toDouble() / SAMPLE_RATE
+                    val white = random.nextFloat() * 2f - 1f
+                    riverLow = riverLow * 0.96f + white * 0.04f
+                    riverMid = riverMid * 0.88f + white * 0.12f
+                    val gurgleMod = 0.7f + 0.3f * sin(2.0 * PI * 1.8 * time).toFloat()
+                    val sampleVal = (riverLow * 0.6f + riverMid * 0.4f * gurgleMod) * 0.52f
+                    val amp = (sampleVal * Short.MAX_VALUE).toInt()
+                    buffer[i] = amp.coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt()).toShort()
                 }
             }
 
             SoundscapeType.OCEAN_WAVES -> {
-                // Waves = Brown/Pink noise with slow sinusoidal surge modulation (~0.25 Hz surge)
+                // Ocean waves: Brown noise with slow 3.5s tide swell envelope
                 var brownAccum = 0f
                 val wavePeriodSeconds = 3.5
                 for (i in 0 until TOTAL_SAMPLES) {
                     val time = i.toDouble() / SAMPLE_RATE
-                    val white = (random.nextFloat() * 2f - 1f)
-                    brownAccum = (brownAccum + 0.03f * white) * 0.97f
-
-                    // Wave swell envelope
-                    val swell = 0.45 + 0.55 * (0.5 * (1.0 + sin(2.0 * PI * (1.0 / wavePeriodSeconds) * time)))
+                    val white = random.nextFloat() * 2f - 1f
+                    brownAccum = (brownAccum + 0.032f * white) * 0.968f
+                    val swell = 0.40 + 0.60 * (0.5 * (1.0 + sin(2.0 * PI * (1.0 / wavePeriodSeconds) * time)))
                     val sampleVal = brownAccum * swell.toFloat()
-                    val amplitude = (sampleVal * 0.42f * Short.MAX_VALUE).toInt()
-                    buffer[i] = amplitude.coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt()).toShort()
+                    val amp = (sampleVal * 0.44f * Short.MAX_VALUE).toInt()
+                    buffer[i] = amp.coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt()).toShort()
                 }
             }
 
-            SoundscapeType.FOREST_BREEZE -> {
-                // Breeze = Resonant filtered wind with slow gust envelope
+            SoundscapeType.FIREPLACE -> {
+                // Cozy crackling hearth: warm low rumble with ember crackle snaps
+                var hearthRumble = 0f
+                for (i in 0 until TOTAL_SAMPLES) {
+                    val white = random.nextFloat() * 2f - 1f
+                    hearthRumble = (hearthRumble + 0.02f * white) * 0.98f
+                    var sampleVal = hearthRumble * 0.35f
+
+                    // Ember pop / snap impulses
+                    if (random.nextFloat() < 0.0018f) {
+                        val pop = (random.nextFloat() * 2f - 1f) * 0.55f
+                        sampleVal += pop
+                    }
+
+                    val amp = (sampleVal * 0.45f * Short.MAX_VALUE).toInt()
+                    buffer[i] = amp.coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt()).toShort()
+                }
+            }
+
+            SoundscapeType.WIND_THROUGH_TREES -> {
+                // Resonant wind through high mountain canopy with slow gust envelope
                 var windAccum = 0f
                 for (i in 0 until TOTAL_SAMPLES) {
                     val time = i.toDouble() / SAMPLE_RATE
-                    val white = (random.nextFloat() * 2f - 1f)
+                    val white = random.nextFloat() * 2f - 1f
                     windAccum = windAccum * 0.985f + white * 0.015f
-
                     val gust = 0.55 + 0.45 * sin(2.0 * PI * 0.35 * time)
                     val sampleVal = windAccum * gust.toFloat()
-                    val amplitude = (sampleVal * 0.65f * Short.MAX_VALUE).toInt()
-                    buffer[i] = amplitude.coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt()).toShort()
+                    val amp = (sampleVal * 0.65f * Short.MAX_VALUE).toInt()
+                    buffer[i] = amp.coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt()).toShort()
                 }
             }
 
-            SoundscapeType.COFFEE_SHOP -> {
-                // Warm ambient cafe hum: gentle low-mid band murmur
-                var cafeAccum = 0f
+            SoundscapeType.NIGHT_CRICKETS -> {
+                // Peaceful nighttime air with rhythmic cricket chirping pulses
+                var airFloor = 0f
                 for (i in 0 until TOTAL_SAMPLES) {
-                    val white = (random.nextFloat() * 2f - 1f)
-                    cafeAccum = cafeAccum * 0.92f + white * 0.08f
-                    var sampleVal = cafeAccum * 0.65f
+                    val time = i.toDouble() / SAMPLE_RATE
+                    val white = random.nextFloat() * 2f - 1f
+                    airFloor = (airFloor + 0.01f * white) * 0.99f
+                    var sampleVal = airFloor * 0.25f
 
-                    // Gentle subtle warm clinks
-                    if (random.nextFloat() < 0.0006f) {
-                        val clink = sin(2.0 * PI * 2200.0 * (i.toDouble() / SAMPLE_RATE))
-                        sampleVal += (clink * 0.12).toFloat()
+                    // Chirping burst envelope (period ~ 1.2s, pulse length 0.25s)
+                    val cycle = time % 1.2
+                    if (cycle < 0.25) {
+                        val subPulse = sin(2.0 * PI * 35.0 * cycle)
+                        if (subPulse > 0.0) {
+                            val carrier = sin(2.0 * PI * 4400.0 * time)
+                            sampleVal += (carrier * 0.18 * subPulse).toFloat()
+                        }
                     }
 
-                    val amplitude = (sampleVal * 0.38f * Short.MAX_VALUE).toInt()
-                    buffer[i] = amplitude.coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt()).toShort()
+                    val amp = (sampleVal * 0.40f * Short.MAX_VALUE).toInt()
+                    buffer[i] = amp.coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt()).toShort()
                 }
             }
 
-            SoundscapeType.WHITE_NOISE -> {
-                // Pure uniform flat white noise
+            SoundscapeType.BROWN_NOISE -> {
+                // Leaky-integrator lowpass on white noise (1/f^2 Brown Noise)
+                var accumulator = 0f
                 for (i in 0 until TOTAL_SAMPLES) {
-                    val white = (random.nextFloat() * 2f - 1f)
-                    val amplitude = (white * 0.20f * Short.MAX_VALUE).toInt()
-                    buffer[i] = amplitude.coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt()).toShort()
+                    val white = random.nextFloat() * 2f - 1f
+                    accumulator = (accumulator + 0.035f * white) * 0.965f
+                    val sample = (accumulator * 0.40f * Short.MAX_VALUE).toInt()
+                    buffer[i] = sample.coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt()).toShort()
+                }
+            }
+
+            SoundscapeType.PINK_NOISE -> {
+                // Balanced 1/f noise filter for smooth auditory masking
+                var b0 = 0f
+                var b1 = 0f
+                var b2 = 0f
+                for (i in 0 until TOTAL_SAMPLES) {
+                    val white = random.nextFloat() * 2f - 1f
+                    b0 = 0.99886f * b0 + white * 0.0555179f
+                    b1 = 0.99332f * b1 + white * 0.0750759f
+                    b2 = 0.96900f * b2 + white * 0.1538520f
+                    val pink = b0 + b1 + b2 + white * 0.5362f
+                    val sample = (pink * 0.11f * Short.MAX_VALUE).toInt()
+                    buffer[i] = sample.coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt()).toShort()
                 }
             }
 
             SoundscapeType.NONE -> {
-                // Silent
+                // Silence
             }
         }
 
@@ -275,11 +386,8 @@ object ConcentrationSoundscapeHelper {
             val progress = i.toDouble() / window
             // Hann window curve
             val factorIn = 0.5 * (1.0 - cos(PI * progress))
-            val factorOut = 0.5 * (1.0 + cos(PI * progress))
-
             // Fade in beginning
             samples[i] = (samples[i] * factorIn).toInt().toShort()
-
             // Fade out end
             val endIndex = samples.size - 1 - i
             samples[endIndex] = (samples[endIndex] * factorIn).toInt().toShort()

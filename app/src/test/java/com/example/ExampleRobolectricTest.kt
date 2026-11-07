@@ -31,7 +31,7 @@ import org.robolectric.annotation.Config
 
 @OptIn(ExperimentalCoroutinesApi::class)
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [35])
+@Config(sdk = [36])
 class ExampleRobolectricTest {
 
     private lateinit var db: AppDatabase
@@ -1566,6 +1566,144 @@ class ExampleRobolectricTest {
         // Verify timer state is completely uninterrupted
         assertTrue(viewModel.timerState.value.isRunning)
         assertEquals(startWallClock, viewModel.timerState.value.startWallClockMillis)
+    }
+
+    @Test
+    fun `focus audio lifecycle manager pauses and stops audio with timer events`() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        com.example.util.FocusAudioLifecycleManager.initialize(context)
+
+        // Set background audio false by default
+        com.example.util.FocusAudioLifecycleManager.setBackgroundAudioAllowed(false)
+        assertFalse(com.example.util.FocusAudioLifecycleManager.isBackgroundAudioAllowed())
+
+        // Start focus timer event
+        com.example.util.FocusAudioLifecycleManager.onFocusTimerStarted(com.example.util.SoundscapeType.NONE)
+
+        // Pause focus timer event -> immediate pause
+        com.example.util.FocusAudioLifecycleManager.onFocusTimerPaused()
+        assertFalse(com.example.util.FocusAudioLifecycleManager.isAnyAudioPlaying())
+
+        // Resume focus timer event -> stop
+        com.example.util.FocusAudioLifecycleManager.onFocusTimerStopped()
+        assertFalse(com.example.util.FocusAudioLifecycleManager.isAnyAudioPlaying())
+
+        // Session completed -> stop
+        com.example.util.FocusAudioLifecycleManager.onFocusSessionCompleted()
+        assertFalse(com.example.util.FocusAudioLifecycleManager.isAnyAudioPlaying())
+
+        // Navigation away without background audio enabled -> pause
+        com.example.util.FocusAudioLifecycleManager.setBackgroundAudioAllowed(false)
+        com.example.util.FocusAudioLifecycleManager.onNavigatedAway(isTimerRunning = true)
+        assertFalse(com.example.util.FocusAudioLifecycleManager.isAnyAudioPlaying())
+
+        // Toggle background audio setting allowed
+        com.example.util.FocusAudioLifecycleManager.setBackgroundAudioAllowed(true)
+        assertTrue(com.example.util.FocusAudioLifecycleManager.isBackgroundAudioAllowed())
+    }
+
+    @Test
+    fun `study music player playlist management, repeat mode, and navigation`() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        com.example.util.StudyMusicPlayer.initialize(context)
+        com.example.util.StudyMusicPlayer.clearPlaylist()
+        assertEquals(0, com.example.util.StudyMusicPlayer.playlist.value.size)
+
+        val track1 = com.example.util.MusicTrack(id = "1", uriString = "content://media/1", title = "Deep Work Piano", artist = "Study Ambience", durationMs = 180000)
+        val track2 = com.example.util.MusicTrack(id = "2", uriString = "content://media/2", title = "Rainy Lofi Beats", artist = "Chillwave", durationMs = 200000)
+        val track3 = com.example.util.MusicTrack(id = "3", uriString = "content://media/3", title = "Alpha Brainwaves", artist = "NeuroFocus", durationMs = 240000)
+
+        com.example.util.StudyMusicPlayer.setPlaylistForTesting(listOf(track1, track2, track3))
+        assertEquals(3, com.example.util.StudyMusicPlayer.playlist.value.size)
+        assertEquals(0, com.example.util.StudyMusicPlayer.currentTrackIndex.value)
+        assertEquals("Deep Work Piano", com.example.util.StudyMusicPlayer.currentTrackTitle.value)
+
+        // Repeat mode cycling: OFF -> REPEAT_ALL -> REPEAT_ONE -> OFF
+        com.example.util.StudyMusicPlayer.setRepeatMode(com.example.util.RepeatMode.OFF)
+        assertEquals(com.example.util.RepeatMode.OFF, com.example.util.StudyMusicPlayer.repeatMode.value)
+        com.example.util.StudyMusicPlayer.cycleRepeatMode()
+        assertEquals(com.example.util.RepeatMode.REPEAT_ALL, com.example.util.StudyMusicPlayer.repeatMode.value)
+        com.example.util.StudyMusicPlayer.cycleRepeatMode()
+        assertEquals(com.example.util.RepeatMode.REPEAT_ONE, com.example.util.StudyMusicPlayer.repeatMode.value)
+        com.example.util.StudyMusicPlayer.cycleRepeatMode()
+        assertEquals(com.example.util.RepeatMode.OFF, com.example.util.StudyMusicPlayer.repeatMode.value)
+
+        // Shuffle toggle
+        assertFalse(com.example.util.StudyMusicPlayer.isShuffleEnabled.value)
+        com.example.util.StudyMusicPlayer.toggleShuffle()
+        assertTrue(com.example.util.StudyMusicPlayer.isShuffleEnabled.value)
+        com.example.util.StudyMusicPlayer.toggleShuffle()
+        assertFalse(com.example.util.StudyMusicPlayer.isShuffleEnabled.value)
+
+        // Remove track
+        com.example.util.StudyMusicPlayer.removeTrack("2")
+        assertEquals(2, com.example.util.StudyMusicPlayer.playlist.value.size)
+        assertFalse(com.example.util.StudyMusicPlayer.playlist.value.any { it.id == "2" })
+
+        // Clear playlist
+        com.example.util.StudyMusicPlayer.clearPlaylist()
+        assertEquals(0, com.example.util.StudyMusicPlayer.playlist.value.size)
+    }
+
+    @Test
+    fun `focus wallpaper manager serialization and parsing`() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+
+        // Create a dummy file in filesDir so existence check succeeds
+        val testFile = java.io.File(context.filesDir, "test_wallpaper.jpg").apply {
+            writeBytes(byteArrayOf(1, 2, 3, 4))
+        }
+
+        val jsonInput = """
+            [
+                {
+                    "id": "wp-123",
+                    "filePath": "${testFile.absolutePath}",
+                    "displayName": "My Desk View",
+                    "dateAddedMillis": 1700000000000
+                }
+            ]
+        """.trimIndent()
+
+        com.example.util.FocusWallpaperManager.loadWallpapers(context, jsonInput)
+        val loaded = com.example.util.FocusWallpaperManager.wallpapers.value
+        assertEquals(1, loaded.size)
+        assertEquals("wp-123", loaded[0].id)
+        assertEquals("My Desk View", loaded[0].displayName)
+        assertEquals(testFile.absolutePath, loaded[0].filePath)
+
+        val serialized = com.example.util.FocusWallpaperManager.serializeWallpapers()
+        assertTrue(serialized.contains("wp-123"))
+        assertTrue(serialized.contains("My Desk View"))
+
+        // Cleanup
+        testFile.delete()
+    }
+
+    @Test
+    fun `study settings persistence for background audio, immersive mode, and slideshow`() = runTest {
+        val viewModel = MainViewModel(repository)
+
+        // Verify defaults
+        assertEquals("false", repository.getSetting("study_background_audio_enabled").first()?.value ?: "false")
+        assertEquals("true", repository.getSetting("study_immersive_fullscreen_enabled").first()?.value ?: "true")
+
+        // Update settings
+        viewModel.setStudyBackgroundAudioEnabled(true)
+        repository.saveSetting("study_background_audio_enabled", "true")
+        assertEquals("true", repository.getSetting("study_background_audio_enabled").first()?.value)
+
+        viewModel.setStudyImmersiveFullscreenEnabled(false)
+        repository.saveSetting("study_immersive_fullscreen_enabled", "false")
+        assertEquals("false", repository.getSetting("study_immersive_fullscreen_enabled").first()?.value)
+
+        viewModel.setFocusSlideshowEnabled(true)
+        repository.saveSetting("focus_slideshow_enabled", "true")
+        assertEquals("true", repository.getSetting("focus_slideshow_enabled").first()?.value)
+
+        viewModel.setFocusSlideshowIntervalMinutes(10)
+        repository.saveSetting("focus_slideshow_interval_minutes", "10")
+        assertEquals("10", repository.getSetting("focus_slideshow_interval_minutes").first()?.value)
     }
 }
 

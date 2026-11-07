@@ -22,28 +22,44 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.AddPhotoAlternate
 import androidx.compose.material.icons.filled.Air
 import androidx.compose.material.icons.filled.Audiotrack
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ColorLens
 import androidx.compose.material.icons.filled.Crop
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.FolderOpen
+import androidx.compose.material.icons.filled.Forward10
 import androidx.compose.material.icons.filled.GraphicEq
+import androidx.compose.material.icons.filled.Headphones
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.MusicNote
+import androidx.compose.material.icons.filled.OpenInNew
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Replay10
 import androidx.compose.material.icons.filled.Repeat
+import androidx.compose.material.icons.filled.RepeatOne
+import androidx.compose.material.icons.filled.Shuffle
+import androidx.compose.material.icons.filled.SkipNext
+import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.VolumeDown
 import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material.icons.filled.WbSunny
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -60,10 +76,13 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -73,6 +92,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -81,17 +101,19 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.example.ui.MainViewModel
 import com.example.util.ConcentrationSoundscapeHelper
+import com.example.util.FocusWallpaperItem
+import com.example.util.FocusWallpaperManager
+import com.example.util.MusicRepeatMode
 import com.example.util.SoundscapeType
 import com.example.util.StudyMusicPlayer
 import com.example.util.StudySoundHelper
 import com.example.util.StudySoundType
+import kotlinx.coroutines.launch
+import java.io.File
 
 /**
- * Redesigned Focus Studio: An atmospheric, calm sanctuary for tailoring
- * study soundscapes, local audio files, ambient backdrops, audio signals,
- * and environmental focus controls.
- *
- * Designed with OLED-friendly styling and muted sage/mint accents.
+ * Focus Studio: The complete sanctuary for ambient soundscapes, offline music,
+ * persistent personal wallpaper library, online music shortcuts, and environment controls.
  */
 @Composable
 fun FocusBackdropAudioStudioDialog(
@@ -101,6 +123,7 @@ fun FocusBackdropAudioStudioDialog(
     onDismiss: () -> Unit
 ) {
     val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
     var selectedTab by remember { mutableIntStateOf(0) }
 
     // Soundscapes State
@@ -108,17 +131,23 @@ fun FocusBackdropAudioStudioDialog(
     val isSoundscapePlaying by ConcentrationSoundscapeHelper.isPlaying.collectAsStateWithLifecycle()
     val soundscapeVolume by ConcentrationSoundscapeHelper.volume.collectAsStateWithLifecycle()
 
-    // Local Music Player State
-    val musicTrackTitle by StudyMusicPlayer.currentTrackTitle.collectAsStateWithLifecycle()
-    val musicUri by StudyMusicPlayer.currentTrackUri.collectAsStateWithLifecycle()
+    // Offline Music Player State
+    val playlist by StudyMusicPlayer.playlist.collectAsStateWithLifecycle()
+    val currentTrackIndex by StudyMusicPlayer.currentTrackIndex.collectAsStateWithLifecycle()
+    val currentTrack by StudyMusicPlayer.currentTrack.collectAsStateWithLifecycle()
     val isMusicPlaying by StudyMusicPlayer.isPlaying.collectAsStateWithLifecycle()
     val musicPosMs by StudyMusicPlayer.currentPositionMs.collectAsStateWithLifecycle()
     val musicDurationMs by StudyMusicPlayer.durationMs.collectAsStateWithLifecycle()
     val musicVolume by StudyMusicPlayer.volume.collectAsStateWithLifecycle()
-    val isMusicLooping by StudyMusicPlayer.isLooping.collectAsStateWithLifecycle()
+    val repeatMode by StudyMusicPlayer.repeatMode.collectAsStateWithLifecycle()
+    val isShuffle by StudyMusicPlayer.isShuffle.collectAsStateWithLifecycle()
     val autoPlayMusicWithTimer by StudyMusicPlayer.autoPlayWithTimer.collectAsStateWithLifecycle()
 
-    // Background State (from ViewModel if available)
+    // Personal Wallpapers State
+    val importedWallpapers by FocusWallpaperManager.wallpapers.collectAsStateWithLifecycle()
+    val activeWallpaper by FocusWallpaperManager.activeWallpaper.collectAsStateWithLifecycle()
+
+    // Background State from ViewModel
     val bgType = viewModel?.focusBgType?.collectAsStateWithLifecycle()?.value ?: FocusBgType.BUILTIN
     val bgBuiltinId = viewModel?.focusBgBuiltinId?.collectAsStateWithLifecycle()?.value ?: currentTheme.id
     val customUri = viewModel?.focusBgCustomUri?.collectAsStateWithLifecycle()?.value
@@ -127,37 +156,44 @@ fun FocusBackdropAudioStudioDialog(
     val isBlur = viewModel?.focusBgBlur?.collectAsStateWithLifecycle()?.value ?: false
     val fitMode = viewModel?.focusBgFit?.collectAsStateWithLifecycle()?.value ?: "CROP"
     val isAmbientAnimation = viewModel?.focusAmbientAnimationEnabled?.collectAsStateWithLifecycle()?.value ?: true
+    val isSlideshow = viewModel?.focusSlideshowEnabled?.collectAsStateWithLifecycle()?.value ?: false
+    val slideshowInterval = viewModel?.focusSlideshowIntervalMinutes?.collectAsStateWithLifecycle()?.value ?: 5
 
-    // Audio Cues & Screen Awake States
+    // Environment & Preferences
+    val backgroundAudioAllowed = viewModel?.studyBackgroundAudioEnabled?.collectAsStateWithLifecycle()?.value ?: false
+    val immersiveFullscreenEnabled = viewModel?.studyImmersiveFullscreenEnabled?.collectAsStateWithLifecycle()?.value ?: true
+    val keepScreenOn = viewModel?.studyKeepScreenOnEnabled?.collectAsStateWithLifecycle()?.value ?: false
     val startSoundEnabled = viewModel?.studyStartSoundEnabled?.collectAsStateWithLifecycle()?.value ?: true
     val breakStartSoundEnabled = viewModel?.studyBreakStartSoundEnabled?.collectAsStateWithLifecycle()?.value ?: true
     val breakEndSoundEnabled = viewModel?.studyBreakEndSoundEnabled?.collectAsStateWithLifecycle()?.value ?: true
     val endSoundEnabled = viewModel?.studyEndSoundEnabled?.collectAsStateWithLifecycle()?.value ?: true
-    val keepScreenOn = viewModel?.studyKeepScreenOnEnabled?.collectAsStateWithLifecycle()?.value ?: false
 
-    // SAF Picker for Local Music
-    val audioPickerLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.GetContent()
-    ) { uri: Uri? ->
-        uri?.let {
-            StudyMusicPlayer.loadLocalTrack(context, it)
+    // File pickers
+    val multiAudioPicker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenMultipleDocuments()
+    ) { uris: List<Uri> ->
+        if (uris.isNotEmpty()) {
+            StudyMusicPlayer.addTracks(context, uris)
         }
     }
 
-    // Android Photo Picker for Custom Gallery Background
-    val photoPickerLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.PickVisualMedia()
-    ) { uri: Uri? ->
-        uri?.let { pickedUri ->
-            try {
-                val flag = Intent.FLAG_GRANT_READ_URI_PERMISSION
-                context.contentResolver.takePersistableUriPermission(pickedUri, flag)
-            } catch (_: Exception) {
-                // Ignore if provider doesn't support persistable flags
+    val multiPhotoPicker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickMultipleVisualMedia()
+    ) { uris: List<Uri> ->
+        if (uris.isNotEmpty()) {
+            coroutineScope.launch {
+                val newlyImported = FocusWallpaperManager.importWallpapers(context, uris)
+                viewModel?.saveFocusWallpapersList(FocusWallpaperManager.serializeWallpapers())
+                if (newlyImported.isNotEmpty()) {
+                    val first = newlyImported.first()
+                    FocusWallpaperManager.setActiveWallpaper(first)
+                    viewModel?.setFocusBgCustomUri(first.filePath)
+                }
             }
-            viewModel?.setFocusBgCustomUri(pickedUri.toString())
         }
     }
+
+    var showClearWallpapersDialog by remember { mutableStateOf(false) }
 
     Dialog(
         onDismissRequest = onDismiss,
@@ -166,9 +202,9 @@ fun FocusBackdropAudioStudioDialog(
         Surface(
             modifier = Modifier
                 .fillMaxWidth(0.96f)
-                .heightIn(max = 720.dp),
+                .heightIn(max = 740.dp),
             shape = RoundedCornerShape(24.dp),
-            color = Color(0xFF0C100D), // OLED near-black surface
+            color = Color(0xFF0C100D), // OLED deep forest surface
             tonalElevation = 6.dp,
             border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF223326))
         ) {
@@ -177,7 +213,7 @@ fun FocusBackdropAudioStudioDialog(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 20.dp, vertical = 16.dp),
+                        .padding(horizontal = 20.dp, vertical = 14.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -188,12 +224,12 @@ fun FocusBackdropAudioStudioDialog(
                                 fontWeight = FontWeight.Bold,
                                 letterSpacing = 0.5.sp
                             ),
-                            color = Color(0xFFE8ECE9) // Soft white
+                            color = Color(0xFFE8ECE9)
                         )
                         Text(
-                            text = "Calm soundscapes, music & ambient background",
+                            text = "Authentic soundscapes, offline music & personal gallery",
                             style = MaterialTheme.typography.bodySmall,
-                            color = Color(0xFF8F9E94) // Muted sage grey
+                            color = Color(0xFF8F9E94)
                         )
                     }
                     IconButton(
@@ -204,7 +240,7 @@ fun FocusBackdropAudioStudioDialog(
                     }
                 }
 
-                // 5 Tab Sections
+                // 5 Dedicated Tabs
                 ScrollableTabRow(
                     selectedTabIndex = selectedTab,
                     containerColor = Color(0xFF080C09),
@@ -222,7 +258,7 @@ fun FocusBackdropAudioStudioDialog(
                     Tab(
                         selected = selectedTab == 1,
                         onClick = { selectedTab = 1 },
-                        text = { Text("My Music", fontSize = 12.sp, fontWeight = FontWeight.SemiBold) },
+                        text = { Text("Offline Music", fontSize = 12.sp, fontWeight = FontWeight.SemiBold) },
                         icon = { Icon(Icons.Default.MusicNote, contentDescription = null, modifier = Modifier.size(16.dp)) },
                         selectedContentColor = Color(0xFFA8C9B0),
                         unselectedContentColor = Color(0xFF6B7A70)
@@ -238,8 +274,8 @@ fun FocusBackdropAudioStudioDialog(
                     Tab(
                         selected = selectedTab == 3,
                         onClick = { selectedTab = 3 },
-                        text = { Text("Audio Cues", fontSize = 12.sp, fontWeight = FontWeight.SemiBold) },
-                        icon = { Icon(Icons.Default.VolumeUp, contentDescription = null, modifier = Modifier.size(16.dp)) },
+                        text = { Text("Online Focus", fontSize = 12.sp, fontWeight = FontWeight.SemiBold) },
+                        icon = { Icon(Icons.Default.Headphones, contentDescription = null, modifier = Modifier.size(16.dp)) },
                         selectedContentColor = Color(0xFFA8C9B0),
                         unselectedContentColor = Color(0xFF6B7A70)
                     )
@@ -256,7 +292,7 @@ fun FocusBackdropAudioStudioDialog(
                 // Tab Content Body
                 Box(modifier = Modifier.weight(1f).padding(16.dp)) {
                     when (selectedTab) {
-                        0 -> SoundscapesTab(
+                        0 -> RealSoundscapesTab(
                             currentSoundscape = currentSoundscape,
                             isPlaying = isSoundscapePlaying,
                             volume = soundscapeVolume,
@@ -265,32 +301,44 @@ fun FocusBackdropAudioStudioDialog(
                             onVolumeChange = { ConcentrationSoundscapeHelper.setVolume(it) }
                         )
 
-                        1 -> MyMusicTab(
-                            trackTitle = musicTrackTitle,
-                            hasTrack = musicUri != null,
+                        1 -> OfflineMusicPlayerTab(
+                            playlist = playlist,
+                            currentIndex = currentTrackIndex,
+                            currentTrack = currentTrack,
                             isPlaying = isMusicPlaying,
                             positionMs = musicPosMs,
                             durationMs = musicDurationMs,
                             volume = musicVolume,
-                            isLooping = isMusicLooping,
+                            repeatMode = repeatMode,
+                            isShuffle = isShuffle,
                             autoPlayWithTimer = autoPlayMusicWithTimer,
-                            onPickFile = { audioPickerLauncher.launch("audio/*") },
+                            onAddFiles = { multiAudioPicker.launch(arrayOf("audio/*")) },
+                            onSelectTrack = { idx -> StudyMusicPlayer.selectTrack(context, idx, autoPlay = true) },
+                            onRemoveTrack = { idx -> StudyMusicPlayer.removeTrack(idx) },
+                            onClearPlaylist = { StudyMusicPlayer.clearTrack() },
                             onTogglePlay = { StudyMusicPlayer.togglePlayPause() },
+                            onNext = { StudyMusicPlayer.nextTrack() },
+                            onPrev = { StudyMusicPlayer.previousTrack() },
                             onSeek = { StudyMusicPlayer.seekTo(it) },
+                            onSeekRelative = { StudyMusicPlayer.seekRelative(it) },
                             onVolumeChange = { StudyMusicPlayer.setVolume(it) },
-                            onToggleLoop = { StudyMusicPlayer.setLooping(!isMusicLooping) },
-                            onToggleAutoPlay = { StudyMusicPlayer.setAutoPlayWithTimer(!autoPlayMusicWithTimer) },
-                            onClearTrack = { StudyMusicPlayer.clearTrack() }
+                            onToggleRepeat = { StudyMusicPlayer.toggleRepeatMode() },
+                            onToggleShuffle = { StudyMusicPlayer.toggleShuffle() },
+                            onToggleAutoPlay = { StudyMusicPlayer.setAutoPlayWithTimer(!autoPlayMusicWithTimer) }
                         )
 
-                        2 -> ThemesAndBackgroundsTab(
+                        2 -> PersonalBackgroundsTab(
                             bgType = bgType,
                             builtinId = bgBuiltinId,
                             customUri = customUri,
+                            wallpapers = importedWallpapers,
+                            activeWallpaper = activeWallpaper,
                             overlayOpacity = overlayOpacity,
                             brightness = brightness,
                             isBlur = isBlur,
                             fitMode = fitMode,
+                            isSlideshow = isSlideshow,
+                            slideshowInterval = slideshowInterval,
                             onSelectOled = {
                                 viewModel?.setFocusBgType(FocusBgType.OLED)
                                 onThemeSelected(FocusAestheticTheme.MINIMAL_OLED)
@@ -299,25 +347,45 @@ fun FocusBackdropAudioStudioDialog(
                                 viewModel?.setFocusBgBuiltinId(theme.id)
                                 onThemeSelected(theme)
                             },
-                            onPickCustom = {
-                                photoPickerLauncher.launch(
+                            onImportPhotos = {
+                                multiPhotoPicker.launch(
                                     androidx.activity.result.PickVisualMediaRequest(
                                         ActivityResultContracts.PickVisualMedia.ImageOnly
                                     )
                                 )
                             },
-                            onClearCustom = {
-                                viewModel?.clearFocusBgCustomUri()
+                            onSelectWallpaper = { wallpaper ->
+                                FocusWallpaperManager.setActiveWallpaper(wallpaper)
+                                viewModel?.setFocusBgCustomUri(wallpaper.filePath)
                             },
+                            onDeleteWallpaper = { wallpaper ->
+                                coroutineScope.launch {
+                                    FocusWallpaperManager.deleteWallpaper(wallpaper)
+                                    viewModel?.saveFocusWallpapersList(FocusWallpaperManager.serializeWallpapers())
+                                }
+                            },
+                            onClearAllWallpapers = { showClearWallpapersDialog = true },
                             onOverlayOpacityChange = { viewModel?.setFocusBgOverlayOpacity(it) },
                             onBrightnessChange = { viewModel?.setFocusBgBrightness(it) },
                             onToggleBlur = { viewModel?.setFocusBgBlur(it) },
                             onToggleFitMode = {
                                 viewModel?.setFocusBgFit(if (fitMode == "CROP") "FIT" else "CROP")
-                            }
+                            },
+                            onToggleSlideshow = { viewModel?.setFocusSlideshowEnabled(it) },
+                            onSetSlideshowInterval = { viewModel?.setFocusSlideshowIntervalMinutes(it) }
                         )
 
-                        3 -> AudioCuesTab(
+                        3 -> OnlineStreamingTab()
+
+                        4 -> EnvironmentAndCuesTab(
+                            backgroundAudioAllowed = backgroundAudioAllowed,
+                            onToggleBackgroundAudio = { viewModel?.setStudyBackgroundAudioEnabled(it) },
+                            immersiveFullscreenEnabled = immersiveFullscreenEnabled,
+                            onToggleImmersiveFullscreen = { viewModel?.setStudyImmersiveFullscreenEnabled(it) },
+                            keepScreenOn = keepScreenOn,
+                            onToggleKeepScreenOn = { viewModel?.setStudyKeepScreenOn(it) },
+                            isAmbientAnimation = isAmbientAnimation,
+                            onToggleAmbientAnimation = { viewModel?.setFocusAmbientAnimationEnabled(it) },
                             startSoundEnabled = startSoundEnabled,
                             breakStartSoundEnabled = breakStartSoundEnabled,
                             breakEndSoundEnabled = breakEndSoundEnabled,
@@ -326,14 +394,7 @@ fun FocusBackdropAudioStudioDialog(
                             onToggleBreakStartSound = { viewModel?.setStudyBreakStartSoundEnabled(it) },
                             onToggleBreakEndSound = { viewModel?.setStudyBreakEndSoundEnabled(it) },
                             onToggleEndSound = { viewModel?.setStudyEndSoundEnabled(it) },
-                            onPreview = { type -> StudySoundHelper.previewSound(context, type) }
-                        )
-
-                        4 -> EnvironmentTab(
-                            keepScreenOn = keepScreenOn,
-                            onToggleKeepScreenOn = { viewModel?.setStudyKeepScreenOn(it) },
-                            isAmbientAnimation = isAmbientAnimation,
-                            onToggleAmbientAnimation = { viewModel?.setFocusAmbientAnimationEnabled(it) }
+                            onPreviewCue = { type -> StudySoundHelper.previewSound(context, type) }
                         )
                     }
                 }
@@ -349,7 +410,7 @@ fun FocusBackdropAudioStudioDialog(
                         onClick = onDismiss,
                         shape = RoundedCornerShape(12.dp),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = Color(0xFFA8C9B0), // Soft sage
+                            containerColor = Color(0xFFA8C9B0),
                             contentColor = Color(0xFF08140B)
                         ),
                         modifier = Modifier.testTag("done_studio_button")
@@ -360,13 +421,45 @@ fun FocusBackdropAudioStudioDialog(
             }
         }
     }
+
+    if (showClearWallpapersDialog) {
+        AlertDialog(
+            onDismissRequest = { showClearWallpapersDialog = false },
+            containerColor = Color(0xFF0F1411),
+            titleContentColor = Color.White,
+            textContentColor = Color(0xFFE2E8E4),
+            shape = RoundedCornerShape(20.dp),
+            title = { Text("Remove All Imported Backgrounds?") },
+            text = { Text("This will remove all imported images from Rhythm's private offline gallery. Your original device photos will not be deleted.") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        coroutineScope.launch {
+                            FocusWallpaperManager.clearAllWallpapers(context)
+                            viewModel?.saveFocusWallpapersList("[]")
+                            viewModel?.clearFocusBgCustomUri()
+                        }
+                        showClearWallpapersDialog = false
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE57373), contentColor = Color.Black)
+                ) {
+                    Text("Delete All")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showClearWallpapersDialog = false }) {
+                    Text("Cancel", color = Color(0xFF8F9E94))
+                }
+            }
+        )
+    }
 }
 
-// -------------------------------------------------------------
-// 1. SOUNDSCAPES TAB
-// -------------------------------------------------------------
+// =========================================================================
+// 1. REAL SOUNDSCAPES TAB (10 Environmental Ambient Recordings)
+// =========================================================================
 @Composable
-private fun SoundscapesTab(
+private fun RealSoundscapesTab(
     currentSoundscape: SoundscapeType,
     isPlaying: Boolean,
     volume: Float,
@@ -378,6 +471,7 @@ private fun SoundscapesTab(
         verticalArrangement = Arrangement.spacedBy(10.dp),
         modifier = Modifier.fillMaxSize()
     ) {
+        // Active Controller Card
         item {
             Card(
                 colors = CardDefaults.cardColors(containerColor = Color(0xFF131A15)),
@@ -392,11 +486,7 @@ private fun SoundscapesTab(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Column {
-                            Text(
-                                text = "Active Soundscape",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = Color(0xFFA8C9B0)
-                            )
+                            Text("Active Ambient Soundscape", style = MaterialTheme.typography.labelSmall, color = Color(0xFFA8C9B0))
                             Text(
                                 text = "${currentSoundscape.iconEmoji} ${currentSoundscape.displayName}",
                                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
@@ -407,16 +497,9 @@ private fun SoundscapesTab(
                         FilledTonalButton(
                             onClick = onTogglePlay,
                             shape = RoundedCornerShape(12.dp),
-                            colors = ButtonDefaults.filledTonalButtonColors(
-                                containerColor = Color(0xFF1E2B21),
-                                contentColor = Color(0xFFA8C9B0)
-                            )
+                            colors = ButtonDefaults.filledTonalButtonColors(containerColor = Color(0xFF1E2B21), contentColor = Color(0xFFA8C9B0))
                         ) {
-                            Icon(
-                                if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                                contentDescription = if (isPlaying) "Pause" else "Play",
-                                modifier = Modifier.size(16.dp)
-                            )
+                            Icon(if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(16.dp))
                             Spacer(modifier = Modifier.width(4.dp))
                             Text(if (isPlaying) "Pause" else "Play", fontSize = 12.sp)
                         }
@@ -425,12 +508,7 @@ private fun SoundscapesTab(
                     Spacer(modifier = Modifier.height(10.dp))
 
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            Icons.Default.VolumeDown,
-                            contentDescription = null,
-                            tint = Color(0xFF8F9E94),
-                            modifier = Modifier.size(18.dp)
-                        )
+                        Icon(Icons.Default.VolumeDown, contentDescription = null, tint = Color(0xFF8F9E94), modifier = Modifier.size(18.dp))
                         Spacer(modifier = Modifier.width(8.dp))
                         Slider(
                             value = volume,
@@ -443,12 +521,7 @@ private fun SoundscapesTab(
                             )
                         )
                         Spacer(modifier = Modifier.width(8.dp))
-                        Icon(
-                            Icons.Default.VolumeUp,
-                            contentDescription = null,
-                            tint = Color(0xFF8F9E94),
-                            modifier = Modifier.size(18.dp)
-                        )
+                        Icon(Icons.Default.VolumeUp, contentDescription = null, tint = Color(0xFF8F9E94), modifier = Modifier.size(18.dp))
                     }
                 }
             }
@@ -470,18 +543,12 @@ private fun SoundscapesTab(
                     .clickable { onSelect(item) }
             ) {
                 Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 14.dp, vertical = 12.dp),
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 12.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = item.iconEmoji,
-                            fontSize = 24.sp,
-                            modifier = Modifier.padding(end = 12.dp)
-                        )
+                        Text(item.iconEmoji, fontSize = 24.sp, modifier = Modifier.padding(end = 12.dp))
                         Column {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Text(
@@ -490,10 +557,7 @@ private fun SoundscapesTab(
                                     color = if (isSelected) Color(0xFFA8C9B0) else Color(0xFFE2E8E4)
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
-                                Surface(
-                                    color = Color(0xFF1A231C),
-                                    shape = RoundedCornerShape(6.dp)
-                                ) {
+                                Surface(color = Color(0xFF1A231C), shape = RoundedCornerShape(6.dp)) {
                                     Text(
                                         text = item.vibeTag,
                                         style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
@@ -502,28 +566,16 @@ private fun SoundscapesTab(
                                     )
                                 }
                             }
-                            Text(
-                                text = item.description,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = Color(0xFF7A897F)
-                            )
+                            Text(item.description, style = MaterialTheme.typography.bodySmall, color = Color(0xFF7A897F))
                         }
                     }
 
                     if (isSelected) {
                         Box(
-                            modifier = Modifier
-                                .size(24.dp)
-                                .clip(CircleShape)
-                                .background(Color(0xFFA8C9B0)),
+                            modifier = Modifier.size(24.dp).clip(CircleShape).background(Color(0xFFA8C9B0)),
                             contentAlignment = Alignment.Center
                         ) {
-                            Icon(
-                                Icons.Default.Check,
-                                contentDescription = "Active",
-                                tint = Color(0xFF0B170E),
-                                modifier = Modifier.size(16.dp)
-                            )
+                            Icon(Icons.Default.Check, contentDescription = "Active", tint = Color(0xFF0B170E), modifier = Modifier.size(16.dp))
                         }
                     }
                 }
@@ -532,31 +584,40 @@ private fun SoundscapesTab(
     }
 }
 
-// -------------------------------------------------------------
-// 2. MY MUSIC TAB
-// -------------------------------------------------------------
+// =========================================================================
+// 2. OFFLINE MUSIC PLAYER TAB (Multi-track playlist, shuffle, repeat, seek)
+// =========================================================================
 @Composable
-private fun MyMusicTab(
-    trackTitle: String?,
-    hasTrack: Boolean,
+private fun OfflineMusicPlayerTab(
+    playlist: List<com.example.util.MusicTrack>,
+    currentIndex: Int,
+    currentTrack: com.example.util.MusicTrack?,
     isPlaying: Boolean,
     positionMs: Int,
     durationMs: Int,
     volume: Float,
-    isLooping: Boolean,
+    repeatMode: MusicRepeatMode,
+    isShuffle: Boolean,
     autoPlayWithTimer: Boolean,
-    onPickFile: () -> Unit,
+    onAddFiles: () -> Unit,
+    onSelectTrack: (Int) -> Unit,
+    onRemoveTrack: (Int) -> Unit,
+    onClearPlaylist: () -> Unit,
     onTogglePlay: () -> Unit,
+    onNext: () -> Unit,
+    onPrev: () -> Unit,
     onSeek: (Int) -> Unit,
+    onSeekRelative: (Int) -> Unit,
     onVolumeChange: (Float) -> Unit,
-    onToggleLoop: () -> Unit,
-    onToggleAutoPlay: () -> Unit,
-    onClearTrack: () -> Unit
+    onToggleRepeat: () -> Unit,
+    onToggleShuffle: () -> Unit,
+    onToggleAutoPlay: () -> Unit
 ) {
     LazyColumn(
         verticalArrangement = Arrangement.spacedBy(14.dp),
         modifier = Modifier.fillMaxSize()
     ) {
+        // Player Control Card
         item {
             Card(
                 shape = RoundedCornerShape(16.dp),
@@ -571,43 +632,36 @@ private fun MyMusicTab(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
-                            Icon(
-                                Icons.Default.Audiotrack,
-                                contentDescription = null,
-                                tint = Color(0xFFA8C9B0),
-                                modifier = Modifier.size(24.dp)
-                            )
+                            Icon(Icons.Default.Audiotrack, contentDescription = null, tint = Color(0xFFA8C9B0), modifier = Modifier.size(24.dp))
                             Spacer(modifier = Modifier.width(10.dp))
                             Column {
+                                Text("Now Playing", style = MaterialTheme.typography.labelSmall, color = Color(0xFFA8C9B0))
                                 Text(
-                                    text = "Device Music / Audio File",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = Color(0xFFA8C9B0)
-                                )
-                                Text(
-                                    text = trackTitle ?: "No Music Loaded",
+                                    text = currentTrack?.title ?: "No Song Selected",
                                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                                     color = Color.White,
-                                    maxLines = 1
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
                                 )
                             }
                         }
 
                         OutlinedButton(
-                            onClick = onPickFile,
+                            onClick = onAddFiles,
                             shape = RoundedCornerShape(10.dp),
                             border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFA8C9B0).copy(alpha = 0.5f)),
                             colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFA8C9B0))
                         ) {
-                            Icon(Icons.Default.FolderOpen, contentDescription = null, modifier = Modifier.size(16.dp))
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text("Select File", fontSize = 12.sp)
+                            Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Add Tracks", fontSize = 12.sp)
                         }
                     }
 
-                    if (hasTrack) {
-                        Spacer(modifier = Modifier.height(16.dp))
+                    if (playlist.isNotEmpty()) {
+                        Spacer(modifier = Modifier.height(14.dp))
 
+                        // Scrubber Slider
                         val currentSec = positionMs / 1000
                         val totalSec = durationMs / 1000
                         val posString = String.format(java.util.Locale.getDefault(), "%02d:%02d", currentSec / 60, currentSec % 60)
@@ -624,27 +678,29 @@ private fun MyMusicTab(
                             modifier = Modifier.fillMaxWidth()
                         )
 
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Text(text = posString, style = MaterialTheme.typography.labelSmall, color = Color(0xFF8F9E94))
-                            Text(text = durString, style = MaterialTheme.typography.labelSmall, color = Color(0xFF8F9E94))
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                            Text(posString, style = MaterialTheme.typography.labelSmall, color = Color(0xFF8F9E94))
+                            Text(durString, style = MaterialTheme.typography.labelSmall, color = Color(0xFF8F9E94))
                         }
 
-                        Spacer(modifier = Modifier.height(12.dp))
+                        Spacer(modifier = Modifier.height(8.dp))
 
+                        // Controls: Shuffle, Prev, -10s, Play/Pause, +10s, Next, Repeat
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceEvenly,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            IconButton(onClick = onToggleLoop) {
-                                Icon(
-                                    Icons.Default.Repeat,
-                                    contentDescription = "Loop Song",
-                                    tint = if (isLooping) Color(0xFFA8C9B0) else Color(0xFF6B7A70)
-                                )
+                            IconButton(onClick = onToggleShuffle) {
+                                Icon(Icons.Default.Shuffle, contentDescription = "Shuffle", tint = if (isShuffle) Color(0xFFA8C9B0) else Color(0xFF556658))
+                            }
+
+                            IconButton(onClick = onPrev) {
+                                Icon(Icons.Default.SkipPrevious, contentDescription = "Previous Track", tint = Color.White)
+                            }
+
+                            IconButton(onClick = { onSeekRelative(-10000) }) {
+                                Icon(Icons.Default.Replay10, contentDescription = "Back 10s", tint = Color(0xFFC0CCC3))
                             }
 
                             Button(
@@ -654,25 +710,29 @@ private fun MyMusicTab(
                                 contentPadding = PaddingValues(0.dp),
                                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFA8C9B0), contentColor = Color(0xFF08140B))
                             ) {
-                                Icon(
-                                    if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                                    contentDescription = if (isPlaying) "Pause" else "Play",
-                                    modifier = Modifier.size(26.dp)
-                                )
+                                Icon(if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(28.dp))
                             }
 
-                            OutlinedButton(
-                                onClick = onClearTrack,
-                                shape = RoundedCornerShape(8.dp),
-                                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF334437)),
-                                colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFF8F9E94))
-                            ) {
-                                Text("Clear", style = MaterialTheme.typography.labelSmall)
+                            IconButton(onClick = { onSeekRelative(10000) }) {
+                                Icon(Icons.Default.Forward10, contentDescription = "Forward 10s", tint = Color(0xFFC0CCC3))
+                            }
+
+                            IconButton(onClick = onNext) {
+                                Icon(Icons.Default.SkipNext, contentDescription = "Next Track", tint = Color.White)
+                            }
+
+                            IconButton(onClick = onToggleRepeat) {
+                                val tint = if (repeatMode != MusicRepeatMode.OFF) Color(0xFFA8C9B0) else Color(0xFF556658)
+                                when (repeatMode) {
+                                    MusicRepeatMode.REPEAT_ONE -> Icon(Icons.Default.RepeatOne, contentDescription = "Repeat One", tint = tint)
+                                    else -> Icon(Icons.Default.Repeat, contentDescription = "Repeat All", tint = tint)
+                                }
                             }
                         }
 
-                        Spacer(modifier = Modifier.height(14.dp))
+                        Spacer(modifier = Modifier.height(10.dp))
 
+                        // Volume Control
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(Icons.Default.VolumeDown, contentDescription = null, tint = Color(0xFF8F9E94), modifier = Modifier.size(18.dp))
                             Spacer(modifier = Modifier.width(8.dp))
@@ -680,27 +740,96 @@ private fun MyMusicTab(
                                 value = volume,
                                 onValueChange = onVolumeChange,
                                 modifier = Modifier.weight(1f),
-                                colors = SliderDefaults.colors(
-                                    thumbColor = Color(0xFFA8C9B0),
-                                    activeTrackColor = Color(0xFFA8C9B0),
-                                    inactiveTrackColor = Color(0xFF243026)
-                                )
+                                colors = SliderDefaults.colors(thumbColor = Color(0xFFA8C9B0), activeTrackColor = Color(0xFFA8C9B0), inactiveTrackColor = Color(0xFF243026))
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Icon(Icons.Default.VolumeUp, contentDescription = null, tint = Color(0xFF8F9E94), modifier = Modifier.size(18.dp))
                         }
                     } else {
-                        Spacer(modifier = Modifier.height(12.dp))
-                        Text(
-                            text = "Select any local MP3, M4A, or WAV file from your device to accompany your focus sprints.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = Color(0xFF7A897F)
-                        )
+                        // Clear Empty State as required by specification
+                        Spacer(modifier = Modifier.height(14.dp))
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(Color(0xFF0C130E), RoundedCornerShape(12.dp))
+                                .padding(16.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "Add music from your device to create your focus playlist.",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = Color(0xFFA8C9B0)
+                            )
+                        }
                     }
                 }
             }
         }
 
+        // Playlist Management Section
+        if (playlist.isNotEmpty()) {
+            item {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Focus Playlist (${playlist.size} tracks)",
+                        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                        color = Color.White
+                    )
+                    TextButton(onClick = onClearPlaylist) {
+                        Text("Clear All", fontSize = 12.sp, color = Color(0xFFE57373))
+                    }
+                }
+            }
+
+            itemsIndexed(playlist) { index, track ->
+                val isCurrent = (index == currentIndex)
+                Card(
+                    shape = RoundedCornerShape(12.dp),
+                    colors = CardDefaults.cardColors(containerColor = if (isCurrent) Color(0xFF162419) else Color(0xFF0F1411)),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, if (isCurrent) Color(0xFFA8C9B0) else Color(0xFF1C271F)),
+                    modifier = Modifier.fillMaxWidth().clickable { onSelectTrack(index) }
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "${index + 1}",
+                                fontSize = 12.sp,
+                                color = if (isCurrent) Color(0xFFA8C9B0) else Color(0xFF6B7A70),
+                                modifier = Modifier.width(24.dp)
+                            )
+                            Icon(
+                                if (isCurrent && isPlaying) Icons.Default.GraphicEq else Icons.Default.MusicNote,
+                                contentDescription = null,
+                                tint = if (isCurrent) Color(0xFFA8C9B0) else Color(0xFF8F9E94),
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = track.title,
+                                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = if (isCurrent) FontWeight.Bold else FontWeight.Normal),
+                                color = if (isCurrent) Color.White else Color(0xFFC0CCC3),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+
+                        IconButton(onClick = { onRemoveTrack(index) }, modifier = Modifier.size(32.dp)) {
+                            Icon(Icons.Default.Clear, contentDescription = "Remove", tint = Color(0xFF6B7A70), modifier = Modifier.size(16.dp))
+                        }
+                    }
+                }
+            }
+        }
+
+        // Auto-sync setting card
         item {
             Card(
                 shape = RoundedCornerShape(14.dp),
@@ -714,25 +843,14 @@ private fun MyMusicTab(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = "Sync Music with Focus Timer",
-                            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
-                            color = Color.White
-                        )
-                        Text(
-                            text = "Automatically start music when study timer starts, and pause when paused.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = Color(0xFF7A897F)
-                        )
+                        Text("Sync with Study Timer", style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold), color = Color.White)
+                        Text("Automatically starts music when study timer starts, and pauses when paused.", style = MaterialTheme.typography.bodySmall, color = Color(0xFF7A897F))
                     }
                     Spacer(modifier = Modifier.width(12.dp))
                     Switch(
                         checked = autoPlayWithTimer,
                         onCheckedChange = { onToggleAutoPlay() },
-                        colors = androidx.compose.material3.SwitchDefaults.colors(
-                            checkedThumbColor = Color(0xFF08140B),
-                            checkedTrackColor = Color(0xFFA8C9B0)
-                        )
+                        colors = androidx.compose.material3.SwitchDefaults.colors(checkedThumbColor = Color(0xFF08140B), checkedTrackColor = Color(0xFFA8C9B0))
                     )
                 }
             }
@@ -740,222 +858,86 @@ private fun MyMusicTab(
     }
 }
 
-// -------------------------------------------------------------
-// 3. THEMES & BACKGROUNDS TAB
-// -------------------------------------------------------------
+// =========================================================================
+// 3. PERSONAL BACKGROUNDS TAB (OLED + 10 Built-in + My Backgrounds Library)
+// =========================================================================
 @Composable
-private fun ThemesAndBackgroundsTab(
+private fun PersonalBackgroundsTab(
     bgType: FocusBgType,
     builtinId: String,
     customUri: String?,
+    wallpapers: List<FocusWallpaperItem>,
+    activeWallpaper: FocusWallpaperItem?,
     overlayOpacity: Float,
     brightness: Float,
     isBlur: Boolean,
     fitMode: String,
+    isSlideshow: Boolean,
+    slideshowInterval: Int,
     onSelectOled: () -> Unit,
     onSelectBuiltin: (FocusAestheticTheme) -> Unit,
-    onPickCustom: () -> Unit,
-    onClearCustom: () -> Unit,
+    onImportPhotos: () -> Unit,
+    onSelectWallpaper: (FocusWallpaperItem) -> Unit,
+    onDeleteWallpaper: (FocusWallpaperItem) -> Unit,
+    onClearAllWallpapers: () -> Unit,
     onOverlayOpacityChange: (Float) -> Unit,
     onBrightnessChange: (Float) -> Unit,
     onToggleBlur: (Boolean) -> Unit,
-    onToggleFitMode: () -> Unit
+    onToggleFitMode: () -> Unit,
+    onToggleSlideshow: (Boolean) -> Unit,
+    onSetSlideshowInterval: (Int) -> Unit
 ) {
     LazyColumn(
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp),
         modifier = Modifier.fillMaxSize()
     ) {
-        // Custom Gallery Photo Section
+        // Presentation Adjustments Controls
         item {
             Card(
                 shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = Color(0xFF131A15)),
-                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF202C23)),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFF111713)),
+                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF1E2A21)),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Column(modifier = Modifier.padding(14.dp)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column {
-                            Text(
-                                text = "Personal Gallery Background",
-                                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
-                                color = Color.White
-                            )
-                            Text(
-                                text = "Use your favorite calming photo from phone gallery",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = Color(0xFF8F9E94)
-                            )
-                        }
-
-                        Button(
-                            onClick = onPickCustom,
-                            shape = RoundedCornerShape(10.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = Color(0xFFA8C9B0),
-                                contentColor = Color(0xFF08140B)
-                            )
-                        ) {
-                            Icon(Icons.Default.Image, contentDescription = null, modifier = Modifier.size(16.dp))
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text(if (customUri.isNullOrBlank()) "Choose Photo" else "Replace Photo", fontSize = 12.sp)
-                        }
-                    }
-
-                    if (!customUri.isNullOrBlank()) {
-                        Spacer(modifier = Modifier.height(12.dp))
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(72.dp)
-                                    .clip(RoundedCornerShape(12.dp))
-                                    .border(1.dp, Color(0xFFA8C9B0), RoundedCornerShape(12.dp))
-                            ) {
-                                AsyncImage(
-                                    model = Uri.parse(customUri),
-                                    contentDescription = "Custom preview",
-                                    contentScale = ContentScale.Crop,
-                                    modifier = Modifier.fillMaxSize()
-                                )
-                            }
-
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = if (bgType == FocusBgType.CUSTOM) "Currently Active Background" else "Saved Photo",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = Color(0xFFA8C9B0)
-                                )
-                                Text(
-                                    text = "Custom wallpaper applied",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = Color.White
-                                )
-                                Spacer(modifier = Modifier.height(6.dp))
-                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                    OutlinedButton(
-                                        onClick = onClearCustom,
-                                        shape = RoundedCornerShape(8.dp),
-                                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
-                                        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF442222)),
-                                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFF87171))
-                                    ) {
-                                        Icon(Icons.Default.Delete, contentDescription = null, modifier = Modifier.size(14.dp))
-                                        Spacer(modifier = Modifier.width(4.dp))
-                                        Text("Remove", fontSize = 11.sp)
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        // Appearance Adjustments Controls (Dimming, Opacity, Blur, Fit)
-        item {
-            Card(
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = Color(0xFF0F1411)),
-                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF1B241E)),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column(modifier = Modifier.padding(14.dp)) {
-                    Text(
-                        text = "Background Presentation Controls",
-                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                        color = Color(0xFFA8C9B0)
-                    )
-
+                    Text("Presentation & Clarity Controls", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold), color = Color(0xFFA8C9B0))
                     Spacer(modifier = Modifier.height(8.dp))
 
-                    // Dark Overlay Opacity
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "Dark Overlay Opacity (${(overlayOpacity * 100).toInt()}%)",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = Color(0xFFE2E8E4)
-                        )
-                        Text(text = "Enhances text legibility", style = MaterialTheme.typography.labelSmall, color = Color(0xFF6B7A70))
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Text("Dark Overlay Opacity (${(overlayOpacity * 100).toInt()}%)", style = MaterialTheme.typography.bodySmall, color = Color(0xFFE2E8E4))
+                        Text("Preserves text legibility", style = MaterialTheme.typography.labelSmall, color = Color(0xFF6B7A70))
                     }
                     Slider(
                         value = overlayOpacity,
                         onValueChange = onOverlayOpacityChange,
                         valueRange = 0.20f..0.90f,
-                        colors = SliderDefaults.colors(
-                            thumbColor = Color(0xFFA8C9B0),
-                            activeTrackColor = Color(0xFFA8C9B0),
-                            inactiveTrackColor = Color(0xFF243026)
-                        )
+                        colors = SliderDefaults.colors(thumbColor = Color(0xFFA8C9B0), activeTrackColor = Color(0xFFA8C9B0), inactiveTrackColor = Color(0xFF243026))
                     )
 
-                    Spacer(modifier = Modifier.height(4.dp))
-
-                    // Brightness Slider
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "Background Brightness (${(brightness * 100).toInt()}%)",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = Color(0xFFE2E8E4)
-                        )
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Text("Brightness (${(brightness * 100).toInt()}%)", style = MaterialTheme.typography.bodySmall, color = Color(0xFFE2E8E4))
                         Icon(Icons.Default.WbSunny, contentDescription = null, tint = Color(0xFF8F9E94), modifier = Modifier.size(16.dp))
                     }
                     Slider(
                         value = brightness,
                         onValueChange = onBrightnessChange,
                         valueRange = 0.30f..1.0f,
-                        colors = SliderDefaults.colors(
-                            thumbColor = Color(0xFFA8C9B0),
-                            activeTrackColor = Color(0xFFA8C9B0),
-                            inactiveTrackColor = Color(0xFF243026)
-                        )
+                        colors = SliderDefaults.colors(thumbColor = Color(0xFFA8C9B0), activeTrackColor = Color(0xFFA8C9B0), inactiveTrackColor = Color(0xFF243026))
                     )
 
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    // Blur & Fit Toggles
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text("Subtle Soft Blur", style = MaterialTheme.typography.bodySmall, color = Color.White)
-                        }
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                        Text("Subtle Soft Blur", style = MaterialTheme.typography.bodySmall, color = Color.White)
                         Switch(
                             checked = isBlur,
                             onCheckedChange = onToggleBlur,
-                            colors = androidx.compose.material3.SwitchDefaults.colors(
-                                checkedThumbColor = Color(0xFF08140B),
-                                checkedTrackColor = Color(0xFFA8C9B0)
-                            )
+                            colors = androidx.compose.material3.SwitchDefaults.colors(checkedThumbColor = Color(0xFF08140B), checkedTrackColor = Color(0xFFA8C9B0))
                         )
                     }
 
-                    Spacer(modifier = Modifier.height(4.dp))
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                         Column {
-                            Text("Aspect Ratio Scale Mode", style = MaterialTheme.typography.bodySmall, color = Color.White)
-                            Text("Current: $fitMode", style = MaterialTheme.typography.labelSmall, color = Color(0xFF8F9E94))
+                            Text("Scale & Crop Mode", style = MaterialTheme.typography.bodySmall, color = Color.White)
+                            Text("Currently: $fitMode", style = MaterialTheme.typography.labelSmall, color = Color(0xFF8F9E94))
                         }
                         OutlinedButton(
                             onClick = onToggleFitMode,
@@ -971,19 +953,180 @@ private fun ThemesAndBackgroundsTab(
             }
         }
 
-        // Curated Built-in Atmospheric Backgrounds Header
+        // Section A: My Focus Backgrounds Library
+        item {
+            Card(
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFF131A15)),
+                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF202C23)),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(modifier = Modifier.padding(14.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column {
+                            Text("My Focus Backgrounds", style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold), color = Color.White)
+                            Text("${wallpapers.size} personal wallpapers in offline storage", style = MaterialTheme.typography.bodySmall, color = Color(0xFF8F9E94))
+                        }
+
+                        Button(
+                            onClick = onImportPhotos,
+                            shape = RoundedCornerShape(10.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFA8C9B0), contentColor = Color(0xFF08140B))
+                        ) {
+                            Icon(Icons.Default.AddPhotoAlternate, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Import Photos", fontSize = 12.sp)
+                        }
+                    }
+
+                    if (wallpapers.isNotEmpty()) {
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        // Responsive Grid of Imported Wallpapers
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            wallpapers.chunked(3).forEach { rowItems ->
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    rowItems.forEach { item ->
+                                        val isCurrent = (bgType == FocusBgType.CUSTOM && (customUri == item.filePath || activeWallpaper?.id == item.id))
+                                        Box(
+                                            modifier = Modifier
+                                                .weight(1f)
+                                                .height(95.dp)
+                                                .clip(RoundedCornerShape(12.dp))
+                                                .border(
+                                                    width = if (isCurrent) 2.5.dp else 1.dp,
+                                                    color = if (isCurrent) Color(0xFFA8C9B0) else Color(0xFF233226),
+                                                    shape = RoundedCornerShape(12.dp)
+                                                )
+                                                .clickable { onSelectWallpaper(item) }
+                                        ) {
+                                            AsyncImage(
+                                                model = File(item.filePath),
+                                                contentDescription = item.displayName,
+                                                contentScale = ContentScale.Crop,
+                                                modifier = Modifier.fillMaxSize()
+                                            )
+
+                                            // Top-right selection badge or delete action
+                                            if (isCurrent) {
+                                                Box(
+                                                    modifier = Modifier
+                                                        .padding(6.dp)
+                                                        .size(20.dp)
+                                                        .clip(CircleShape)
+                                                        .background(Color(0xFFA8C9B0))
+                                                        .align(Alignment.TopEnd),
+                                                    contentAlignment = Alignment.Center
+                                                ) {
+                                                    Icon(Icons.Default.Check, contentDescription = null, tint = Color.Black, modifier = Modifier.size(14.dp))
+                                                }
+                                            }
+
+                                            // Bottom delete icon overlay
+                                            IconButton(
+                                                onClick = { onDeleteWallpaper(item) },
+                                                modifier = Modifier
+                                                    .size(28.dp)
+                                                    .align(Alignment.BottomEnd)
+                                                    .padding(2.dp)
+                                            ) {
+                                                Icon(Icons.Default.Delete, contentDescription = "Delete", tint = Color.White.copy(alpha = 0.8f), modifier = Modifier.size(16.dp))
+                                            }
+                                        }
+                                    }
+                                    // Fill empty slots in last row if needed
+                                    val emptySlots = 3 - rowItems.size
+                                    for (i in 0 until emptySlots) {
+                                        Spacer(modifier = Modifier.weight(1f))
+                                    }
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        // Slideshow Mode & Clear All
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Switch(
+                                    checked = isSlideshow,
+                                    onCheckedChange = onToggleSlideshow,
+                                    colors = androidx.compose.material3.SwitchDefaults.colors(checkedThumbColor = Color(0xFF08140B), checkedTrackColor = Color(0xFFA8C9B0))
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("Slideshow (${slideshowInterval}m)", style = MaterialTheme.typography.bodySmall, color = Color.White)
+                            }
+
+                            TextButton(onClick = onClearAllWallpapers) {
+                                Text("Clear Gallery", fontSize = 11.sp, color = Color(0xFFE57373))
+                            }
+                        }
+                    } else {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "Import multiple wallpapers to build your persistent offline focus gallery.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Color(0xFF7A897F)
+                        )
+                    }
+                }
+            }
+        }
+
+        // Section B: Pure OLED Black
+        item {
+            val isOledSelected = bgType == FocusBgType.OLED || (bgType == FocusBgType.BUILTIN && builtinId == "minimal_oled")
+            Card(
+                shape = RoundedCornerShape(14.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.Black),
+                border = androidx.compose.foundation.BorderStroke(
+                    width = if (isOledSelected) 2.dp else 1.dp,
+                    color = if (isOledSelected) Color(0xFFA8C9B0) else Color(0xFF222222)
+                ),
+                modifier = Modifier.fillMaxWidth().clickable { onSelectOled() }
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(14.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column {
+                        Text("Pure Minimal OLED Black", style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold), color = Color.White)
+                        Text("Zero distraction true black, maximum battery saving on OLED displays", style = MaterialTheme.typography.bodySmall, color = Color(0xFF8F9E94))
+                    }
+                    if (isOledSelected) {
+                        Box(modifier = Modifier.size(24.dp).clip(CircleShape).background(Color(0xFFA8C9B0)), contentAlignment = Alignment.Center) {
+                            Icon(Icons.Default.Check, contentDescription = null, tint = Color.Black, modifier = Modifier.size(16.dp))
+                        }
+                    }
+                }
+            }
+        }
+
+        // Section C: 10 Curated Atmospheric Backdrops Header
         item {
             Text(
                 text = "Curated Atmospheric Backdrops",
                 style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
-                color = Color.White,
-                modifier = Modifier.padding(top = 4.dp, bottom = 2.dp)
+                color = Color.White
             )
         }
 
-        // List of all 10 Curated Themes
         items(FocusAestheticTheme.values()) { theme ->
-            val isSelected = (bgType == FocusBgType.BUILTIN || bgType == FocusBgType.OLED) && builtinId.equals(theme.id, ignoreCase = true)
+            if (theme == FocusAestheticTheme.MINIMAL_OLED) return@items // Handled above
+
+            val isSelected = (bgType == FocusBgType.BUILTIN && builtinId.equals(theme.id, ignoreCase = true))
             Card(
                 shape = RoundedCornerShape(14.dp),
                 colors = CardDefaults.cardColors(containerColor = theme.cardBackground),
@@ -991,15 +1134,7 @@ private fun ThemesAndBackgroundsTab(
                     width = if (isSelected) 2.dp else 1.dp,
                     color = if (isSelected) theme.primaryAccent else Color.White.copy(alpha = 0.10f)
                 ),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable {
-                        if (theme == FocusAestheticTheme.MINIMAL_OLED) {
-                            onSelectOled()
-                        } else {
-                            onSelectBuiltin(theme)
-                        }
-                    }
+                modifier = Modifier.fillMaxWidth().clickable { onSelectBuiltin(theme) }
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth().padding(14.dp),
@@ -1008,50 +1143,19 @@ private fun ThemesAndBackgroundsTab(
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
                         Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                            Box(
-                                modifier = Modifier
-                                    .size(16.dp)
-                                    .clip(CircleShape)
-                                    .background(theme.primaryAccent)
-                            )
-                            Box(
-                                modifier = Modifier
-                                    .size(16.dp)
-                                    .clip(CircleShape)
-                                    .background(theme.secondaryAccent)
-                            )
+                            Box(modifier = Modifier.size(16.dp).clip(CircleShape).background(theme.primaryAccent))
+                            Box(modifier = Modifier.size(16.dp).clip(CircleShape).background(theme.secondaryAccent))
                         }
-
                         Spacer(modifier = Modifier.width(14.dp))
-
                         Column {
-                            Text(
-                                text = theme.displayName,
-                                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
-                                color = Color.White
-                            )
-                            Text(
-                                text = theme.subtitle,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = Color(0xFF9EABA2)
-                            )
+                            Text(theme.displayName, style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold), color = Color.White)
+                            Text(theme.subtitle, style = MaterialTheme.typography.bodySmall, color = Color(0xFF9EABA2))
                         }
                     }
 
                     if (isSelected) {
-                        Box(
-                            modifier = Modifier
-                                .size(24.dp)
-                                .clip(CircleShape)
-                                .background(theme.primaryAccent),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                Icons.Default.Check,
-                                contentDescription = "Selected",
-                                tint = Color.Black,
-                                modifier = Modifier.size(16.dp)
-                            )
+                        Box(modifier = Modifier.size(24.dp).clip(CircleShape).background(theme.primaryAccent), contentAlignment = Alignment.Center) {
+                            Icon(Icons.Default.Check, contentDescription = null, tint = Color.Black, modifier = Modifier.size(16.dp))
                         }
                     }
                 }
@@ -1060,11 +1164,127 @@ private fun ThemesAndBackgroundsTab(
     }
 }
 
-// -------------------------------------------------------------
-// 4. AUDIO CUES TAB
-// -------------------------------------------------------------
+// =========================================================================
+// 4. ONLINE FOCUS & STREAMING TAB (Official External App Integrations)
+// =========================================================================
 @Composable
-private fun AudioCuesTab(
+private fun OnlineStreamingTab() {
+    val context = LocalContext.current
+
+    LazyColumn(
+        verticalArrangement = Arrangement.spacedBy(14.dp),
+        modifier = Modifier.fillMaxSize()
+    ) {
+        item {
+            Card(
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFF131A15)),
+                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF202C23)),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text("Official Streaming Music Integrations", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold), color = Color.White)
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "Rhythm strictly complies with open-source licensing and streaming terms of service. External music runs through your official installed applications.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color(0xFF8F9E94)
+                    )
+                }
+            }
+        }
+
+        // Spotify
+        item {
+            OnlineServiceCard(
+                title = "Spotify Focus Playlists",
+                description = "Open Deep Focus, Lofi Beats, or Ambient Study in the official Spotify app",
+                buttonText = "Open in Spotify",
+                onClick = {
+                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://open.spotify.com/genre/focus"))
+                    context.startActivity(intent)
+                }
+            )
+        }
+
+        // YouTube Lofi & Study
+        item {
+            OnlineServiceCard(
+                title = "YouTube Focus & Lofi",
+                description = "Launch curated Lofi Girl and atmospheric study livestreams in the YouTube app",
+                buttonText = "Open in YouTube",
+                onClick = {
+                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://www.youtube.com/results?search_query=lofi+focus+study"))
+                    context.startActivity(intent)
+                }
+            )
+        }
+
+        // Amazon Music
+        item {
+            OnlineServiceCard(
+                title = "Amazon Music Focus",
+                description = "Launch instrumental and peaceful ambient playlists in Amazon Music",
+                buttonText = "Open in Amazon Music",
+                onClick = {
+                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://music.amazon.com"))
+                    context.startActivity(intent)
+                }
+            )
+        }
+    }
+}
+
+@Composable
+private fun OnlineServiceCard(
+    title: String,
+    description: String,
+    buttonText: String,
+    onClick: () -> Unit
+) {
+    Card(
+        shape = RoundedCornerShape(14.dp),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFF0F1411)),
+        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF1B241E)),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(title, style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold), color = Color.White)
+                Text(description, style = MaterialTheme.typography.bodySmall, color = Color(0xFF7A897F))
+            }
+            Spacer(modifier = Modifier.width(10.dp))
+            OutlinedButton(
+                onClick = onClick,
+                shape = RoundedCornerShape(10.dp),
+                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFA8C9B0).copy(alpha = 0.5f)),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFA8C9B0))
+            ) {
+                Icon(Icons.Default.OpenInNew, contentDescription = null, modifier = Modifier.size(14.dp))
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(buttonText, fontSize = 11.sp)
+            }
+        }
+    }
+}
+
+// =========================================================================
+// 5. ENVIRONMENT & AUDIO CUES TAB
+// =========================================================================
+@Composable
+private fun EnvironmentAndCuesTab(
+    backgroundAudioAllowed: Boolean,
+    onToggleBackgroundAudio: (Boolean) -> Unit,
+    immersiveFullscreenEnabled: Boolean,
+    onToggleImmersiveFullscreen: (Boolean) -> Unit,
+    keepScreenOn: Boolean,
+    onToggleKeepScreenOn: (Boolean) -> Unit,
+    isAmbientAnimation: Boolean,
+    onToggleAmbientAnimation: (Boolean) -> Unit,
     startSoundEnabled: Boolean,
     breakStartSoundEnabled: Boolean,
     breakEndSoundEnabled: Boolean,
@@ -1073,72 +1293,111 @@ private fun AudioCuesTab(
     onToggleBreakStartSound: (Boolean) -> Unit,
     onToggleBreakEndSound: (Boolean) -> Unit,
     onToggleEndSound: (Boolean) -> Unit,
-    onPreview: (StudySoundType) -> Unit
+    onPreviewCue: (StudySoundType) -> Unit
 ) {
     LazyColumn(
         verticalArrangement = Arrangement.spacedBy(12.dp),
         modifier = Modifier.fillMaxSize()
     ) {
         item {
-            Text(
-                text = "Gentle Auditory Signals",
-                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
-                color = Color.White
+            Text("Focus Environment & Lifecycle", style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold), color = Color.White)
+        }
+
+        // P0 Feature: Audio while studying in other apps
+        item {
+            EnvironmentSwitchCard(
+                title = "Audio while studying in other apps",
+                description = "Off by default. When enabled, focus audio may continue in background while timer runs. Pausing always stops audio.",
+                checked = backgroundAudioAllowed,
+                onCheckedChange = onToggleBackgroundAudio
             )
-            Text(
-                text = "Calming chime signals to bookend your study sprints and micro-breaks without startling you.",
-                style = MaterialTheme.typography.bodySmall,
-                color = Color(0xFF8F9E94)
+        }
+
+        // P0 Feature: Immersive Full-Screen Timer
+        item {
+            EnvironmentSwitchCard(
+                title = "Immersive Full-Screen Timer",
+                description = "Hides Android status bar and navigation bars when entering focus mode for true distraction-free fullscreen.",
+                checked = immersiveFullscreenEnabled,
+                onCheckedChange = onToggleImmersiveFullscreen
             )
         }
 
         item {
-            AudioCueCard(
-                title = "Session Start Bell",
-                description = "Pleasant deep gong signaling the start of a focus sprint",
-                isEnabled = startSoundEnabled,
-                onToggle = onToggleStartSound,
-                onPreview = { onPreview(StudySoundType.SESSION_START) }
+            EnvironmentSwitchCard(
+                title = "Keep Screen Awake",
+                description = "Prevents device display from sleeping while a focus sprint or break is actively running.",
+                checked = keepScreenOn,
+                onCheckedChange = onToggleKeepScreenOn
             )
         }
 
         item {
-            AudioCueCard(
-                title = "Break Start Chime",
-                description = "Soft ascending tone when entering a micro-break or recharge",
-                isEnabled = breakStartSoundEnabled,
-                onToggle = onToggleBreakStartSound,
-                onPreview = { onPreview(StudySoundType.BREAK_START) }
+            EnvironmentSwitchCard(
+                title = "Ambient Breathing Motion",
+                description = "Slow, rhythmic pulse in ambient background orbs. Disable for completely static stillness.",
+                checked = isAmbientAnimation,
+                onCheckedChange = onToggleAmbientAnimation
             )
         }
 
         item {
-            AudioCueCard(
-                title = "Break Ending Notice",
-                description = "Gentle double chime 30 seconds before break ends",
-                isEnabled = breakEndSoundEnabled,
-                onToggle = onToggleBreakEndSound,
-                onPreview = { onPreview(StudySoundType.BREAK_END) }
-            )
+            Spacer(modifier = Modifier.height(6.dp))
+            Text("Gentle Audio Signals", style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold), color = Color.White)
         }
 
         item {
-            AudioCueCard(
-                title = "Session Completed Bell",
-                description = "Warm celebratory chord when reaching target focus time",
-                isEnabled = endSoundEnabled,
-                onToggle = onToggleEndSound,
-                onPreview = { onPreview(StudySoundType.SESSION_END) }
+            CueCard(title = "Session Start Bell", description = "Deep gong when study sprint begins", isChecked = startSoundEnabled, onToggle = onToggleStartSound, onPreview = { onPreviewCue(StudySoundType.SESSION_START) })
+        }
+        item {
+            CueCard(title = "Break Start Chime", description = "Ascending chime when break begins", isChecked = breakStartSoundEnabled, onToggle = onToggleBreakStartSound, onPreview = { onPreviewCue(StudySoundType.BREAK_START) })
+        }
+        item {
+            CueCard(title = "Break Ending Notice", description = "30s warning before break concludes", isChecked = breakEndSoundEnabled, onToggle = onToggleBreakEndSound, onPreview = { onPreviewCue(StudySoundType.BREAK_END) })
+        }
+        item {
+            CueCard(title = "Session Complete Bell", description = "Warm celebratory chord at target duration", isChecked = endSoundEnabled, onToggle = onToggleEndSound, onPreview = { onPreviewCue(StudySoundType.SESSION_END) })
+        }
+    }
+}
+
+@Composable
+private fun EnvironmentSwitchCard(
+    title: String,
+    description: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit
+) {
+    Card(
+        shape = RoundedCornerShape(14.dp),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFF0F1411)),
+        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF1B241E)),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(14.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(title, style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold), color = Color.White)
+                Text(description, style = MaterialTheme.typography.bodySmall, color = Color(0xFF7A897F))
+            }
+            Spacer(modifier = Modifier.width(12.dp))
+            Switch(
+                checked = checked,
+                onCheckedChange = onCheckedChange,
+                colors = androidx.compose.material3.SwitchDefaults.colors(checkedThumbColor = Color(0xFF08140B), checkedTrackColor = Color(0xFFA8C9B0))
             )
         }
     }
 }
 
 @Composable
-private fun AudioCueCard(
+private fun CueCard(
     title: String,
     description: String,
-    isEnabled: Boolean,
+    isChecked: Boolean,
     onToggle: (Boolean) -> Unit,
     onPreview: () -> Unit
 ) {
@@ -1154,12 +1413,10 @@ private fun AudioCueCard(
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Column(modifier = Modifier.weight(1f)) {
-                Text(text = title, style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold), color = Color.White)
-                Text(text = description, style = MaterialTheme.typography.bodySmall, color = Color(0xFF7A897F))
+                Text(title, style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold), color = Color.White)
+                Text(description, style = MaterialTheme.typography.bodySmall, color = Color(0xFF7A897F))
             }
-
-            Spacer(modifier = Modifier.width(12.dp))
-
+            Spacer(modifier = Modifier.width(10.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
                 OutlinedButton(
                     onClick = onPreview,
@@ -1171,120 +1428,12 @@ private fun AudioCueCard(
                     Spacer(modifier = Modifier.width(4.dp))
                     Text("Test", fontSize = 11.sp, color = Color(0xFFA8C9B0))
                 }
-
                 Spacer(modifier = Modifier.width(8.dp))
-
                 Switch(
-                    checked = isEnabled,
+                    checked = isChecked,
                     onCheckedChange = onToggle,
-                    colors = androidx.compose.material3.SwitchDefaults.colors(
-                        checkedThumbColor = Color(0xFF08140B),
-                        checkedTrackColor = Color(0xFFA8C9B0)
-                    )
+                    colors = androidx.compose.material3.SwitchDefaults.colors(checkedThumbColor = Color(0xFF08140B), checkedTrackColor = Color(0xFFA8C9B0))
                 )
-            }
-        }
-    }
-}
-
-// -------------------------------------------------------------
-// 5. ENVIRONMENT TAB
-// -------------------------------------------------------------
-@Composable
-private fun EnvironmentTab(
-    keepScreenOn: Boolean,
-    onToggleKeepScreenOn: (Boolean) -> Unit,
-    isAmbientAnimation: Boolean,
-    onToggleAmbientAnimation: (Boolean) -> Unit
-) {
-    LazyColumn(
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-        modifier = Modifier.fillMaxSize()
-    ) {
-        item {
-            Text(
-                text = "Focus Room Environment",
-                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
-                color = Color.White
-            )
-            Text(
-                text = "Tune display and breathing motion to match your ADHD and energy requirements.",
-                style = MaterialTheme.typography.bodySmall,
-                color = Color(0xFF8F9E94)
-            )
-        }
-
-        item {
-            Card(
-                shape = RoundedCornerShape(14.dp),
-                colors = CardDefaults.cardColors(containerColor = Color(0xFF0F1411)),
-                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF1B241E)),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(14.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = "Keep Screen Awake",
-                            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
-                            color = Color.White
-                        )
-                        Text(
-                            text = "Prevents device display from sleeping while a focus sprint or break is actively running.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = Color(0xFF7A897F)
-                        )
-                    }
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Switch(
-                        checked = keepScreenOn,
-                        onCheckedChange = onToggleKeepScreenOn,
-                        colors = androidx.compose.material3.SwitchDefaults.colors(
-                            checkedThumbColor = Color(0xFF08140B),
-                            checkedTrackColor = Color(0xFFA8C9B0)
-                        )
-                    )
-                }
-            }
-        }
-
-        item {
-            Card(
-                shape = RoundedCornerShape(14.dp),
-                colors = CardDefaults.cardColors(containerColor = Color(0xFF0F1411)),
-                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF1B241E)),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(14.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = "Ambient Breathing Motion",
-                            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
-                            color = Color.White
-                        )
-                        Text(
-                            text = "Slow, rhythmic pulse in ambient background orbs. Disable for completely static stillness.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = Color(0xFF7A897F)
-                        )
-                    }
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Switch(
-                        checked = isAmbientAnimation,
-                        onCheckedChange = onToggleAmbientAnimation,
-                        colors = androidx.compose.material3.SwitchDefaults.colors(
-                            checkedThumbColor = Color(0xFF08140B),
-                            checkedTrackColor = Color(0xFFA8C9B0)
-                        )
-                    )
-                }
             }
         }
     }

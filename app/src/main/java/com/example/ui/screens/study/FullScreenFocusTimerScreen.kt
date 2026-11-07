@@ -120,6 +120,10 @@ fun FullScreenFocusTimerScreen(
 
     val context = LocalContext.current
 
+    // True Immersive Fullscreen Mode
+    val studyImmersiveFullscreenEnabled by viewModel.studyImmersiveFullscreenEnabled.collectAsStateWithLifecycle()
+    com.example.util.ImmersiveFocusEffect(enabled = studyImmersiveFullscreenEnabled)
+
     // Screen awake management
     val studyKeepScreenOnEnabled by viewModel.studyKeepScreenOnEnabled.collectAsStateWithLifecycle()
     com.example.util.KeepScreenOnEffect(
@@ -138,11 +142,37 @@ fun FullScreenFocusTimerScreen(
     val bgType by viewModel.focusBgType.collectAsStateWithLifecycle()
     val bgBuiltinId by viewModel.focusBgBuiltinId.collectAsStateWithLifecycle()
     val customUri by viewModel.focusBgCustomUri.collectAsStateWithLifecycle()
+    val wallpapers by com.example.util.FocusWallpaperManager.wallpapers.collectAsStateWithLifecycle()
+    val isSlideshow by viewModel.focusSlideshowEnabled.collectAsStateWithLifecycle()
+    val slideshowIntervalMins by viewModel.focusSlideshowIntervalMinutes.collectAsStateWithLifecycle()
     val overlayOpacity by viewModel.focusBgOverlayOpacity.collectAsStateWithLifecycle()
     val brightness by viewModel.focusBgBrightness.collectAsStateWithLifecycle()
     val isBlur by viewModel.focusBgBlur.collectAsStateWithLifecycle()
     val fitMode by viewModel.focusBgFit.collectAsStateWithLifecycle()
     val isAmbientAnimation by viewModel.focusAmbientAnimationEnabled.collectAsStateWithLifecycle()
+
+    var slideshowIndex by remember { androidx.compose.runtime.mutableIntStateOf(0) }
+    androidx.compose.runtime.LaunchedEffect(isSlideshow, wallpapers, slideshowIntervalMins) {
+        if (isSlideshow && wallpapers.isNotEmpty()) {
+            val intervalMillis = (slideshowIntervalMins.coerceAtLeast(1) * 60 * 1000L)
+            while (true) {
+                kotlinx.coroutines.delay(intervalMillis)
+                slideshowIndex = (slideshowIndex + 1) % wallpapers.size
+            }
+        }
+    }
+
+    val activeCustomUri = remember(bgType, customUri, isSlideshow, wallpapers, slideshowIndex) {
+        if (bgType == FocusBgType.CUSTOM) {
+            if (isSlideshow && wallpapers.isNotEmpty()) {
+                wallpapers.getOrNull(slideshowIndex % wallpapers.size)?.filePath ?: customUri
+            } else {
+                customUri
+            }
+        } else {
+            null
+        }
+    }
 
     val effectiveTheme = remember(bgBuiltinId) {
         FocusAestheticTheme.fromId(bgBuiltinId)
@@ -201,7 +231,7 @@ fun FullScreenFocusTimerScreen(
         FocusBackgroundLayer(
             bgType = bgType,
             builtinTheme = effectiveTheme,
-            customImageUri = customUri,
+            customImageUri = activeCustomUri,
             overlayOpacity = overlayOpacity,
             brightness = brightness,
             isBlurEnabled = isBlur,

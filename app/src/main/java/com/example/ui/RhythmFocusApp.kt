@@ -98,6 +98,22 @@ fun RhythmFocusApp(viewModel: MainViewModel) {
         }
     }
 
+    // App lifecycle observer: pause/resume focus audio according to background audio preference
+    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    androidx.compose.runtime.DisposableEffect(lifecycleOwner) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            if (event == androidx.lifecycle.Lifecycle.Event.ON_STOP) {
+                viewModel.onAppBackgrounded()
+            } else if (event == androidx.lifecycle.Lifecycle.Event.ON_START) {
+                viewModel.onAppForegrounded()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
+
     // Handle system back navigation to return to TODAY tab when not in focus mode
     BackHandler(enabled = !isStudyFocusModeActive && currentDestination != AppDestination.TODAY) {
         viewModel.navigateTo(AppDestination.TODAY)
