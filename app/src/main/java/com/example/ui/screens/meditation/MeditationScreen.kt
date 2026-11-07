@@ -609,12 +609,12 @@ fun MeditationScreen(
                                     style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
                                     color = MaterialTheme.colorScheme.onSurface
                                 )
-                                Row(
+                                FlowRow(
                                     horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                    verticalAlignment = Alignment.CenterVertically
+                                    verticalArrangement = Arrangement.spacedBy(6.dp)
                                 ) {
                                     listOf(
-                                        0.75f to "0.75x Slow / Mindful",
+                                        0.75f to "0.75x Slow",
                                         0.90f to "0.9x Calm",
                                         1.0f to "1.0x Normal"
                                     ).forEach { (rate, label) ->
