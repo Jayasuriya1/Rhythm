@@ -575,56 +575,28 @@ fun MeditationScreen(
                         color = MaterialTheme.colorScheme.primary
                     )
 
-                    // 4 Selectable Audio Modes (2x2 responsive grid)
+                    // Audio modes wrap naturally on compact phones and split-screen widths.
                     val allModes = MeditationAudioMode.values().toList()
-                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            allModes.take(2).forEach { mode ->
-                                val isSelected = audioMode == mode
-                                FilterChip(
-                                    selected = isSelected,
-                                    onClick = {
-                                        audioMode = mode
-                                        viewModel.setMeditationAudioMode(mode)
-                                    },
-                                    label = {
-                                        Text(
-                                            text = mode.displayName,
-                                            maxLines = 1,
-                                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                                            style = MaterialTheme.typography.labelSmall
-                                        )
-                                    },
-                                    modifier = Modifier.weight(1f)
-                                )
-                            }
-                        }
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            allModes.drop(2).forEach { mode ->
-                                val isSelected = audioMode == mode
-                                FilterChip(
-                                    selected = isSelected,
-                                    onClick = {
-                                        audioMode = mode
-                                        viewModel.setMeditationAudioMode(mode)
-                                    },
-                                    label = {
-                                        Text(
-                                            text = mode.displayName,
-                                            maxLines = 1,
-                                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                                            style = MaterialTheme.typography.labelSmall
-                                        )
-                                    },
-                                    modifier = Modifier.weight(1f)
-                                )
-                            }
+                    FlowRow(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        allModes.forEach { mode ->
+                            FilterChip(
+                                selected = audioMode == mode,
+                                onClick = {
+                                    audioMode = mode
+                                    viewModel.setMeditationAudioMode(mode)
+                                },
+                                label = {
+                                    Text(
+                                        text = mode.displayName,
+                                        maxLines = 1,
+                                        style = MaterialTheme.typography.labelSmall
+                                    )
+                                }
+                            )
                         }
                     }
 
@@ -637,12 +609,12 @@ fun MeditationScreen(
                                     style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
                                     color = MaterialTheme.colorScheme.onSurface
                                 )
-                                Row(
+                                FlowRow(
                                     horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                    verticalAlignment = Alignment.CenterVertically
+                                    verticalArrangement = Arrangement.spacedBy(6.dp)
                                 ) {
                                     listOf(
-                                        0.75f to "0.75x Slow / Mindful",
+                                        0.75f to "0.75x Slow",
                                         0.90f to "0.9x Calm",
                                         1.0f to "1.0x Normal"
                                     ).forEach { (rate, label) ->
@@ -797,7 +769,7 @@ fun MeditationScreen(
                                     holdExhaleSeconds = values[3]
                                     viewModel.setMeditationBreathingPacing(values[0], values[1], values[2], values[3])
                                 },
-                                label = { Text(presetName, style = MaterialTheme.typography.labelSmall) }
+                                label = { Text(presetName, style = MaterialTheme.typography.labelSmall, maxLines = 1) }
                             )
                         }
                     }
