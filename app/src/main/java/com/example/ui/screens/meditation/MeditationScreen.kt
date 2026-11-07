@@ -578,11 +578,12 @@ fun MeditationScreen(
                     // 4 Selectable Audio Modes (2x2 responsive grid)
                     val allModes = MeditationAudioMode.values().toList()
                     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Row(
+                        FlowRow(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
-                            allModes.take(2).forEach { mode ->
+                            allModes.forEach { mode ->
                                 val isSelected = audioMode == mode
                                 FilterChip(
                                     selected = isSelected,
@@ -602,11 +603,7 @@ fun MeditationScreen(
                                 )
                             }
                         }
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            allModes.drop(2).forEach { mode ->
+
                                 val isSelected = audioMode == mode
                                 FilterChip(
                                     selected = isSelected,
@@ -622,7 +619,6 @@ fun MeditationScreen(
                                             style = MaterialTheme.typography.labelSmall
                                         )
                                     },
-                                    modifier = Modifier.weight(1f)
                                 )
                             }
                         }
@@ -797,7 +793,7 @@ fun MeditationScreen(
                                     holdExhaleSeconds = values[3]
                                     viewModel.setMeditationBreathingPacing(values[0], values[1], values[2], values[3])
                                 },
-                                label = { Text(presetName, style = MaterialTheme.typography.labelSmall) }
+                                label = { Text(presetName, style = MaterialTheme.typography.labelSmall, maxLines = 1) }
                             )
                         }
                     }
