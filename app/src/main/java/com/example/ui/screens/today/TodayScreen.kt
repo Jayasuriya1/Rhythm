@@ -263,18 +263,14 @@ fun TodayScreen(
                     )
                 }
                 item {
-                    WearableHealthConnectCard(
-                        healthSummary = healthSummary,
-                        isHealthConnectAuthorized = healthConnectState.grantedPermissions.isNotEmpty(),
-                        isSyncing = healthConnectState.isSyncing,
-                        lastSyncTimestamp = healthConnectState.lastSyncTime,
-                        onRefreshSync = {
-                            coroutineScope.launch {
-                                val today = java.time.LocalDate.now()
-                                viewModel.healthConnectManager.syncDateRange(today, today)
-                            }
+                    DailyPriorityStudyCard(
+                        task = dailyPriorityTask,
+                        onStartFocus = { task ->
+                            viewModel.selectTaskForTimer(task)
+                            viewModel.startTimer()
+                            viewModel.navigateTo(AppDestination.STUDY)
                         },
-                        onNavigateHealth = { viewModel.navigateTo(AppDestination.HEALTH_CONNECT) }
+                        onViewTasks = { viewModel.navigateTo(AppDestination.STUDY) }
                     )
                 }
                 item {
@@ -285,17 +281,6 @@ fun TodayScreen(
                         entries = routineEntries,
                         onDoneNow = { anchor -> viewModel.markRoutineDoneNow(anchor) },
                         onViewRoutine = { viewModel.navigateTo(AppDestination.ROUTINE) }
-                    )
-                }
-                item {
-                    DailyPriorityStudyCard(
-                        task = dailyPriorityTask,
-                        onStartFocus = { task ->
-                            viewModel.selectTaskForTimer(task)
-                            viewModel.startTimer()
-                            viewModel.navigateTo(AppDestination.STUDY)
-                        },
-                        onViewTasks = { viewModel.navigateTo(AppDestination.STUDY) }
                     )
                 }
                 item {
@@ -337,6 +322,21 @@ fun TodayScreen(
                             viewModel.correctMedicationIntake(intake, newStatus, null)
                         },
                         onManageMedications = { viewModel.navigateTo(AppDestination.HEALTH) }
+                    )
+                }
+                item {
+                    WearableHealthConnectCard(
+                        healthSummary = healthSummary,
+                        isHealthConnectAuthorized = healthConnectState.grantedPermissions.isNotEmpty(),
+                        isSyncing = healthConnectState.isSyncing,
+                        lastSyncTimestamp = healthConnectState.lastSyncTime,
+                        onRefreshSync = {
+                            coroutineScope.launch {
+                                val today = java.time.LocalDate.now()
+                                viewModel.healthConnectManager.syncDateRange(today, today)
+                            }
+                        },
+                        onNavigateHealth = { viewModel.navigateTo(AppDestination.HEALTH_CONNECT) }
                     )
                 }
                 item {
