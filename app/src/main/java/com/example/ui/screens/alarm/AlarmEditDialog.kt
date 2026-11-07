@@ -91,6 +91,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -123,6 +124,7 @@ fun AlarmEditDialog(
     onSave: (CustomAlarmEntity) -> Unit
 ) {
     val context = LocalContext.current
+    val isCompactHeight = LocalConfiguration.current.screenHeightDp < 720
 
     var activeTab by remember { mutableIntStateOf(0) }
 
@@ -320,7 +322,7 @@ fun AlarmEditDialog(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 20.dp, vertical = 14.dp),
+                        .padding(horizontal = 20.dp, vertical = if (isCompactHeight) 8.dp else 14.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -380,7 +382,8 @@ fun AlarmEditDialog(
                         missionType = missionType,
                         missionLabel = targetBarcodeLabel,
                         audioTitle = customAudioTitle,
-                        crescendoSeconds = crescendoSeconds
+                        crescendoSeconds = crescendoSeconds,
+                        isCompactHeight = isCompactHeight
                     )
                 }
 
@@ -697,13 +700,14 @@ private fun AlarmLiveScreenPreviewMockup(
     missionType: String,
     missionLabel: String,
     audioTitle: String,
-    crescendoSeconds: Int
+    crescendoSeconds: Int,
+    isCompactHeight: Boolean
 ) {
     Card(
         shape = RoundedCornerShape(20.dp),
         modifier = Modifier
             .fillMaxWidth()
-            .height(175.dp)
+            .height(if (isCompactHeight) 112.dp else 175.dp)
             .shadow(6.dp, RoundedCornerShape(20.dp)),
         border = BorderStroke(1.dp, Color.White.copy(alpha = 0.2f))
     ) {
