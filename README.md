@@ -85,7 +85,7 @@ Mindful resets tailored for high-focus work:
 
 ---
 
-## 🛠 Tech Stack & Architecture
+## Android application identity\n\nThe public Android package ID is `com.jayasuriya.rhythm`. This identifier is stable for future releases; changing it after publication would create a separate Android app rather than an in-place update.\n\n## 🛠 Tech Stack & Architecture
 
 | Layer | Technologies |
 |---|---|

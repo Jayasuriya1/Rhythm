@@ -16,7 +16,7 @@ android {
   compileSdk { version = release(36) { minorApiLevel = 1 } }
 
   defaultConfig {
-    applicationId = "com.aistudio.rhythmfocus.mnyrqp"
+    applicationId = "com.jayasuriya.rhythm"
     minSdk = 26
     targetSdk = 36
     versionCode = 1
