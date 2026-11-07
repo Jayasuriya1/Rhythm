@@ -169,6 +169,8 @@ fun FullScreenFocusTimerScreen(
             .testTag("fullscreen_study_timer_screen")
     ) {
         val isWideScreen = maxWidth >= 600.dp
+        // Compact landscape / short-window layouts need a smaller timer and tighter chrome.
+        val isCompactHeight = maxHeight < 620.dp
 
         // 1. Ambient Animated Background
         AestheticBackdropCanvas(
@@ -180,7 +182,10 @@ fun FullScreenFocusTimerScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 24.dp, vertical = 18.dp),
+                .padding(
+                    horizontal = if (isCompactHeight) 16.dp else 24.dp,
+                    vertical = if (isCompactHeight) 8.dp else 18.dp
+                ),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.SpaceBetween
         ) {
@@ -285,7 +290,8 @@ fun FullScreenFocusTimerScreen(
                         timeFormatted = timeFormatted,
                         animatedProgress = animatedProgress,
                         accentColor = currentTheme.primaryAccent,
-                        isWideScreen = isWideScreen
+                        isWideScreen = isWideScreen,
+                        isCompactHeight = isCompactHeight
                     )
                 }
             }
@@ -314,7 +320,7 @@ fun FullScreenFocusTimerScreen(
                                 shape = RoundedCornerShape(16.dp),
                                 modifier = Modifier
                                     .weight(1f)
-                                    .height(52.dp)
+                                    .height(if (isCompactHeight) 46.dp else 52.dp)
                                     .testTag("fullscreen_pause_button")
                             ) {
                                 Icon(Icons.Default.Pause, contentDescription = "Pause", modifier = Modifier.size(20.dp))
@@ -334,7 +340,7 @@ fun FullScreenFocusTimerScreen(
                                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                                 modifier = Modifier
                                     .weight(1f)
-                                    .height(52.dp)
+                                    .height(if (isCompactHeight) 46.dp else 52.dp)
                                     .testTag("fullscreen_start_button")
                             ) {
                                 Icon(Icons.Default.PlayArrow, contentDescription = "Start", modifier = Modifier.size(20.dp))
@@ -355,7 +361,7 @@ fun FullScreenFocusTimerScreen(
                             shape = RoundedCornerShape(16.dp),
                             modifier = Modifier
                                 .weight(if (hasRecordButton) 0.85f else 1f)
-                                .height(52.dp)
+                                .height(if (isCompactHeight) 46.dp else 52.dp)
                                 .testTag("fullscreen_reset_button")
                         ) {
                             Icon(Icons.Default.Refresh, contentDescription = "Reset", modifier = Modifier.size(20.dp))
@@ -370,7 +376,7 @@ fun FullScreenFocusTimerScreen(
                                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                                 modifier = Modifier
                                     .weight(1f)
-                                    .height(52.dp)
+                                    .height(if (isCompactHeight) 46.dp else 52.dp)
                                     .testTag("fullscreen_record_button")
                             ) {
                                 Icon(Icons.Default.CheckCircle, contentDescription = "Record", modifier = Modifier.size(20.dp))
@@ -381,7 +387,7 @@ fun FullScreenFocusTimerScreen(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(10.dp))
+                Spacer(modifier = Modifier.height(if (isCompactHeight) 2.dp else 10.dp))
 
                 // Bottom Meta Bar: Notes, Park Distraction, and Exit
                 Row(
@@ -779,7 +785,8 @@ private fun FocusTimerCenterView(
     timeFormatted: String,
     animatedProgress: Float,
     accentColor: Color,
-    isWideScreen: Boolean
+    isWideScreen: Boolean,
+    isCompactHeight: Boolean = false
 ) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -789,7 +796,8 @@ private fun FocusTimerCenterView(
         // Task Title & Category Badge
         Text(
             text = timerState.selectedTaskTitle,
-            style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
+            style = (if (isCompactHeight) MaterialTheme.typography.titleLarge else MaterialTheme.typography.headlineMedium)
+                .copy(fontWeight = FontWeight.Bold),
             color = Color.White,
             textAlign = TextAlign.Center,
             modifier = Modifier.padding(bottom = 6.dp)
@@ -807,10 +815,14 @@ private fun FocusTimerCenterView(
             )
         }
 
-        Spacer(modifier = Modifier.height(20.dp))
+        Spacer(modifier = Modifier.height(if (isCompactHeight) 6.dp else 20.dp))
 
         // Circular Progress Ring & High-Contrast Digits
-        val circleSize = if (isWideScreen) 250.dp else 220.dp
+        val circleSize = when {
+            isCompactHeight -> 168.dp
+            isWideScreen -> 250.dp
+            else -> 220.dp
+        }
         Box(
             contentAlignment = Alignment.Center,
             modifier = Modifier.size(circleSize)
@@ -837,7 +849,11 @@ private fun FocusTimerCenterView(
                 Text(
                     text = timeFormatted,
                     style = MaterialTheme.typography.displayLarge.copy(
-                        fontSize = if (isWideScreen) 54.sp else 46.sp,
+                        fontSize = when {
+                            isCompactHeight -> 38.sp
+                            isWideScreen -> 54.sp
+                            else -> 46.sp
+                        },
                         fontFamily = FontFamily.Monospace,
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 2.sp
