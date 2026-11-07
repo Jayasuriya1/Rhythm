@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Rhythm &amp; Focus</string>
+    <string name="app_name">Rhythm</string>
     <string name="nav_today">Today</string>
     <string name="nav_routine">Routine</string>
     <string name="nav_health">Health</string>
