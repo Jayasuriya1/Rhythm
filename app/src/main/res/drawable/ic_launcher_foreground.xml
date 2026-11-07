@@ -1,33 +1,28 @@
 <?xml version="1.0" encoding="utf-8"?>
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <!-- Center focus circular rings and rhythm wave inside 66dp safe zone (21 to 87) -->
-    <!-- Outer Focus Ring -->
+    <!-- Ribbon R: an open, continuous form representing rhythm and steady progress. -->
     <path
-        android:fillColor="#00000000"
-        android:pathData="M54,26 C69.46,26 82,38.54 82,54 C82,69.46 69.46,82 54,82 C38.54,82 26,69.46 26,54 C26,38.54 38.54,26 54,26 Z"
-        android:strokeColor="#F7F9F6"
-        android:strokeWidth="3.5"
-        android:strokeLineCap="round" />
-    <!-- Inner Rhythm Arc -->
+        android:fillType="evenOdd"
+        android:pathData="M27,83 L27,32 C27,20 36,12 49,12 L63,12 C82,12 94,23 94,40 C94,55 84,65 68,68 L91,94 L68,94 L47,69 L45,69 L45,94 L27,94 Z M45,29 L45,52 L62,52 C71,52 76,48 76,40 C76,33 71,29 62,29 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient android:type="linear" android:startX="28" android:startY="18" android:endX="91" android:endY="91">
+                <item android:offset="0.0" android:color="#FFE6B9" />
+                <item android:offset="0.28" android:color="#9ADCC6" />
+                <item android:offset="0.62" android:color="#49BBA8" />
+                <item android:offset="1.0" android:color="#BDA6DC" />
+            </gradient>
+        </aapt:attr>
+    </path>
+    <!-- Small check mark in the counter: gentle progress, not productivity pressure. -->
     <path
-        android:fillColor="#00000000"
-        android:pathData="M37,54 C37,44.61 44.61,37 54,37 C63.39,37 71,44.61 71,54"
-        android:strokeColor="#D4A373"
-        android:strokeWidth="3.5"
-        android:strokeLineCap="round" />
-    <!-- Center Core Dot / Focus Emblem -->
-    <path
-        android:fillColor="#F7F9F6"
-        android:pathData="M54,54m-6,0a6,6 0 1,0 12,0a6,6 0 1,0 -12,0" />
-    <!-- Subtle rhythmic tick marks at cardinal positions -->
-    <path
-        android:fillColor="#00000000"
-        android:pathData="M54,20 L54,23 M54,85 L54,88 M20,54 L23,54 M85,54 L88,54"
-        android:strokeColor="#C5D6C7"
-        android:strokeWidth="2.5"
-        android:strokeLineCap="round" />
+        android:pathData="M49,42 L56,49 L69,36"
+        android:strokeColor="#FFF8E9"
+        android:strokeWidth="4.2"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
 </vector>
