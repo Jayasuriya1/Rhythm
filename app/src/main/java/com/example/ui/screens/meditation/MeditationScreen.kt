@@ -575,52 +575,28 @@ fun MeditationScreen(
                         color = MaterialTheme.colorScheme.primary
                     )
 
-                    // 4 Selectable Audio Modes (2x2 responsive grid)
+                    // Audio modes wrap naturally on compact phones and split-screen widths.
                     val allModes = MeditationAudioMode.values().toList()
-                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        FlowRow(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
-                            allModes.forEach { mode ->
-                                val isSelected = audioMode == mode
-                                FilterChip(
-                                    selected = isSelected,
-                                    onClick = {
-                                        audioMode = mode
-                                        viewModel.setMeditationAudioMode(mode)
-                                    },
-                                    label = {
-                                        Text(
-                                            text = mode.displayName,
-                                            maxLines = 1,
-                                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                                            style = MaterialTheme.typography.labelSmall
-                                        )
-                                    },
-                                    modifier = Modifier.weight(1f)
-                                )
-                            }
-                        }
-
-                                val isSelected = audioMode == mode
-                                FilterChip(
-                                    selected = isSelected,
-                                    onClick = {
-                                        audioMode = mode
-                                        viewModel.setMeditationAudioMode(mode)
-                                    },
-                                    label = {
-                                        Text(
-                                            text = mode.displayName,
-                                            maxLines = 1,
-                                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                                            style = MaterialTheme.typography.labelSmall
-                                        )
-                                    },
-                                )
-                            }
+                    FlowRow(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        allModes.forEach { mode ->
+                            FilterChip(
+                                selected = audioMode == mode,
+                                onClick = {
+                                    audioMode = mode
+                                    viewModel.setMeditationAudioMode(mode)
+                                },
+                                label = {
+                                    Text(
+                                        text = mode.displayName,
+                                        maxLines = 1,
+                                        style = MaterialTheme.typography.labelSmall
+                                    )
+                                }
+                            )
                         }
                     }
 
