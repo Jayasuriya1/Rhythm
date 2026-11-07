@@ -8,6 +8,9 @@ plugins {
   alias(libs.plugins.google.services)
 }
 
+// Keep local AI Studio builds offline by default; CI can opt into Maven downloads.
+val robolectricOffline = providers.gradleProperty("robolectricOffline").orNull?.toBoolean() ?: true
+
 android {
   namespace = "com.example"
   compileSdk { version = release(36) { minorApiLevel = 1 } }
@@ -67,8 +70,10 @@ android {
     unitTests {
       isIncludeAndroidResources = true
       all {
-        it.systemProperty("robolectric.offline", "true")
-        it.systemProperty("robolectric.dependency.dir", "/home/appuser/.m2/repository/org/robolectric/android-all-instrumented/16-robolectric-13921718-i7")
+        it.systemProperty("robolectric.offline", robolectricOffline.toString())
+        if (robolectricOffline) {
+          it.systemProperty("robolectric.dependency.dir", "/home/appuser/.m2/repository/org/robolectric/android-all-instrumented/16-robolectric-13921718-i7")
+        }
       }
     }
   }

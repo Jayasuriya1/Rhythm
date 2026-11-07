@@ -769,12 +769,14 @@ fun SleepSummaryCard(
                     )
                 }
 
-                OutlinedButton(
-                    onClick = onLogSleep,
-                    shape = RoundedCornerShape(10.dp),
-                    modifier = Modifier.testTag("edit_sleep_button")
-                ) {
-                    Text(if (sleep != null) "Edit" else "Log Sleep")
+                if (sleep != null) {
+                    OutlinedButton(
+                        onClick = onLogSleep,
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier.testTag("edit_sleep_button")
+                    ) {
+                        Text("Edit")
+                    }
                 }
             }
 
@@ -828,13 +830,30 @@ fun SleepSummaryCard(
                     }
                 }
             } else {
-                CalmEmptyState(
-                    icon = Icons.Default.Bedtime,
-                    title = "Sleep Not Recorded Yet",
-                    message = "Record last night's bedtime and wake time to keep your circadian rhythm in balance.",
-                    actionLabel = "Log Sleep",
-                    onActionClick = onLogSleep
-                )
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 12.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        text = "Sleep not recorded yet",
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = "Add last night's bedtime and wake time when you're ready.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    FilledTonalButton(
+                        onClick = onLogSleep,
+                        modifier = Modifier.testTag("today_log_sleep_empty_button")
+                    ) {
+                        Text("Log sleep")
+                    }
+                }
             }
         }
     }

@@ -37,11 +37,11 @@ enum class FocusAestheticTheme(
         id = "zen_forest",
         displayName = "Zen Bamboo & Forest",
         subtitle = "Misty emerald rain, tranquil evergreen and bamboo serenity",
-        primaryAccent = Color(0xFF10B981),
-        secondaryAccent = Color(0xFF34D399),
-        backgroundTop = Color(0xFF03160F),
-        backgroundBottom = Color(0xFF010A07),
-        cardBackground = Color(0xFF062319)
+        primaryAccent = Color(0xFFA8C9B0),
+        secondaryAccent = Color(0xFF7F9D87),
+        backgroundTop = Color(0xFF0A100C),
+        backgroundBottom = Color(0xFF020503),
+        cardBackground = Color(0xFF111A14)
     ),
     LOFI_CAFE(
         id = "lofi_cafe",
@@ -87,8 +87,8 @@ enum class FocusAestheticTheme(
         id = "minimal_dark",
         displayName = "Pure Minimal Obsidian",
         subtitle = "Zero distraction OLED obsidian with crisp mint precision",
-        primaryAccent = Color(0xFF10B981),
-        secondaryAccent = Color(0xFF6EE7B7),
+        primaryAccent = Color(0xFFA8C9B0),
+        secondaryAccent = Color(0xFF7F9D87),
         backgroundTop = Color(0xFF090D0B),
         backgroundBottom = Color(0xFF000000),
         cardBackground = Color(0xFF0F1512)
@@ -151,8 +151,8 @@ fun AestheticBackdropCanvas(
             drawCircle(
                 brush = Brush.radialGradient(
                     colors = listOf(
-                        theme.primaryAccent.copy(alpha = 0.22f),
-                        theme.primaryAccent.copy(alpha = 0.06f),
+                        theme.primaryAccent.copy(alpha = 0.14f),
+                        theme.primaryAccent.copy(alpha = 0.035f),
                         Color.Transparent
                     ),
                     center = Offset(orb1X, orb1Y),
@@ -170,8 +170,8 @@ fun AestheticBackdropCanvas(
             drawCircle(
                 brush = Brush.radialGradient(
                     colors = listOf(
-                        theme.secondaryAccent.copy(alpha = 0.18f),
-                        theme.secondaryAccent.copy(alpha = 0.04f),
+                        theme.secondaryAccent.copy(alpha = 0.11f),
+                        theme.secondaryAccent.copy(alpha = 0.025f),
                         Color.Transparent
                     ),
                     center = Offset(orb2X, orb2Y),
