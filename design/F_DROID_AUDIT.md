@@ -6,10 +6,10 @@ Status: preliminary source audit; no F-Droid build or metadata validation was ru
 ## Blockers / decisions
 
 ### 1. License file
-README declares Apache 2.0, but the inspected repository tree has no root LICENSE file. Add the full Apache-2.0 text and required attribution/NOTICE material. Verify all bundled assets and dependencies.
+A root Apache-2.0 LICENSE has been added on release-prep PR #10; merge and CI validation are still pending. Verify all bundled assets and dependencies and add any required NOTICE material before distribution.
 
 ### 2. Application ID
-Current applicationId is com.aistudio.rhythmfocus.mnyrqp. Choose a stable public package ID before the first public release. Changing it later creates a different Android app and cannot update existing installs.
+The approved public applicationId is `com.jayasuriya.rhythm` (proposed on PR #11; merge and CI validation pending). This replaces the AI Studio-generated `com.aistudio.rhythmfocus.mnyrqp`. Changing it after publication creates a different Android app and cannot update existing installs.
 
 ### 3. Google/Firebase dependencies
 app/build.gradle.kts applies Google Services and Secrets plugins and includes Firebase AI, Firebase App Check Recaptcha and debug dependencies. Audit the resolved dependency graph and licenses. A dedicated F-Droid flavor may be required to exclude Google/Firebase-specific components. Do not infer compatibility from the top-level artifact alone.
