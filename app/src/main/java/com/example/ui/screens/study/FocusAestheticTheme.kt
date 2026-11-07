@@ -56,22 +56,22 @@ enum class FocusAestheticTheme(
     MINIMAL_OLED(
         id = "minimal_oled",
         displayName = "Minimal OLED Black",
-        subtitle = "Zero distraction pure black with crisp sage focus & maximum battery saving",
-        primaryAccent = Color(0xFFA8C9B0),
-        secondaryAccent = Color(0xFF7F9D87),
+        subtitle = "Zero-distraction black with a soft mint focus accent",
+        primaryAccent = Color(0xFF9ADCC6),
+        secondaryAccent = Color(0xFF70B9A4),
         backgroundTop = Color(0xFF000000),
         backgroundBottom = Color(0xFF000000),
-        cardBackground = Color(0xFF0D120E)
+        cardBackground = Color(0xFF0A1110)
     ),
     MISTY_FOREST(
         id = "misty_forest",
         displayName = "Misty Forest",
-        subtitle = "Deep evergreen canopy with rolling cool mist & tranquil pine serenity",
-        primaryAccent = Color(0xFFA8C9B0),
-        secondaryAccent = Color(0xFF6E9177),
-        backgroundTop = Color(0xFF09130D),
-        backgroundBottom = Color(0xFF020704),
-        cardBackground = Color(0xFF101C15)
+        subtitle = "Deep teal-green canopy with soft mint mist and quiet stillness",
+        primaryAccent = Color(0xFF91D8C2),
+        secondaryAccent = Color(0xFF5B9D8B),
+        backgroundTop = Color(0xFF0A1917),
+        backgroundBottom = Color(0xFF030A09),
+        cardBackground = Color(0xFF10211D)
     ),
     RAINY_WINDOW(
         id = "rainy_window",
