@@ -688,8 +688,8 @@ class AppRepository(private val database: AppDatabase) {
         return com.example.util.DataBackupManager.exportBackup(database)
     }
 
-    suspend fun restoreDataBackup(jsonString: String): Result<com.example.util.BackupSummary> {
-        return com.example.util.DataBackupManager.restoreBackup(database, jsonString)
+    suspend fun restoreDataBackup(jsonString: String, remapAutoIds: Boolean = false): Result<com.example.util.BackupSummary> {
+        return com.example.util.DataBackupManager.restoreBackup(database, jsonString, remapAutoIds)
     }
 
     suspend fun getDatabaseIntegrityStats(): com.example.util.DatabaseIntegrityStats {

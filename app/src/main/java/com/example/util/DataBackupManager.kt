@@ -1,5 +1,6 @@
 package com.example.util
 
+import androidx.room.withTransaction
 import com.example.data.database.AppDatabase
 import com.example.data.entity.ActiveTimerDraftEntity
 import com.example.data.entity.AppSettingEntity
@@ -56,11 +57,22 @@ data class DatabaseIntegrityStats(
 
 object DataBackupManager {
 
+    const val CURRENT_BACKUP_SCHEMA_VERSION = 5
+    const val MIN_SUPPORTED_BACKUP_SCHEMA_VERSION = 1
+    const val MAX_SUPPORTED_BACKUP_SCHEMA_VERSION = 5
+
+    private fun JSONObject.optNullableString(name: String): String? {
+        return if (has(name) && !isNull(name)) {
+            val s = getString(name)
+            if (s == "null") null else s
+        } else null
+    }
+
     suspend fun exportBackup(database: AppDatabase): String {
         val root = JSONObject()
         root.put("app", "Rhythm & Focus")
         root.put("version", 1)
-        root.put("schemaVersion", 5)
+        root.put("schemaVersion", CURRENT_BACKUP_SCHEMA_VERSION)
         root.put("exportTimestamp", System.currentTimeMillis())
 
         // 1. Routine Anchors & Entries
@@ -355,6 +367,15 @@ object DataBackupManager {
                 return Result.failure(IllegalArgumentException("Invalid backup file: App identifier missing or mismatched"))
             }
 
+            val schemaVersion = root.optInt("schemaVersion", 1)
+            if (schemaVersion !in MIN_SUPPORTED_BACKUP_SCHEMA_VERSION..MAX_SUPPORTED_BACKUP_SCHEMA_VERSION) {
+                return Result.failure(
+                    IllegalArgumentException(
+                        "Unsupported backup schema version: $schemaVersion. Supported versions are $MIN_SUPPORTED_BACKUP_SCHEMA_VERSION to $MAX_SUPPORTED_BACKUP_SCHEMA_VERSION."
+                    )
+                )
+            }
+
             val summary = BackupSummary(
                 exportTimestamp = root.optLong("exportTimestamp", System.currentTimeMillis()),
                 routineEntriesCount = root.optJSONArray("routineEntries")?.length() ?: 0,
@@ -377,7 +398,11 @@ object DataBackupManager {
         }
     }
 
-    suspend fun restoreBackup(database: AppDatabase, jsonString: String): Result<BackupSummary> {
+    suspend fun restoreBackup(
+        database: AppDatabase,
+        jsonString: String,
+        remapAutoIds: Boolean = false
+    ): Result<BackupSummary> {
         val validation = validateBackup(jsonString)
         if (validation.isFailure) return validation
 
@@ -413,10 +438,10 @@ object DataBackupManager {
                             date = o.getString("date"),
                             anchorId = o.getString("anchorId"),
                             targetTimeMinutes = o.getInt("targetTimeMinutes"),
-                            actualTimeMinutes = if (o.has("actualTimeMinutes")) o.getInt("actualTimeMinutes") else null,
+                            actualTimeMinutes = if (o.has("actualTimeMinutes") && !o.isNull("actualTimeMinutes")) o.getInt("actualTimeMinutes") else null,
                             status = o.getString("status"),
-                            notes = o.optString("notes", null),
-                            disruptionNote = o.optString("disruptionNote", null),
+                            notes = o.optNullableString("notes"),
+                            disruptionNote = o.optNullableString("disruptionNote"),
                             updatedAt = o.optLong("updatedAt", System.currentTimeMillis())
                         )
                     )
@@ -436,7 +461,7 @@ object DataBackupManager {
                             wakeTimeMinutes = o.getInt("wakeTimeMinutes"),
                             durationMinutes = o.getInt("durationMinutes"),
                             qualityRating = o.getInt("qualityRating"),
-                            notes = o.optString("notes", null),
+                            notes = o.optNullableString("notes"),
                             updatedAt = o.optLong("updatedAt", System.currentTimeMillis())
                         )
                     )
@@ -452,12 +477,12 @@ object DataBackupManager {
                         HealthCheckinEntity(
                             id = o.optLong("id", 0L),
                             date = o.getString("date"),
-                            mood = if (o.has("mood")) o.getInt("mood") else null,
-                            energy = if (o.has("energy")) o.getInt("energy") else null,
-                            stress = if (o.has("stress")) o.getInt("stress") else null,
-                            irritability = if (o.has("irritability")) o.getInt("irritability") else null,
-                            activationEnergy = if (o.has("activationEnergy")) o.getInt("activationEnergy") else null,
-                            symptomsNotes = o.optString("symptomsNotes", null),
+                            mood = if (o.has("mood") && !o.isNull("mood")) o.getInt("mood") else null,
+                            energy = if (o.has("energy") && !o.isNull("energy")) o.getInt("energy") else null,
+                            stress = if (o.has("stress") && !o.isNull("stress")) o.getInt("stress") else null,
+                            irritability = if (o.has("irritability") && !o.isNull("irritability")) o.getInt("irritability") else null,
+                            activationEnergy = if (o.has("activationEnergy") && !o.isNull("activationEnergy")) o.getInt("activationEnergy") else null,
+                            symptomsNotes = o.optNullableString("symptomsNotes"),
                             updatedAt = o.optLong("updatedAt", System.currentTimeMillis())
                         )
                     )
@@ -495,12 +520,12 @@ object DataBackupManager {
                             scheduledTimeMinutes = o.getInt("scheduledTimeMinutes"),
                             reminderEnabled = o.optBoolean("reminderEnabled", false),
                             isActive = o.optBoolean("isActive", true),
-                            notes = o.optString("notes", null),
-                            dosageForm = o.optString("dosageForm", null),
+                            notes = o.optNullableString("notes"),
+                            dosageForm = o.optNullableString("dosageForm"),
                             scheduledTimesJson = o.optString("scheduledTimesJson", ""),
                             repeatDays = o.optString("repeatDays", "DAILY"),
                             startDate = o.optString("startDate", ""),
-                            endDate = o.optString("endDate", null),
+                            endDate = o.optNullableString("endDate"),
                             isArchived = o.optBoolean("isArchived", false)
                         )
                     )
@@ -518,13 +543,13 @@ object DataBackupManager {
                             date = o.getString("date"),
                             medicationId = o.getLong("medicationId"),
                             scheduledTimeMinutes = o.getInt("scheduledTimeMinutes"),
-                            actualActionTime = if (o.has("actualActionTime")) o.getLong("actualActionTime") else null,
+                            actualActionTime = if (o.has("actualActionTime") && !o.isNull("actualActionTime")) o.getLong("actualActionTime") else null,
                             status = o.getString("status"),
-                            notes = o.optString("notes", null),
+                            notes = o.optNullableString("notes"),
                             medicationName = o.optString("medicationName", ""),
                             dosageSnapshot = o.optString("dosageSnapshot", ""),
                             isCorrected = o.optBoolean("isCorrected", false),
-                            correctedAt = if (o.has("correctedAt")) o.getLong("correctedAt") else null
+                            correctedAt = if (o.has("correctedAt") && !o.isNull("correctedAt")) o.getLong("correctedAt") else null
                         )
                     )
                 }
@@ -539,7 +564,7 @@ object DataBackupManager {
                         StudyCategoryEntity(
                             id = o.optLong("id", 0L),
                             name = o.getString("name"),
-                            description = o.optString("description", null),
+                            description = o.optNullableString("description"),
                             colorHex = o.optString("colorHex", "#4D6B53"),
                             iconName = o.optString("iconName", "category"),
                             sortOrder = o.optInt("sortOrder", i + 1),
@@ -563,8 +588,8 @@ object DataBackupManager {
                             isDailyPriority = o.optBoolean("isDailyPriority", false),
                             estimatedMinutes = o.optInt("estimatedMinutes", 30),
                             dateCreated = o.getString("dateCreated"),
-                            dateCompleted = o.optString("dateCompleted", null),
-                            nextSmallStep = o.optString("nextSmallStep", null),
+                            dateCompleted = o.optNullableString("dateCompleted"),
+                            nextSmallStep = o.optNullableString("nextSmallStep"),
                             sortOrder = o.optInt("sortOrder", 0)
                         )
                     )
@@ -579,17 +604,17 @@ object DataBackupManager {
                     sessionsList.add(
                         StudySessionEntity(
                             id = o.optLong("id", 0L),
-                            taskId = if (o.has("taskId")) o.getLong("taskId") else null,
+                            taskId = if (o.has("taskId") && !o.isNull("taskId")) o.getLong("taskId") else null,
                             taskTitle = o.getString("taskTitle"),
                             category = o.getString("category"),
                             durationMinutes = o.getInt("durationMinutes"),
                             sessionType = o.getString("sessionType"),
                             date = o.getString("date"),
                             timestamp = o.optLong("timestamp", System.currentTimeMillis()),
-                            startTimeMillis = if (o.has("startTimeMillis")) o.getLong("startTimeMillis") else null,
-                            endTimeMillis = if (o.has("endTimeMillis")) o.getLong("endTimeMillis") else null,
+                            startTimeMillis = if (o.has("startTimeMillis") && !o.isNull("startTimeMillis")) o.getLong("startTimeMillis") else null,
+                            endTimeMillis = if (o.has("endTimeMillis") && !o.isNull("endTimeMillis")) o.getLong("endTimeMillis") else null,
                             completionStatus = o.optString("completionStatus", "COMPLETED"),
-                            learnedNotes = o.optString("learnedNotes", null)
+                            learnedNotes = o.optNullableString("learnedNotes")
                         )
                     )
                 }
@@ -603,9 +628,9 @@ object DataBackupManager {
                     notesList.add(
                         BrainDumpNoteEntity(
                             id = o.optLong("id", 0L),
-                            title = o.optString("title", null),
+                            title = o.optNullableString("title"),
                             content = o.getString("content"),
-                            tag = o.optString("tag", null),
+                            tag = o.optNullableString("tag"),
                             isPinned = o.optBoolean("isPinned", false),
                             isArchived = o.optBoolean("isArchived", false),
                             createdAt = o.optLong("createdAt", System.currentTimeMillis()),
@@ -632,14 +657,14 @@ object DataBackupManager {
                             vibrateEnabled = o.optBoolean("vibrateEnabled", true),
                             isUrgent = o.optBoolean("isUrgent", false),
                             voiceAnnouncementEnabled = o.optBoolean("voiceAnnouncementEnabled", false),
-                            spokenAnnouncementText = o.optString("spokenAnnouncementText", null),
-                            customAudioUri = o.optString("customAudioUri", null),
-                            customAudioTitle = o.optString("customAudioTitle", null),
-                            customAudioCollectionJson = o.optString("customAudioCollectionJson", null),
+                            spokenAnnouncementText = o.optNullableString("spokenAnnouncementText"),
+                            customAudioUri = o.optNullableString("customAudioUri"),
+                            customAudioTitle = o.optNullableString("customAudioTitle"),
+                            customAudioCollectionJson = o.optNullableString("customAudioCollectionJson"),
                             audioPlaybackMode = o.optString("audioPlaybackMode", "DEFAULT"),
-                            lastPlayedAudioUri = o.optString("lastPlayedAudioUri", null),
-                            referenceId = o.optString("referenceId", null),
-                            customMessage = o.optString("customMessage", null),
+                            lastPlayedAudioUri = o.optNullableString("lastPlayedAudioUri"),
+                            referenceId = o.optNullableString("referenceId"),
+                            customMessage = o.optNullableString("customMessage"),
                             createdAt = o.optLong("createdAt", System.currentTimeMillis())
                         )
                     )
@@ -658,7 +683,7 @@ object DataBackupManager {
                             title = o.getString("title"),
                             durationMinutes = o.getInt("durationMinutes"),
                             completedAt = o.optLong("completedAt", System.currentTimeMillis()),
-                            reflectionNotes = o.optString("reflectionNotes", null),
+                            reflectionNotes = o.optNullableString("reflectionNotes"),
                             status = o.optString("status", "COMPLETED")
                         )
                     )
@@ -692,19 +717,19 @@ object DataBackupManager {
                             repeatDays = o.optString("repeatDays", "WEEKDAYS"),
                             isEnabled = o.optBoolean("isEnabled", true),
                             vibrateEnabled = o.optBoolean("vibrateEnabled", true),
-                            customAudioUri = if (o.has("customAudioUri")) o.getString("customAudioUri") else null,
-                            customAudioTitle = if (o.has("customAudioTitle")) o.getString("customAudioTitle") else "Default Alarm Tone",
+                            customAudioUri = if (o.has("customAudioUri") && !o.isNull("customAudioUri")) o.getString("customAudioUri") else null,
+                            customAudioTitle = if (o.has("customAudioTitle") && !o.isNull("customAudioTitle")) o.getString("customAudioTitle") else "Default Alarm Tone",
                             crescendoDurationSeconds = o.optInt("crescendoDurationSeconds", 60),
                             isLooping = o.optBoolean("isLooping", true),
-                            wallpaperUri = if (o.has("wallpaperUri")) o.getString("wallpaperUri") else null,
+                            wallpaperUri = if (o.has("wallpaperUri") && !o.isNull("wallpaperUri")) o.getString("wallpaperUri") else null,
                             wallpaperPresetColor = o.optString("wallpaperPresetColor", "MIDNIGHT_INDIGO"),
                             timeClockFont = o.optString("timeClockFont", "MODERN_DIGITAL"),
                             missionType = o.optString("missionType", "NONE"),
-                            targetBarcode = if (o.has("targetBarcode")) o.getString("targetBarcode") else null,
-                            targetBarcodeLabel = if (o.has("targetBarcodeLabel")) o.getString("targetBarcodeLabel") else null,
-                            targetBarcodeFormat = if (o.has("targetBarcodeFormat")) o.getString("targetBarcodeFormat") else null,
-                            targetBarcodeLocation = if (o.has("targetBarcodeLocation")) o.getString("targetBarcodeLocation") else null,
-                            registeredCodeId = if (o.has("registeredCodeId")) o.getLong("registeredCodeId") else null,
+                            targetBarcode = if (o.has("targetBarcode") && !o.isNull("targetBarcode")) o.getString("targetBarcode") else null,
+                            targetBarcodeLabel = if (o.has("targetBarcodeLabel") && !o.isNull("targetBarcodeLabel")) o.getString("targetBarcodeLabel") else null,
+                            targetBarcodeFormat = if (o.has("targetBarcodeFormat") && !o.isNull("targetBarcodeFormat")) o.getString("targetBarcodeFormat") else null,
+                            targetBarcodeLocation = if (o.has("targetBarcodeLocation") && !o.isNull("targetBarcodeLocation")) o.getString("targetBarcodeLocation") else null,
+                            registeredCodeId = if (o.has("registeredCodeId") && !o.isNull("registeredCodeId")) o.getLong("registeredCodeId") else null,
                             chainedBackupAlarmEnabled = o.optBoolean("chainedBackupAlarmEnabled", true),
                             createdAt = o.optLong("createdAt", System.currentTimeMillis())
                         )
@@ -723,39 +748,125 @@ object DataBackupManager {
                             codeValue = o.getString("codeValue"),
                             codeFormat = o.optString("codeFormat", "QR_CODE"),
                             label = o.getString("label"),
-                            locationHint = if (o.has("locationHint")) o.getString("locationHint") else null,
+                            locationHint = if (o.has("locationHint") && !o.isNull("locationHint")) o.getString("locationHint") else null,
                             isCustomGenerated = o.optBoolean("isCustomGenerated", false),
                             designTemplate = o.optString("designTemplate", "MINIMAL_BW"),
-                            designConfigJson = if (o.has("designConfigJson")) o.getString("designConfigJson") else null,
+                            designConfigJson = if (o.has("designConfigJson") && !o.isNull("designConfigJson")) o.getString("designConfigJson") else null,
                             createdAt = o.optLong("createdAt", System.currentTimeMillis()),
-                            lastScannedAt = if (o.has("lastScannedAt")) o.getLong("lastScannedAt") else null
+                            lastScannedAt = if (o.has("lastScannedAt") && !o.isNull("lastScannedAt")) o.getLong("lastScannedAt") else null
                         )
                     )
                 }
             }
 
-            // Atomic insertion
-            if (anchorsList.isNotEmpty()) database.routineDao().insertAnchorsList(anchorsList)
-            if (entriesList.isNotEmpty()) database.routineDao().insertEntriesList(entriesList)
-            if (sleepList.isNotEmpty()) database.sleepDao().insertSleepList(sleepList)
-            if (healthList.isNotEmpty()) database.healthDao().insertHealthList(healthList)
-            if (waterList.isNotEmpty()) database.waterDao().insertWaterList(waterList)
-            if (medsList.isNotEmpty()) database.medicationDao().insertMedicationsList(medsList)
-            if (intakesList.isNotEmpty()) database.medicationDao().insertIntakesList(intakesList)
-            if (catList.isNotEmpty()) database.studyCategoryDao().insertCategoriesList(catList)
-            if (tasksList.isNotEmpty()) database.studyDao().insertTasksList(tasksList)
-            if (sessionsList.isNotEmpty()) database.studyDao().insertSessionsList(sessionsList)
-            if (notesList.isNotEmpty()) database.brainDumpDao().insertNotesList(notesList)
-            if (remindersList.isNotEmpty()) database.reminderDao().insertRemindersList(remindersList)
-            if (meditationList.isNotEmpty()) database.meditationDao().insertSessionsList(meditationList)
-            if (alarmsList.isNotEmpty()) database.customAlarmDao().insertAlarmsList(alarmsList)
-            if (codesList.isNotEmpty()) database.registeredCodeDao().insertCodesList(codesList)
-            if (settingsList.isNotEmpty()) database.settingsDao().insertSettingsList(settingsList)
+            // Atomic database execution within transaction
+            database.withTransaction {
+                if (!remapAutoIds) {
+                    if (anchorsList.isNotEmpty()) database.routineDao().insertAnchorsList(anchorsList)
+                    if (entriesList.isNotEmpty()) database.routineDao().insertEntriesList(entriesList)
+                    if (sleepList.isNotEmpty()) database.sleepDao().insertSleepList(sleepList)
+                    if (healthList.isNotEmpty()) database.healthDao().insertHealthList(healthList)
+                    if (waterList.isNotEmpty()) database.waterDao().insertWaterList(waterList)
+                    if (medsList.isNotEmpty()) database.medicationDao().insertMedicationsList(medsList)
+                    if (intakesList.isNotEmpty()) database.medicationDao().insertIntakesList(intakesList)
+                    if (catList.isNotEmpty()) database.studyCategoryDao().insertCategoriesList(catList)
+                    if (tasksList.isNotEmpty()) database.studyDao().insertTasksList(tasksList)
+                    if (sessionsList.isNotEmpty()) database.studyDao().insertSessionsList(sessionsList)
+                    if (notesList.isNotEmpty()) database.brainDumpDao().insertNotesList(notesList)
+                    if (remindersList.isNotEmpty()) database.reminderDao().insertRemindersList(remindersList)
+                    if (meditationList.isNotEmpty()) database.meditationDao().insertSessionsList(meditationList)
+                    if (alarmsList.isNotEmpty()) database.customAlarmDao().insertAlarmsList(alarmsList)
+                    if (codesList.isNotEmpty()) database.registeredCodeDao().insertCodesList(codesList)
+                    if (settingsList.isNotEmpty()) database.settingsDao().insertSettingsList(settingsList)
+                } else {
+                    // Remap auto-generated IDs to 0L so SQLite generates fresh primary keys without overwriting existing records
+                    if (anchorsList.isNotEmpty()) database.routineDao().insertAnchorsList(anchorsList)
+                    if (catList.isNotEmpty()) database.studyCategoryDao().insertCategoriesList(catList)
+                    if (settingsList.isNotEmpty()) database.settingsDao().insertSettingsList(settingsList)
 
-            // Re-ensure basic defaults if list was empty
-            database.routineDao().insertDefaultAnchors(AppDatabase.DEFAULT_ANCHORS)
-            database.studyCategoryDao().insertDefaultCategories(AppDatabase.DEFAULT_CATEGORIES)
-            database.reminderDao().insertDefaultReminders(AppDatabase.DEFAULT_REMINDERS)
+                    if (entriesList.isNotEmpty()) {
+                        database.routineDao().insertEntriesList(entriesList.map { it.copy(id = 0L) })
+                    }
+                    if (sleepList.isNotEmpty()) {
+                        database.sleepDao().insertSleepList(sleepList.map { it.copy(id = 0L) })
+                    }
+                    if (healthList.isNotEmpty()) {
+                        database.healthDao().insertHealthList(healthList.map { it.copy(id = 0L) })
+                    }
+                    if (waterList.isNotEmpty()) {
+                        database.waterDao().insertWaterList(waterList.map { it.copy(id = 0L) })
+                    }
+
+                    // Relational mapping for medications and medication intakes/reminders
+                    val medIdMap = mutableMapOf<Long, Long>()
+                    for (med in medsList) {
+                        val originalId = med.id
+                        val newId = database.medicationDao().insertMedication(med.copy(id = 0L))
+                        medIdMap[originalId] = newId
+                    }
+
+                    if (intakesList.isNotEmpty()) {
+                        val remappedIntakes = intakesList.map { intake ->
+                            val remappedMedId = medIdMap[intake.medicationId] ?: intake.medicationId
+                            intake.copy(id = 0L, medicationId = remappedMedId)
+                        }
+                        database.medicationDao().insertIntakesList(remappedIntakes)
+                    }
+
+                    // Relational mapping for study tasks and study sessions
+                    val taskIdMap = mutableMapOf<Long, Long>()
+                    for (task in tasksList) {
+                        val originalTaskId = task.id
+                        val newTaskId = database.studyDao().insertTask(task.copy(id = 0L))
+                        taskIdMap[originalTaskId] = newTaskId
+                    }
+
+                    if (sessionsList.isNotEmpty()) {
+                        val remappedSessions = sessionsList.map { session ->
+                            val remappedTaskId = session.taskId?.let { taskIdMap[it] ?: it }
+                            session.copy(id = 0L, taskId = remappedTaskId)
+                        }
+                        database.studyDao().insertSessionsList(remappedSessions)
+                    }
+
+                    if (notesList.isNotEmpty()) {
+                        database.brainDumpDao().insertNotesList(notesList.map { it.copy(id = 0L) })
+                    }
+
+                    if (remindersList.isNotEmpty()) {
+                        val remappedReminders = remindersList.map { reminder ->
+                            val refId = reminder.referenceId
+                            val updatedRefId = if (refId != null && refId.startsWith("med:")) {
+                                val parts = refId.removePrefix("med:").split("_")
+                                val oldMedId = parts[0].toLongOrNull()
+                                if (oldMedId != null && medIdMap.containsKey(oldMedId)) {
+                                    val newMedId = medIdMap[oldMedId]!!
+                                    val suffix = if (parts.size > 1) "_${parts.subList(1, parts.size).joinToString("_")}" else ""
+                                    "med:$newMedId$suffix"
+                                } else refId
+                            } else refId
+
+                            reminder.copy(id = 0L, referenceId = updatedRefId)
+                        }
+                        database.reminderDao().insertRemindersList(remappedReminders)
+                    }
+
+                    if (meditationList.isNotEmpty()) {
+                        database.meditationDao().insertSessionsList(meditationList.map { it.copy(id = 0L) })
+                    }
+                    if (alarmsList.isNotEmpty()) {
+                        database.customAlarmDao().insertAlarmsList(alarmsList.map { it.copy(id = 0L) })
+                    }
+                    if (codesList.isNotEmpty()) {
+                        database.registeredCodeDao().insertCodesList(codesList.map { it.copy(id = 0L) })
+                    }
+                }
+
+                // Re-ensure basic defaults if list was empty
+                database.routineDao().insertDefaultAnchors(AppDatabase.DEFAULT_ANCHORS)
+                database.studyCategoryDao().insertDefaultCategories(AppDatabase.DEFAULT_CATEGORIES)
+                database.reminderDao().insertDefaultReminders(AppDatabase.DEFAULT_REMINDERS)
+            }
 
             Result.success(validation.getOrThrow())
         } catch (e: Exception) {

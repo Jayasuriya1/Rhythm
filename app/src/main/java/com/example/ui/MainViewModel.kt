@@ -1960,10 +1960,11 @@ class MainViewModel(
     fun restoreBackupJson(
         jsonString: String,
         context: Context? = null,
+        remapAutoIds: Boolean = false,
         onComplete: (Boolean, String) -> Unit
     ) {
         viewModelScope.launch {
-            val result = repository.restoreDataBackup(jsonString)
+            val result = repository.restoreDataBackup(jsonString, remapAutoIds)
             if (result.isSuccess) {
                 val summary = result.getOrThrow()
                 refreshDatabaseIntegrityStats()
