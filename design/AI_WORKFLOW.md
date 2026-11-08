@@ -51,3 +51,7 @@ For visual tasks also read `design/VISUAL_QA.md` and `design/ACCESSIBILITY.md`.
 
 ## Stop conditions
 If instructions conflict with the current source of truth, stop and explain instead of inventing a new style. If a visual change would alter persisted data or core behavior, ask before proceeding.
+
+
+## Semantic token policy
+Reminder category accents, sleep-stage chart series and Focus Studio backdrop colors belong in the central `Color.kt`. Screens must reuse named tokens. Persisted user-created category colors are user data and must not be overwritten during visual cleanup.
