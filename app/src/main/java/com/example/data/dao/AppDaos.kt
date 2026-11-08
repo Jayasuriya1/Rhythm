@@ -220,6 +220,9 @@ interface StudyCategoryDao {
     @Query("SELECT * FROM study_categories WHERE LOWER(name) = LOWER(:name) LIMIT 1")
     suspend fun findCategoryByName(name: String): StudyCategoryEntity?
 
+    @Query("SELECT * FROM study_categories WHERE id = :id LIMIT 1")
+    suspend fun getCategoryById(id: Long): StudyCategoryEntity?
+
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertDefaultCategories(categories: List<StudyCategoryEntity>)
 
@@ -420,6 +423,18 @@ interface ReminderDao {
 
     @Query("DELETE FROM reminders WHERE referenceId = :referenceId")
     suspend fun deleteReminderByReferenceId(referenceId: String)
+
+    @Query("DELETE FROM reminders WHERE referenceId LIKE :prefix || '%'")
+    suspend fun deleteRemindersByReferencePrefix(prefix: String)
+
+    @Query("SELECT * FROM reminders WHERE referenceId LIKE :prefix || '%'")
+    suspend fun getRemindersByReferencePrefix(prefix: String): List<ReminderEntity>
+
+    @Query("DELETE FROM reminders WHERE referenceId = 'med:' || :medicationId OR referenceId LIKE 'med:' || :medicationId || '_%'")
+    suspend fun deleteRemindersForMedication(medicationId: Long)
+
+    @Query("SELECT * FROM reminders WHERE referenceId = 'med:' || :medicationId OR referenceId LIKE 'med:' || :medicationId || '_%'")
+    suspend fun getRemindersForMedication(medicationId: Long): List<ReminderEntity>
 
     @Query("SELECT COUNT(*) FROM reminders")
     suspend fun getRemindersCount(): Int

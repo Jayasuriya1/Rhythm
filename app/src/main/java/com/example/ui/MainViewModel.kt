@@ -858,9 +858,9 @@ class MainViewModel(
         }
     }
 
-    fun deleteMedication(id: Long) {
+    fun deleteMedication(id: Long, context: Context? = null) {
         viewModelScope.launch {
-            repository.deleteMedication(id)
+            repository.deleteMedication(id, context)
             _userFeedbackMessage.value = "Medication schedule deleted (past intakes preserved)"
         }
     }
