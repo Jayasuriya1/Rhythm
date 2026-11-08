@@ -58,6 +58,23 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import com.example.ui.theme.AlarmGradientDawnBottom
+import com.example.ui.theme.AlarmGradientDawnMiddle
+import com.example.ui.theme.AlarmGradientDawnTop
+import com.example.ui.theme.AlarmGradientDuskBottom
+import com.example.ui.theme.AlarmGradientDuskMiddle
+import com.example.ui.theme.AlarmGradientDuskTop
+import com.example.ui.theme.AlarmGradientForestBottom
+import com.example.ui.theme.AlarmGradientForestMiddle
+import com.example.ui.theme.AlarmGradientForestTop
+import com.example.ui.theme.AlarmGradientMidnightBottom
+import com.example.ui.theme.AlarmGradientMidnightMiddle
+import com.example.ui.theme.AlarmGradientMidnightTop
+import com.example.ui.theme.AlarmGradientOledBottom
+import com.example.ui.theme.AlarmGradientOledMiddle
+import com.example.ui.theme.AlarmGradientOledTop
+import com.example.ui.theme.StateInfo
+import com.example.ui.theme.StateWarning
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontFamily
@@ -248,7 +265,7 @@ fun ActiveAlarmScreen(
         // 2. Backup Alarm Warning Banner
         if (isBackup) {
             Surface(
-                color = Color(0xFFD32F2F),
+                color = MaterialTheme.colorScheme.error,
                 modifier = Modifier
                     .fillMaxWidth()
                     .align(Alignment.TopCenter)
@@ -292,7 +309,7 @@ fun ActiveAlarmScreen(
                     Icon(
                         imageVector = Icons.Default.Alarm,
                         contentDescription = "Alarm",
-                        tint = Color(0xFF64B5F6),
+                        tint = StateInfo,
                         modifier = Modifier.size(20.dp)
                     )
                     Spacer(modifier = Modifier.width(8.dp))
@@ -328,7 +345,7 @@ fun ActiveAlarmScreen(
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
                         text = "Chained backup alarm armed in 5m",
-                        color = Color(0xFFFFB74D),
+                        color = StateWarning,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Medium
                     )
@@ -344,7 +361,7 @@ fun ActiveAlarmScreen(
                     // Barcode CAPTCHA Mission Button
                     Button(
                         onClick = { showScannerView = true },
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1E88E5)),
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                         shape = RoundedCornerShape(24.dp),
                         modifier = Modifier
                             .fillMaxWidth()
@@ -367,7 +384,7 @@ fun ActiveAlarmScreen(
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
                             text = "Mission Target: ${alarm?.targetBarcodeLabel}",
-                            color = Color(0xFFFFD54F),
+                            color = StateWarning,
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Medium
                         )
@@ -458,23 +475,23 @@ fun EmergencyOverrideButton(
 fun getPresetBrush(preset: String): Brush {
     return when (preset) {
         "SUNRISE_GOLD" -> Brush.verticalGradient(
-            colors = listOf(Color(0xFF2E1C0C), Color(0xFFE65100), Color(0xFFFFB300))
+            colors = listOf(AlarmGradientDawnTop, AlarmGradientDawnMiddle, AlarmGradientDawnBottom)
         )
         "FOREST_EMERALD" -> Brush.verticalGradient(
-            colors = listOf(Color(0xFF0D2818), Color(0xFF1B4332), Color(0xFF2D6A4F))
+            colors = listOf(AlarmGradientForestTop, AlarmGradientForestMiddle, AlarmGradientForestBottom)
         )
         "DEEP_CRIMSON" -> Brush.verticalGradient(
-            colors = listOf(Color(0xFF2B0909), Color(0xFF590D22), Color(0xFF800F2F))
+            colors = listOf(AlarmGradientDuskTop, AlarmGradientDuskMiddle, AlarmGradientDuskBottom)
         )
         "COSMIC_VIOLET" -> Brush.verticalGradient(
-            colors = listOf(Color(0xFF10002B), Color(0xFF240046), Color(0xFF5A189A))
+            colors = listOf(AlarmGradientMidnightTop, AlarmGradientMidnightMiddle, AlarmGradientMidnightBottom)
         )
         "OBSIDIAN" -> Brush.verticalGradient(
-            colors = listOf(Color(0xFF121212), Color(0xFF1E1E1E), Color(0xFF2C2C2C))
+            colors = listOf(AlarmGradientOledTop, AlarmGradientOledMiddle, AlarmGradientOledBottom)
         )
         else -> Brush.verticalGradient(
             // Midnight Indigo default
-            colors = listOf(Color(0xFF0F172A), Color(0xFF1E293B), Color(0xFF334155))
+            colors = listOf(AlarmGradientMidnightTop, AlarmGradientMidnightMiddle, AlarmGradientMidnightBottom)
         )
     }
 }

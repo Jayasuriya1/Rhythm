@@ -58,6 +58,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontFamily
+import com.example.ui.theme.StateHealthy
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -165,7 +166,7 @@ fun MyCodesLibraryScreen(
             if (testScanSuccessMessage != null) {
                 item {
                     Surface(
-                        color = Color(0xFF2E7D32).copy(alpha = 0.15f),
+                        color = StateHealthy.copy(alpha = 0.15f),
                         shape = RoundedCornerShape(12.dp),
                         modifier = Modifier.fillMaxWidth()
                     ) {
@@ -176,19 +177,19 @@ fun MyCodesLibraryScreen(
                             Icon(
                                 imageVector = Icons.Default.CheckCircle,
                                 contentDescription = null,
-                                tint = Color(0xFF2E7D32),
+                                tint = StateHealthy,
                                 modifier = Modifier.size(20.dp)
                             )
                             Spacer(modifier = Modifier.width(10.dp))
                             Text(
                                 text = testScanSuccessMessage ?: "",
-                                color = Color(0xFF2E7D32),
+                                color = StateHealthy,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 13.sp,
                                 modifier = Modifier.weight(1f)
                             )
                             IconButton(onClick = { testScanSuccessMessage = null }) {
-                                Text("✕", color = Color(0xFF2E7D32), fontWeight = FontWeight.Bold)
+                                Text("✕", color = StateHealthy, fontWeight = FontWeight.Bold)
                             }
                         }
                     }

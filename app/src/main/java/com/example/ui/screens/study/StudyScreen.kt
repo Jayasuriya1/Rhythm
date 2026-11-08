@@ -78,6 +78,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.ui.theme.SagePrimaryLight
 import com.example.data.entity.StudyCategoryEntity
 import com.example.data.entity.StudySessionEntity
 import com.example.data.entity.StudyTaskEntity
@@ -1945,6 +1946,6 @@ private fun parseHexColor(hex: String): Color {
     return try {
         Color(android.graphics.Color.parseColor(hex))
     } catch (_: Exception) {
-        Color(0xFF4D6B53)
+        SagePrimaryLight
     }
 }

@@ -102,6 +102,9 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.example.data.entity.CustomAlarmEntity
 import com.example.data.entity.RegisteredCodeEntity
+import com.example.ui.theme.StateHealthy
+import com.example.ui.theme.StateInfo
+import com.example.ui.theme.StateWarning
 
 /**
  * Modern, visually rich Alarm Studio & Editor.
@@ -813,7 +816,7 @@ private fun AlarmLiveScreenPreviewMockup(
                                 Icon(
                                     Icons.Default.QrCodeScanner,
                                     contentDescription = null,
-                                    tint = Color(0xFF64B5F6),
+                                    tint = StateInfo,
                                     modifier = Modifier.size(12.dp)
                                 )
                                 Spacer(modifier = Modifier.width(4.dp))
@@ -828,7 +831,7 @@ private fun AlarmLiveScreenPreviewMockup(
                                 Icon(
                                     Icons.AutoMirrored.Filled.ArrowForward,
                                     contentDescription = null,
-                                    tint = Color(0xFF81C784),
+                                    tint = StateHealthy,
                                     modifier = Modifier.size(12.dp)
                                 )
                                 Spacer(modifier = Modifier.width(4.dp))
@@ -853,7 +856,7 @@ private fun AlarmLiveScreenPreviewMockup(
                             Icon(
                                 Icons.Default.Audiotrack,
                                 contentDescription = null,
-                                tint = Color(0xFFFFB74D),
+                                tint = StateWarning,
                                 modifier = Modifier.size(12.dp)
                             )
                             Spacer(modifier = Modifier.width(4.dp))
@@ -1584,7 +1587,7 @@ private fun AudioAndMissionTabContent(
 
                         if (testSuccessMessage != null) {
                             Surface(
-                                color = Color(0xFF2E7D32).copy(alpha = 0.15f),
+                                color = StateHealthy.copy(alpha = 0.15f),
                                 shape = RoundedCornerShape(8.dp),
                                 modifier = Modifier.fillMaxWidth()
                             ) {
@@ -1592,9 +1595,9 @@ private fun AudioAndMissionTabContent(
                                     modifier = Modifier.padding(8.dp),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Icon(Icons.Default.Check, contentDescription = null, tint = Color(0xFF2E7D32), modifier = Modifier.size(16.dp))
+                                    Icon(Icons.Default.Check, contentDescription = null, tint = StateHealthy, modifier = Modifier.size(16.dp))
                                     Spacer(modifier = Modifier.width(6.dp))
-                                    Text(testSuccessMessage, color = Color(0xFF2E7D32), fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                    Text(testSuccessMessage, color = StateHealthy, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                                 }
                             }
                             Spacer(modifier = Modifier.height(8.dp))

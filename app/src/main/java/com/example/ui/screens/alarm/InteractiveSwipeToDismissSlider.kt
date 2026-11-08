@@ -122,9 +122,9 @@ fun InteractiveSwipeToDismissSlider(
                     .background(
                         Brush.horizontalGradient(
                             colors = listOf(
-                                Color(0xFF1B5E20).copy(alpha = 0.4f),
-                                Color(0xFF2E7D32).copy(alpha = 0.65f),
-                                Color(0xFF43A047).copy(alpha = 0.9f)
+                                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.45f),
+                                MaterialTheme.colorScheme.primary.copy(alpha = 0.75f),
+                                MaterialTheme.colorScheme.primary
                             )
                         )
                     )
@@ -151,7 +151,7 @@ fun InteractiveSwipeToDismissSlider(
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.ArrowForward,
                     contentDescription = null,
-                    tint = Color(0xFF81C784).copy(alpha = textAlpha * 0.85f),
+                    tint = MaterialTheme.colorScheme.primary.copy(alpha = textAlpha * 0.85f),
                     modifier = Modifier.size(18.dp)
                 )
             }
@@ -170,11 +170,11 @@ fun InteractiveSwipeToDismissSlider(
                 .background(
                     if (progress >= 0.80f) {
                         Brush.verticalGradient(
-                            listOf(Color(0xFF66BB6A), Color(0xFF388E3C))
+                            listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.primary.copy(alpha = 0.85f))
                         )
                     } else {
                         Brush.verticalGradient(
-                            listOf(Color(0xFFE8F5E9), Color(0xFFC8E6C9))
+                            listOf(MaterialTheme.colorScheme.surface, MaterialTheme.colorScheme.surfaceVariant)
                         )
                     }
                 )
@@ -241,7 +241,7 @@ fun InteractiveSwipeToDismissSlider(
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.ArrowForward,
                     contentDescription = "Swipe Handle",
-                    tint = Color(0xFF1B5E20),
+                    tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(28.dp)
                 )
             }

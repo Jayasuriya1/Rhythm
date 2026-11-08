@@ -70,6 +70,9 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import com.example.ui.theme.StateHealthy
+import com.example.ui.theme.StateInfo
+import com.example.ui.theme.StateWarning
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -152,12 +155,12 @@ fun BarcodeScannerView(
         Box(
             modifier = modifier
                 .fillMaxSize()
-                .background(Color(0xFF121212))
+                .background(MaterialTheme.colorScheme.background)
                 .padding(24.dp),
             contentAlignment = Alignment.Center
         ) {
             Card(
-                colors = CardDefaults.cardColors(containerColor = Color(0xFF1E293B)),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 shape = RoundedCornerShape(24.dp),
                 modifier = Modifier.fillMaxWidth()
             ) {
@@ -168,34 +171,34 @@ fun BarcodeScannerView(
                     Icon(
                         imageVector = Icons.Default.QrCodeScanner,
                         contentDescription = null,
-                        tint = Color(0xFF64B5F6),
+                        tint = StateInfo,
                         modifier = Modifier.size(56.dp)
                     )
                     Spacer(modifier = Modifier.height(16.dp))
                     Text(
                         text = "Camera Permission Required",
-                        color = Color.White,
+                        color = MaterialTheme.colorScheme.onSurface,
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
                         text = "Camera access is needed to scan barcodes and QR codes for your morning alarm dismissal mission.",
-                        color = Color.White.copy(alpha = 0.7f),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontSize = 14.sp,
                         textAlign = TextAlign.Center
                     )
                     Spacer(modifier = Modifier.height(20.dp))
                     Button(
                         onClick = { permissionLauncher.launch(Manifest.permission.CAMERA) },
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1E88E5))
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
                     ) {
-                        Text("Grant Camera Permission", color = Color.White)
+                        Text("Grant Camera Permission", color = MaterialTheme.colorScheme.onPrimary)
                     }
                     if (onCancelOrSkip != null) {
                         Spacer(modifier = Modifier.height(8.dp))
                         TextButton(onClick = onCancelOrSkip) {
-                            Text("Cancel", color = Color.White.copy(alpha = 0.6f))
+                            Text("Cancel", color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
                 }
@@ -293,17 +296,18 @@ fun BarcodeScannerView(
             label = "laser_y"
         )
 
+        val laserColor = if (matchError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
         Box(
             modifier = Modifier
                 .align(Alignment.Center)
                 .size(280.dp)
                 .clip(RoundedCornerShape(20.dp))
-                .border(2.5.dp, if (matchError) Color(0xFFFF5252) else Color(0xFF64B5F6), RoundedCornerShape(20.dp))
+                .border(2.5.dp, if (matchError) MaterialTheme.colorScheme.error else StateInfo, RoundedCornerShape(20.dp))
         ) {
             Canvas(modifier = Modifier.fillMaxSize()) {
                 val y = size.height * laserPosition
                 drawLine(
-                    color = if (matchError) Color(0xFFFF5252) else Color(0xFFFF4081),
+                    color = laserColor,
                     start = Offset(0f, y),
                     end = Offset(size.width, y),
                     strokeWidth = 3f
@@ -333,7 +337,7 @@ fun BarcodeScannerView(
                         Icon(
                             imageVector = Icons.Default.QrCodeScanner,
                             contentDescription = "Scanner",
-                            tint = Color(0xFF64B5F6),
+                            tint = StateInfo,
                             modifier = Modifier.size(24.dp)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
@@ -355,7 +359,7 @@ fun BarcodeScannerView(
                             modifier = Modifier
                                 .size(40.dp)
                                 .clip(CircleShape)
-                                .background(if (isTorchEnabled) Color(0xFFFFD54F) else Color.White.copy(alpha = 0.2f))
+                                .background(if (isTorchEnabled) StateWarning else Color.White.copy(alpha = 0.2f))
                         ) {
                             Icon(
                                 imageVector = if (isTorchEnabled) Icons.Default.FlashOn else Icons.Default.FlashOff,
@@ -389,7 +393,7 @@ fun BarcodeScannerView(
                     if (!targetLabel.isNullOrBlank()) {
                         Text(
                             text = "Target: $targetLabel",
-                            color = Color(0xFFFFD54F),
+                            color = StateWarning,
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Medium,
                             modifier = Modifier.padding(top = 4.dp)
@@ -436,13 +440,13 @@ fun BarcodeScannerView(
                         Icon(
                             imageVector = Icons.Default.Warning,
                             contentDescription = null,
-                            tint = Color(0xFFFF5252),
+                            tint = MaterialTheme.colorScheme.error,
                             modifier = Modifier.size(18.dp)
                         )
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(
                             text = "Scanned '${lastScannedText?.take(18)}' does not match target!",
-                            color = Color(0xFFFF5252),
+                            color = MaterialTheme.colorScheme.error,
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Bold
                         )
@@ -452,15 +456,15 @@ fun BarcodeScannerView(
                 if (!showManualInput) {
                     Button(
                         onClick = { showManualInput = true },
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF263238))
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
                     ) {
-                        Text("Having trouble? Type digits manually", color = Color.White, fontSize = 13.sp)
+                        Text("Having trouble? Type digits manually", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
                     }
                 } else {
                     OutlinedTextField(
                         value = manualCodeInput,
                         onValueChange = { manualCodeInput = it },
-                        label = { Text("Enter barcode digits", color = Color.LightGray) },
+                        label = { Text("Enter barcode digits", color = MaterialTheme.colorScheme.outline) },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth()
                     )
@@ -484,10 +488,10 @@ fun BarcodeScannerView(
                                     }
                                 }
                             },
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1E88E5)),
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                             modifier = Modifier.weight(1f)
                         ) {
-                            Text(if (scannerMode == ScannerMode.REGISTER_EXISTING) "Register Code" else "Verify Code", color = Color.White)
+                            Text(if (scannerMode == ScannerMode.REGISTER_EXISTING) "Register Code" else "Verify Code", color = MaterialTheme.colorScheme.onPrimary)
                         }
                     }
                 }
@@ -507,7 +511,7 @@ fun BarcodeScannerView(
                 contentAlignment = Alignment.Center
             ) {
                 Card(
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFF1E293B)),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                     shape = RoundedCornerShape(24.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
@@ -516,7 +520,7 @@ fun BarcodeScannerView(
                     ) {
                         Text(
                             text = "Save Household Barcode",
-                            color = Color.White,
+                            color = MaterialTheme.colorScheme.onSurface,
                             fontSize = 19.sp,
                             fontWeight = FontWeight.Bold
                         )
@@ -524,21 +528,21 @@ fun BarcodeScannerView(
 
                         // Scanned Details Tag
                         Surface(
-                            color = Color.Black.copy(alpha = 0.35f),
+                            color = MaterialTheme.colorScheme.surfaceVariant,
                             shape = RoundedCornerShape(12.dp),
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Column(modifier = Modifier.padding(12.dp)) {
                                 Text(
                                     text = "Detected Format: ${lastScannedFormat ?: "UNKNOWN"}",
-                                    color = Color(0xFF64B5F6),
+                                    color = StateInfo,
                                     fontSize = 12.sp,
                                     fontWeight = FontWeight.Bold
                                 )
                                 Spacer(modifier = Modifier.height(2.dp))
                                 Text(
                                     text = scannedVal,
-                                    color = Color.White,
+                                    color = MaterialTheme.colorScheme.onSurface,
                                     fontSize = 14.sp,
                                     fontFamily = FontFamily.Monospace
                                 )
@@ -551,13 +555,13 @@ fun BarcodeScannerView(
                                 Icon(
                                     imageVector = Icons.Default.Info,
                                     contentDescription = null,
-                                    tint = Color(0xFFFFB74D),
+                                    tint = StateWarning,
                                     modifier = Modifier.size(16.dp)
                                 )
                                 Spacer(modifier = Modifier.width(6.dp))
                                 Text(
                                     text = "Note: This code value is already registered in your library.",
-                                    color = Color(0xFFFFB74D),
+                                    color = StateWarning,
                                     fontSize = 12.sp
                                 )
                             }
@@ -567,7 +571,7 @@ fun BarcodeScannerView(
                         OutlinedTextField(
                             value = registrationLabel,
                             onValueChange = { registrationLabel = it },
-                            label = { Text("Memorable Label *", color = Color.LightGray) },
+                            label = { Text("Memorable Label *", color = MaterialTheme.colorScheme.outline) },
                             placeholder = { Text("e.g. Kitchen Coffee Box, Toothpaste") },
                             singleLine = true,
                             modifier = Modifier.fillMaxWidth()
@@ -577,7 +581,7 @@ fun BarcodeScannerView(
                         OutlinedTextField(
                             value = registrationLocation,
                             onValueChange = { registrationLocation = it },
-                            label = { Text("Location Hint (Optional)", color = Color.LightGray) },
+                            label = { Text("Location Hint (Optional)", color = MaterialTheme.colorScheme.outline) },
                             placeholder = { Text("e.g. Kitchen Pantry, Bathroom Shelf") },
                             singleLine = true,
                             modifier = Modifier.fillMaxWidth()
@@ -594,7 +598,7 @@ fun BarcodeScannerView(
                                     lastScannedText = null
                                 }
                             ) {
-                                Text("Scan Another", color = Color.White)
+                                Text("Scan Another", color = MaterialTheme.colorScheme.onSurface)
                             }
                             Spacer(modifier = Modifier.width(12.dp))
                             Button(
@@ -608,9 +612,9 @@ fun BarcodeScannerView(
                                     )
                                     showRegistrationSheet = false
                                 },
-                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2E7D32))
+                                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
                             ) {
-                                Text("Save Code", color = Color.White)
+                                Text("Save Code", color = MaterialTheme.colorScheme.onPrimary)
                             }
                         }
                     }

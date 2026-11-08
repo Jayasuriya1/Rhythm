@@ -126,3 +126,25 @@ val SleepStageUnknown = Color(0xFF83B58A)
 // Focus backdrops are the only screen family allowed to use atmospheric surfaces.
 val FocusBackdropDeep = Color(0xFF030A09)
 val FocusBackdropMintShade = Color(0xFF70B9A4)
+
+// Alarm ambient lockscreen gradients (ActiveAlarmActivity visual presets)
+val AlarmGradientDawnTop = Color(0xFF2E1C0C)
+val AlarmGradientDawnMiddle = Color(0xFF78390A)
+val AlarmGradientDawnBottom = Color(0xFFC2720E)
+
+val AlarmGradientForestTop = Color(0xFF0D2818)
+val AlarmGradientForestMiddle = Color(0xFF1B4332)
+val AlarmGradientForestBottom = Color(0xFF2D6A4F)
+
+val AlarmGradientDuskTop = Color(0xFF2B0909)
+val AlarmGradientDuskMiddle = Color(0xFF590D22)
+val AlarmGradientDuskBottom = Color(0xFF800F2F)
+
+val AlarmGradientMidnightTop = Color(0xFF10002B)
+val AlarmGradientMidnightMiddle = Color(0xFF240046)
+val AlarmGradientMidnightBottom = Color(0xFF5A189A)
+
+val AlarmGradientOledTop = Color(0xFF000000)
+val AlarmGradientOledMiddle = Color(0xFF0D1210)
+val AlarmGradientOledBottom = Color(0xFF17201B)
+

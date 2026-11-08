@@ -88,6 +88,10 @@ import com.example.data.model.TimerPhase
 import com.example.ui.MainViewModel
 import com.example.ui.TimerMode
 import com.example.ui.TimerState
+import com.example.ui.components.RhythmConfirmationDialog
+import com.example.ui.components.RhythmInputDialog
+import com.example.ui.theme.StateInfo
+import com.example.ui.theme.StateWarning
 import com.example.util.ConcentrationSoundscapeHelper
 import com.example.util.SoundscapeType
 import com.example.util.StudyMusicPlayer
@@ -362,8 +366,8 @@ fun FullScreenFocusTimerScreen(
             ) {
                 Card(
                     shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFF141C16)),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF233226)),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
                     modifier = Modifier
                         .width(240.dp)
                         .clickable(enabled = false) {}
@@ -372,7 +376,7 @@ fun FullScreenFocusTimerScreen(
                         Text(
                             text = "Soundscape Volume",
                             style = MaterialTheme.typography.labelSmall,
-                            color = Color(0xFFA8C9B0)
+                            color = MaterialTheme.colorScheme.primary
                         )
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Slider(
@@ -380,9 +384,9 @@ fun FullScreenFocusTimerScreen(
                                 onValueChange = { ConcentrationSoundscapeHelper.setVolume(it) },
                                 modifier = Modifier.weight(1f),
                                 colors = SliderDefaults.colors(
-                                    thumbColor = Color(0xFFA8C9B0),
-                                    activeTrackColor = Color(0xFFA8C9B0),
-                                    inactiveTrackColor = Color(0xFF243026)
+                                    thumbColor = MaterialTheme.colorScheme.primary,
+                                    activeTrackColor = MaterialTheme.colorScheme.primary,
+                                    inactiveTrackColor = MaterialTheme.colorScheme.surfaceVariant
                                 )
                             )
                         }
@@ -394,162 +398,66 @@ fun FullScreenFocusTimerScreen(
 
     // In-Session Notes Editor Modal
     if (showNotesDialog) {
-        AlertDialog(
-            onDismissRequest = { showNotesDialog = false },
-            containerColor = Color(0xFF0F1411),
-            titleContentColor = Color.White,
-            textContentColor = Color(0xFFE2E8E4),
-            shape = RoundedCornerShape(20.dp),
-            title = {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.Notes, contentDescription = null, tint = Color(0xFFA8C9B0), modifier = Modifier.size(20.dp))
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Study Session Notes")
-                }
-            },
-            text = {
-                Column {
-                    Text(
-                        text = "Jot down solutions, insights, or code references during your session:",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = Color(0xFF8F9E94)
-                    )
-                    Spacer(modifier = Modifier.height(10.dp))
-                    OutlinedTextField(
-                        value = sessionNotes,
-                        onValueChange = { sessionNotes = it },
-                        placeholder = { Text("What did you solve or learn?", color = Color(0xFF556358)) },
-                        colors = androidx.compose.material3.OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = Color(0xFFA8C9B0),
-                            unfocusedBorderColor = Color(0xFF263329),
-                            focusedTextColor = Color.White,
-                            unfocusedTextColor = Color(0xFFE2E8E4)
-                        ),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(140.dp),
-                        maxLines = 6
-                    )
-                }
-            },
-            confirmButton = {
-                Button(
-                    onClick = { showNotesDialog = false },
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFA8C9B0), contentColor = Color(0xFF08140B))
-                ) {
-                    Text("Save Notes")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showNotesDialog = false }) {
-                    Text("Close", color = Color(0xFF8F9E94))
-                }
-            }
+        RhythmInputDialog(
+            title = "Study Session Notes",
+            prompt = "Jot down solutions, insights, or code references during your session:",
+            value = sessionNotes,
+            onValueChange = { sessionNotes = it },
+            placeholder = "What did you solve or learn?",
+            confirmLabel = "Save Notes",
+            dismissLabel = "Close",
+            icon = Icons.Default.Notes,
+            maxLines = 6,
+            onConfirm = { showNotesDialog = false },
+            onDismiss = { showNotesDialog = false }
         )
     }
 
     // Park a Thought (Brain Dump Fast Capture Modal)
     if (showParkThoughtModal) {
-        AlertDialog(
-            onDismissRequest = { showParkThoughtModal = false },
-            containerColor = Color(0xFF0F1411),
-            titleContentColor = Color.White,
-            textContentColor = Color(0xFFE2E8E4),
-            shape = RoundedCornerShape(20.dp),
-            title = {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.Lightbulb, contentDescription = null, tint = Color(0xFFA8C9B0), modifier = Modifier.size(20.dp))
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Park a Thought")
-                }
-            },
-            text = {
-                Column {
-                    Text(
-                        text = "Quickly offload sudden ideas or distractions to Brain Dump without stopping your focus timer:",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = Color(0xFF8F9E94)
+        RhythmInputDialog(
+            title = "Park a Thought",
+            prompt = "Quickly offload sudden ideas or distractions to Brain Dump without stopping your focus timer:",
+            value = parkedThoughtText,
+            onValueChange = { parkedThoughtText = it },
+            placeholder = "e.g., Pay electric bill, check PR #42...",
+            confirmLabel = "Park & Resume",
+            dismissLabel = "Cancel",
+            icon = Icons.Default.Lightbulb,
+            maxLines = 3,
+            onConfirm = {
+                if (parkedThoughtText.isNotBlank()) {
+                    viewModel.saveBrainDumpNote(
+                        title = "Focus Distraction",
+                        content = parkedThoughtText.trim(),
+                        tag = "Focus"
                     )
-                    Spacer(modifier = Modifier.height(10.dp))
-                    OutlinedTextField(
-                        value = parkedThoughtText,
-                        onValueChange = { parkedThoughtText = it },
-                        placeholder = { Text("e.g., Pay electric bill, check PR #42...", color = Color(0xFF556358)) },
-                        colors = androidx.compose.material3.OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = Color(0xFFA8C9B0),
-                            unfocusedBorderColor = Color(0xFF263329),
-                            focusedTextColor = Color.White,
-                            unfocusedTextColor = Color(0xFFE2E8E4)
-                        ),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(100.dp)
-                    )
+                    parkedThoughtText = ""
                 }
+                showParkThoughtModal = false
             },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        if (parkedThoughtText.isNotBlank()) {
-                            viewModel.saveBrainDumpNote(
-                                title = "Focus Distraction",
-                                content = parkedThoughtText.trim(),
-                                tag = "Focus"
-                            )
-                            parkedThoughtText = ""
-                        }
-                        showParkThoughtModal = false
-                    },
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFA8C9B0), contentColor = Color(0xFF08140B))
-                ) {
-                    Text("Park & Resume")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showParkThoughtModal = false }) {
-                    Text("Cancel", color = Color(0xFF8F9E94))
-                }
-            }
+            onDismiss = { showParkThoughtModal = false }
         )
     }
 
     // End Session Confirmation Dialog
     if (showEndSessionConfirmation) {
         val elapsedMins = maxOf(1, timerState.elapsedSeconds / 60)
-        AlertDialog(
-            onDismissRequest = { showEndSessionConfirmation = false },
-            containerColor = Color(0xFF0F1411),
-            titleContentColor = Color.White,
-            textContentColor = Color(0xFFE2E8E4),
-            shape = RoundedCornerShape(20.dp),
-            title = { Text("End Focus Session?") },
-            text = {
-                Text(
-                    "You have focused for $elapsedMins minute${if (elapsedMins > 1) "s" else ""}. Would you like to log this session to your study history or continue focusing?",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = Color(0xFF8F9E94)
+        RhythmConfirmationDialog(
+            title = "End Focus Session?",
+            message = "You have focused for $elapsedMins minute${if (elapsedMins > 1) "s" else ""}. Would you like to log this session to your study history or continue focusing?",
+            confirmLabel = "End & Log",
+            dismissLabel = "Keep Focusing",
+            icon = Icons.Default.CheckCircle,
+            onConfirm = {
+                viewModel.saveCompletedSession(
+                    notes = sessionNotes.trim().ifBlank { null },
+                    status = "COMPLETED"
                 )
+                showEndSessionConfirmation = false
+                onExitFullScreen()
             },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        viewModel.saveCompletedSession(
-                            notes = sessionNotes.trim().ifBlank { null },
-                            status = "COMPLETED"
-                        )
-                        showEndSessionConfirmation = false
-                        onExitFullScreen()
-                    },
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFA8C9B0), contentColor = Color(0xFF08140B))
-                ) {
-                    Text("End & Log")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showEndSessionConfirmation = false }) {
-                    Text("Keep Focusing", color = Color(0xFF8F9E94))
-                }
-            }
+            onDismiss = { showEndSessionConfirmation = false }
         )
     }
 
@@ -616,8 +524,8 @@ private fun PortraitAndTabletFocusView(
             // Status Indicator Badge
             Surface(
                 shape = RoundedCornerShape(12.dp),
-                color = Color(0xFF131A15).copy(alpha = 0.85f),
-                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF202C23))
+                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.85f),
+                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
             ) {
                 Row(
                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
@@ -627,10 +535,10 @@ private fun PortraitAndTabletFocusView(
                     Surface(
                         shape = CircleShape,
                         color = when {
-                            isBreakActive -> Color(0xFF60A5FA)
-                            timerState.isRunning -> Color(0xFFA8C9B0)
-                            timerState.isPaused -> Color(0xFFFBBF24)
-                            else -> Color(0xFF6B7A70)
+                            isBreakActive -> StateInfo
+                            timerState.isRunning -> MaterialTheme.colorScheme.primary
+                            timerState.isPaused -> StateWarning
+                            else -> MaterialTheme.colorScheme.outline
                         },
                         modifier = Modifier.size(8.dp)
                     ) {}
@@ -646,7 +554,7 @@ private fun PortraitAndTabletFocusView(
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 1.sp
                         ),
-                        color = Color(0xFFE2E8E4)
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                 }
             }
@@ -656,7 +564,7 @@ private fun PortraitAndTabletFocusView(
                 // Soundscape quick indicator
                 Surface(
                     shape = RoundedCornerShape(10.dp),
-                    color = Color(0xFF131A15).copy(alpha = 0.75f),
+                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.75f),
                     modifier = Modifier.clickable { onOpenStudio() }
                 ) {
                     Row(
@@ -666,14 +574,14 @@ private fun PortraitAndTabletFocusView(
                         Icon(
                             imageVector = Icons.Default.GraphicEq,
                             contentDescription = "Soundscape",
-                            tint = if (isSoundscapePlaying || isMusicPlaying) Color(0xFFA8C9B0) else Color(0xFF8F9E94),
+                            tint = if (isSoundscapePlaying || isMusicPlaying) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.size(16.dp)
                         )
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(
                             text = if (activeSoundscape != SoundscapeType.NONE) activeSoundscape.displayName else if (isMusicPlaying) "Music" else "Studio",
                             fontSize = 11.sp,
-                            color = Color(0xFFE2E8E4),
+                            color = MaterialTheme.colorScheme.onSurface,
                             maxLines = 1
                         )
                     }
@@ -686,7 +594,7 @@ private fun PortraitAndTabletFocusView(
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.VolumeUp,
                         contentDescription = "Volume",
-                        tint = Color(0xFF8F9E94),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(18.dp)
                     )
                 }
@@ -698,7 +606,7 @@ private fun PortraitAndTabletFocusView(
                     Icon(
                         imageVector = Icons.Default.Tune,
                         contentDescription = "Focus Studio",
-                        tint = Color(0xFF8F9E94),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(18.dp)
                     )
                 }
@@ -710,7 +618,7 @@ private fun PortraitAndTabletFocusView(
                     Icon(
                         imageVector = Icons.Default.Close,
                         contentDescription = "Exit Focus Mode",
-                        tint = Color(0xFF8F9E94),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(18.dp)
                     )
                 }
@@ -765,8 +673,8 @@ private fun PortraitAndTabletFocusView(
                         onClick = onPause,
                         shape = RoundedCornerShape(16.dp),
                         colors = ButtonDefaults.filledTonalButtonColors(
-                            containerColor = Color(0xFF1E2820),
-                            contentColor = Color(0xFFA8C9B0)
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                            contentColor = MaterialTheme.colorScheme.primary
                         ),
                         modifier = Modifier
                             .weight(1f)
@@ -782,8 +690,8 @@ private fun PortraitAndTabletFocusView(
                         onClick = onStart,
                         shape = RoundedCornerShape(16.dp),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = Color(0xFFA8C9B0),
-                            contentColor = Color(0xFF08140B)
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary
                         ),
                         modifier = Modifier
                             .weight(1f)
@@ -804,8 +712,8 @@ private fun PortraitAndTabletFocusView(
                     onClick = onEndSession,
                     shape = RoundedCornerShape(16.dp),
                     colors = ButtonDefaults.filledTonalButtonColors(
-                        containerColor = Color(0xFF161F18),
-                        contentColor = Color(0xFFC0CCC3)
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                        contentColor = MaterialTheme.colorScheme.onSurface
                     ),
                     modifier = Modifier
                         .weight(0.85f)
@@ -830,28 +738,28 @@ private fun PortraitAndTabletFocusView(
                     onClick = onParkThought,
                     modifier = Modifier.testTag("fullscreen_park_distraction_btn")
                 ) {
-                    Icon(Icons.Default.Lightbulb, contentDescription = null, tint = Color(0xFFA8C9B0), modifier = Modifier.size(16.dp))
+                    Icon(Icons.Default.Lightbulb, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
                     Spacer(modifier = Modifier.width(6.dp))
-                    Text("Park a Thought", fontSize = 12.sp, color = Color(0xFFD4DED7))
+                    Text("Park a Thought", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurface)
                 }
 
                 TextButton(
                     onClick = onOpenNotes,
                     modifier = Modifier.testTag("fullscreen_add_notes_btn")
                 ) {
-                    Icon(Icons.Default.Notes, contentDescription = null, tint = Color(0xFFA8C9B0), modifier = Modifier.size(16.dp))
+                    Icon(Icons.Default.Notes, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
                         if (sessionNotes.isBlank()) "Session Notes" else "Notes (${sessionNotes.length}c)",
                         fontSize = 12.sp,
-                        color = Color(0xFFD4DED7)
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                 }
 
                 TextButton(onClick = onOpenStudio) {
-                    Icon(Icons.Default.Tune, contentDescription = null, tint = Color(0xFF8F9E94), modifier = Modifier.size(15.dp))
+                    Icon(Icons.Default.Tune, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(15.dp))
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("Environment", fontSize = 12.sp, color = Color(0xFF8F9E94))
+                    Text("Environment", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         }
@@ -914,7 +822,7 @@ private fun LandscapePhoneFocusView(
                     CircularProgressIndicator(
                         progress = { animatedProgress },
                         modifier = Modifier.fillMaxSize(),
-                        color = Color(0xFFA8C9B0),
+                        color = accentColor,
                         strokeWidth = 7.dp
                     )
                 }
@@ -936,7 +844,7 @@ private fun LandscapePhoneFocusView(
                     Text(
                         text = if (isBreakActive) "Break Time" else if (timerState.mode == TimerMode.STOPWATCH) "Elapsed" else "Remaining",
                         style = MaterialTheme.typography.labelSmall,
-                        color = Color(0xFF8F9E94)
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
@@ -968,16 +876,16 @@ private fun LandscapePhoneFocusView(
                     Text(
                         text = "${timerState.selectedCategory} • ${timerState.mode.title}",
                         style = MaterialTheme.typography.bodySmall,
-                        color = Color(0xFF8F9E94)
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
 
                 Row {
                     IconButton(onClick = onOpenStudio, modifier = Modifier.size(34.dp)) {
-                        Icon(Icons.Default.Tune, contentDescription = "Studio", tint = Color(0xFF8F9E94), modifier = Modifier.size(16.dp))
+                        Icon(Icons.Default.Tune, contentDescription = "Studio", tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(16.dp))
                     }
                     IconButton(onClick = onExit, modifier = Modifier.size(34.dp)) {
-                        Icon(Icons.Default.Close, contentDescription = "Exit", tint = Color(0xFF8F9E94), modifier = Modifier.size(16.dp))
+                        Icon(Icons.Default.Close, contentDescription = "Exit", tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(16.dp))
                     }
                 }
             }
@@ -991,7 +899,10 @@ private fun LandscapePhoneFocusView(
                     FilledTonalButton(
                         onClick = onPause,
                         shape = RoundedCornerShape(12.dp),
-                        colors = ButtonDefaults.filledTonalButtonColors(containerColor = Color(0xFF1E2820), contentColor = Color(0xFFA8C9B0)),
+                        colors = ButtonDefaults.filledTonalButtonColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                            contentColor = MaterialTheme.colorScheme.primary
+                        ),
                         modifier = Modifier.weight(1f).height(44.dp)
                     ) {
                         Icon(Icons.Default.Pause, contentDescription = null, modifier = Modifier.size(16.dp))
@@ -1002,7 +913,10 @@ private fun LandscapePhoneFocusView(
                     Button(
                         onClick = onStart,
                         shape = RoundedCornerShape(12.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFA8C9B0), contentColor = Color(0xFF08140B)),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary
+                        ),
                         modifier = Modifier.weight(1f).height(44.dp)
                     ) {
                         Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(16.dp))
@@ -1014,7 +928,10 @@ private fun LandscapePhoneFocusView(
                 FilledTonalButton(
                     onClick = onEndSession,
                     shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.filledTonalButtonColors(containerColor = Color(0xFF161F18), contentColor = Color(0xFFC0CCC3)),
+                    colors = ButtonDefaults.filledTonalButtonColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                    ),
                     modifier = Modifier.weight(1f).height(44.dp)
                 ) {
                     Icon(Icons.Default.CheckCircle, contentDescription = null, modifier = Modifier.size(16.dp))
@@ -1029,15 +946,15 @@ private fun LandscapePhoneFocusView(
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 TextButton(onClick = onParkThought) {
-                    Icon(Icons.Default.Lightbulb, contentDescription = null, tint = Color(0xFFA8C9B0), modifier = Modifier.size(14.dp))
+                    Icon(Icons.Default.Lightbulb, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(14.dp))
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("Park Thought", fontSize = 11.sp, color = Color(0xFFD4DED7))
+                    Text("Park Thought", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurface)
                 }
 
                 TextButton(onClick = onOpenNotes) {
-                    Icon(Icons.Default.Notes, contentDescription = null, tint = Color(0xFFA8C9B0), modifier = Modifier.size(14.dp))
+                    Icon(Icons.Default.Notes, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(14.dp))
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text(if (sessionNotes.isBlank()) "Notes" else "Notes*", fontSize = 11.sp, color = Color(0xFFD4DED7))
+                    Text(if (sessionNotes.isBlank()) "Notes" else "Notes*", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurface)
                 }
             }
         }
@@ -1076,13 +993,13 @@ private fun FocusTimerCenterpiece(
         // Category & Mode Tag
         Surface(
             shape = RoundedCornerShape(8.dp),
-            color = Color(0xFF141D16).copy(alpha = 0.8f),
-            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF223226))
+            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.85f),
+            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
         ) {
             Text(
                 text = "${timerState.selectedCategory} • ${timerState.mode.title}",
                 style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Medium),
-                color = Color(0xFFA8C9B0),
+                color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
             )
         }
@@ -1113,7 +1030,7 @@ private fun FocusTimerCenterpiece(
                 CircularProgressIndicator(
                     progress = { animatedProgress },
                     modifier = Modifier.fillMaxSize(),
-                    color = Color(0xFFA8C9B0),
+                    color = accentColor,
                     strokeWidth = if (isWideScreen) 10.dp else 8.dp
                 )
             }
@@ -1140,7 +1057,7 @@ private fun FocusTimerCenterpiece(
                 Text(
                     text = if (timerState.mode == TimerMode.STOPWATCH) "Elapsed Focus" else "Remaining Focus",
                     style = MaterialTheme.typography.bodySmall,
-                    color = Color(0xFF8F9E94)
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }
@@ -1173,8 +1090,8 @@ private fun BreakCenterpiece(
     ) {
         Surface(
             shape = RoundedCornerShape(12.dp),
-            color = Color(0xFF131D24),
-            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF223542)),
+            color = MaterialTheme.colorScheme.surface,
+            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
             modifier = Modifier.padding(bottom = 12.dp)
         ) {
             Row(
@@ -1184,14 +1101,14 @@ private fun BreakCenterpiece(
                 Icon(
                     imageVector = if (phase == TimerPhase.LONG_BREAK) Icons.Default.Coffee else Icons.Default.Spa,
                     contentDescription = null,
-                    tint = Color(0xFF60A5FA),
+                    tint = StateInfo,
                     modifier = Modifier.size(18.dp)
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
                     text = breakLabel,
                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                    color = Color(0xFF93C5FD),
+                    color = MaterialTheme.colorScheme.primary,
                     textAlign = TextAlign.Center
                 )
             }
@@ -1226,7 +1143,7 @@ private fun BreakCenterpiece(
                 Text(
                     text = if (safeSeconds < 60) "${safeSeconds}s remaining" else "Rest & Step Away",
                     fontSize = 12.sp,
-                    color = Color(0xFFBAC7BF)
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }
@@ -1240,7 +1157,7 @@ private fun BreakCenterpiece(
             OutlinedButton(
                 onClick = onSkipBreak,
                 shape = RoundedCornerShape(10.dp),
-                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF334437)),
+                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
                 colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White)
             ) {
                 Icon(Icons.Default.SkipNext, contentDescription = null, modifier = Modifier.size(16.dp))
@@ -1251,7 +1168,10 @@ private fun BreakCenterpiece(
             FilledTonalButton(
                 onClick = { onExtendBreak(60) },
                 shape = RoundedCornerShape(10.dp),
-                colors = ButtonDefaults.filledTonalButtonColors(containerColor = Color(0xFF162019), contentColor = Color(0xFFA8C9B0))
+                colors = ButtonDefaults.filledTonalButtonColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                    contentColor = MaterialTheme.colorScheme.primary
+                )
             ) {
                 Text("+1m", fontSize = 12.sp)
             }
@@ -1259,7 +1179,10 @@ private fun BreakCenterpiece(
             FilledTonalButton(
                 onClick = { onExtendBreak(300) },
                 shape = RoundedCornerShape(10.dp),
-                colors = ButtonDefaults.filledTonalButtonColors(containerColor = Color(0xFF162019), contentColor = Color(0xFFA8C9B0))
+                colors = ButtonDefaults.filledTonalButtonColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                    contentColor = MaterialTheme.colorScheme.primary
+                )
             ) {
                 Text("+5m", fontSize = 12.sp)
             }
@@ -1298,15 +1221,15 @@ private fun CalmCompletionExperience(
         ) {
             Surface(
                 shape = CircleShape,
-                color = Color(0xFF16241A),
-                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF283F2F)),
+                color = MaterialTheme.colorScheme.surfaceVariant,
+                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
                 modifier = Modifier.size(68.dp)
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(
                         imageVector = Icons.Default.CheckCircle,
                         contentDescription = null,
-                        tint = Color(0xFFA8C9B0),
+                        tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(36.dp)
                     )
                 }
@@ -1327,15 +1250,15 @@ private fun CalmCompletionExperience(
                 style = MaterialTheme.typography.titleMedium.copy(
                     fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
                 ),
-                color = Color(0xFFA8C9B0)
+                color = MaterialTheme.colorScheme.primary
             )
 
             Spacer(modifier = Modifier.height(14.dp))
 
             Surface(
                 shape = RoundedCornerShape(12.dp),
-                color = Color(0xFF131A15),
-                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF202C23))
+                color = MaterialTheme.colorScheme.surface,
+                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
             ) {
                 Column(
                     modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
@@ -1349,7 +1272,7 @@ private fun CalmCompletionExperience(
                     Text(
                         text = "$mins minutes of undisturbed deep focus",
                         style = MaterialTheme.typography.bodySmall,
-                        color = Color(0xFF8F9E94)
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
@@ -1364,18 +1287,18 @@ private fun CalmCompletionExperience(
             Text(
                 text = "What did you learn or accomplish? (Optional)",
                 style = MaterialTheme.typography.labelMedium,
-                color = Color(0xFF8F9E94),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(bottom = 6.dp)
             )
             OutlinedTextField(
                 value = sessionNotes,
                 onValueChange = onNotesChange,
-                placeholder = { Text("Summarize your progress, solved bugs, or takeaways...", color = Color(0xFF556358)) },
+                placeholder = { Text("Summarize your progress, solved bugs, or takeaways...", color = MaterialTheme.colorScheme.outline) },
                 colors = androidx.compose.material3.OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = Color(0xFFA8C9B0),
-                    unfocusedBorderColor = Color(0xFF233226),
-                    focusedTextColor = Color.White,
-                    unfocusedTextColor = Color(0xFFE2E8E4)
+                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                    unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
+                    focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                    unfocusedTextColor = MaterialTheme.colorScheme.onSurface
                 ),
                 modifier = Modifier
                     .fillMaxWidth()
@@ -1394,8 +1317,8 @@ private fun CalmCompletionExperience(
                 onClick = onSaveAndExit,
                 shape = RoundedCornerShape(14.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFFA8C9B0),
-                    contentColor = Color(0xFF08140B)
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary
                 ),
                 modifier = Modifier
                     .fillMaxWidth()
@@ -1412,8 +1335,8 @@ private fun CalmCompletionExperience(
                     onClick = onTakeBreak,
                     shape = RoundedCornerShape(14.dp),
                     colors = ButtonDefaults.filledTonalButtonColors(
-                        containerColor = Color(0xFF162019),
-                        contentColor = Color(0xFF93C5FD)
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                        contentColor = StateInfo
                     ),
                     modifier = Modifier
                         .weight(1f)
@@ -1428,8 +1351,8 @@ private fun CalmCompletionExperience(
                     onClick = onStartAnotherSession,
                     shape = RoundedCornerShape(14.dp),
                     colors = ButtonDefaults.filledTonalButtonColors(
-                        containerColor = Color(0xFF162019),
-                        contentColor = Color(0xFFA8C9B0)
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                        contentColor = MaterialTheme.colorScheme.primary
                     ),
                     modifier = Modifier
                         .weight(1f)
@@ -1466,7 +1389,7 @@ private fun BreathingGuideEffect(accentColor: Color) {
 
         drawCircle(
             brush = Brush.radialGradient(
-                colors = listOf(Color(0xFFA8C9B0).copy(alpha = 0.35f), Color.Transparent),
+                colors = listOf(accentColor.copy(alpha = 0.35f), Color.Transparent),
                 center = center,
                 radius = baseRadius * 1.3f
             ),
@@ -1475,7 +1398,7 @@ private fun BreathingGuideEffect(accentColor: Color) {
         )
 
         drawCircle(
-            color = Color(0xFFA8C9B0).copy(alpha = 0.5f),
+            color = accentColor.copy(alpha = 0.5f),
             radius = baseRadius,
             center = center,
             style = Stroke(width = 4.dp.toPx())
@@ -1506,7 +1429,7 @@ private fun AmbientRippleEffect(accentColor: Color) {
             val alpha = (1f - progress) * 0.4f
 
             drawCircle(
-                color = Color(0xFFA8C9B0).copy(alpha = alpha),
+                color = accentColor.copy(alpha = alpha),
                 radius = radius,
                 center = center,
                 style = Stroke(width = 3.dp.toPx())
@@ -1534,10 +1457,9 @@ private fun ZenGlowEffect(accentColor: Color) {
         drawCircle(
             brush = Brush.sweepGradient(
                 colors = listOf(
-                    Color(0xFFA8C9B0).copy(alpha = 0.6f),
-                    Color(0xFF818CF8).copy(alpha = 0.3f),
-                    Color(0xFF38BDF8).copy(alpha = 0.5f),
-                    Color(0xFFA8C9B0).copy(alpha = 0.6f)
+                    accentColor.copy(alpha = 0.6f),
+                    StateInfo.copy(alpha = 0.4f),
+                    accentColor.copy(alpha = 0.6f)
                 ),
                 center = center
             ),
@@ -1561,7 +1483,7 @@ private fun MinimalBreakEffect(accentColor: Color) {
             style = Stroke(width = 4.dp.toPx())
         )
         drawCircle(
-            color = Color(0xFFA8C9B0),
+            color = accentColor,
             radius = radius,
             center = center,
             style = Stroke(width = 4.dp.toPx())
