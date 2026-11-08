@@ -59,7 +59,8 @@ data class DatabaseIntegrityStats(
     val totalMeditationSessions: Int,
     val totalCustomAlarms: Int = 0,
     val totalRegisteredCodes: Int = 0,
-    val isConsistent: Boolean
+    val isConsistent: Boolean,
+    val isEncrypted: Boolean = false
 )
 
 object DataBackupManager {
@@ -1048,6 +1049,11 @@ object DataBackupManager {
         // Integrity check: Categories > 0, Anchors > 0
         val isConsistent = totalCategories > 0 && AppDatabase.DEFAULT_ANCHORS.isNotEmpty()
 
+        val isEncrypted = AppDatabase.appContext?.let { ctx ->
+            val dbFile = ctx.getDatabasePath("rhythm_focus_database")
+            dbFile.exists() && !com.example.data.security.DatabaseKeyManager.isPlaintextSqliteDatabase(dbFile)
+        } ?: false
+
         return DatabaseIntegrityStats(
             totalRoutines = totalRoutines,
             totalSleep = totalSleep,
@@ -1064,7 +1070,8 @@ object DataBackupManager {
             totalMeditationSessions = totalMeditationSessions,
             totalCustomAlarms = totalCustomAlarms,
             totalRegisteredCodes = totalRegisteredCodes,
-            isConsistent = isConsistent
+            isConsistent = isConsistent,
+            isEncrypted = isEncrypted
         )
     }
 }
