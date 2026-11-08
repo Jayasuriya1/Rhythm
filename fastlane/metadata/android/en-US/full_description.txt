@@ -1,0 +1,13 @@
+Rhythm & Focus is an offline-first, privacy-respecting daily rhythm, medication, sleep, and focus companion designed to bring calm and stability to your everyday life.
+
+Rooted in interpersonal and social rhythm principles, Rhythm helps you track core circadian anchors (getting out of bed, first social contact, primary focus blocks, dinner, and sleep onset) without pressure, intrusive streaks, or noise.
+
+Key Features:
+• Social Rhythm Tracking: Track daily routine anchors and timing drift with calming, low-glare visualizations.
+• Medication & Supplement Management: Schedule dosages, set discreet reminders, and log intakes with barcode-assisted verification.
+• Daily Health & Mental Wellness Check-Ins: Capture mood, stress, energy, irritability, and symptom notes.
+• Focus Timer & Distraction Parking: Clean study timer with customizable intervals and a floating Brain Dump tool to park distracting thoughts immediately.
+• Ambient Focus Backdrops: Curated, soothing soundscapes and OLED-optimized aesthetic themes.
+• Health Connect Integration: Read-only, permission-based sync with Android Health Connect for steps, sleep stages, and cardiac vitals.
+• Total Data Ownership: Full SQLCipher AES-256 database encryption at rest. Export structured JSON backups with optional password-derived AES-256-GCM encryption. Zero trackers, zero ads, zero telemetry.
+
