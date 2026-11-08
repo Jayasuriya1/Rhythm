@@ -1953,37 +1953,32 @@ class MainViewModel(
         }
     }
 
-    fun exportBackupJson(onResult: (String) -> Unit) {
-        viewModelScope.launch {
-            val json = repository.exportDataBackup()
-            _userFeedbackMessage.value = "Backup generated successfully"
-            onResult(json)
-        }
+    fun exportBackupJson(passphrase: String? = null, onResult: (String) -> Unit) {
+        settingsViewModel.exportBackupJson(passphrase, onResult)
     }
 
     fun restoreBackupJson(
         jsonString: String,
         context: Context? = null,
         remapAutoIds: Boolean = false,
+        passphrase: String? = null,
         onComplete: (Boolean, String) -> Unit
     ) {
-        viewModelScope.launch {
-            val result = repository.restoreDataBackup(jsonString, remapAutoIds)
-            if (result.isSuccess) {
-                val summary = result.getOrThrow()
-                refreshDatabaseIntegrityStats()
-                if (context != null) {
-                    val activeReminders = repository.getEnabledRemindersSync()
-                    AlarmScheduler.scheduleAllEnabledAlarms(context, activeReminders)
-                }
-                _userFeedbackMessage.value = "Data restored successfully (${summary.routineEntriesCount} routines, ${summary.medicationsCount} meds)"
-                onComplete(true, "Restored successfully: ${summary.routineEntriesCount} routines, ${summary.sleepCount} sleep records, ${summary.medicationsCount} meds, ${summary.studySessionsCount} study sessions.")
-            } else {
-                val errorMsg = result.exceptionOrNull()?.message ?: "Failed to restore backup"
-                _userFeedbackMessage.value = "Error: $errorMsg"
-                onComplete(false, errorMsg)
-            }
-        }
+        settingsViewModel.restoreBackupJson(
+            jsonString = jsonString,
+            context = context ?: appContext,
+            remapAutoIds = remapAutoIds,
+            passphrase = passphrase,
+            onComplete = onComplete
+        )
+    }
+
+    fun isBackupEncrypted(jsonString: String): Boolean {
+        return settingsViewModel.isBackupEncrypted(jsonString)
+    }
+
+    fun validateBackupJson(jsonString: String, passphrase: String? = null): Result<com.example.util.BackupSummary> {
+        return settingsViewModel.validateBackupJson(jsonString, passphrase)
     }
 
     fun cleanDuplicateAlarms(context: Context? = null) {
