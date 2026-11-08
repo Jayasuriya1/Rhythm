@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -919,9 +920,10 @@ fun FocusTimerCard(
                 shape = RoundedCornerShape(6.dp),
                 color = when {
                     timerState.isCompleted -> MaterialTheme.colorScheme.primary
-                    timerState.isRunning -> if (isBreakActive) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.tertiary
-                    timerState.isPaused -> MaterialTheme.colorScheme.secondary
-                    else -> MaterialTheme.colorScheme.surfaceVariant
+                    timerState.isRunning && isBreakActive -> MaterialTheme.colorScheme.tertiaryContainer
+                    timerState.isRunning -> MaterialTheme.colorScheme.secondaryContainer
+                    timerState.isPaused -> MaterialTheme.colorScheme.surfaceVariant
+                    else -> MaterialTheme.colorScheme.surface
                 }
             ) {
                 Text(
