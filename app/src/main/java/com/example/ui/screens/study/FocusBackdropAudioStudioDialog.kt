@@ -490,7 +490,7 @@ private fun RealSoundscapesTab(
                             Text(
                                 text = "${currentSoundscape.iconEmoji} ${currentSoundscape.displayName}",
                                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                                color = Color.White
+                                color = MaterialTheme.colorScheme.onSurface
                             )
                         }
 
@@ -524,6 +524,21 @@ private fun RealSoundscapesTab(
                         Icon(Icons.Default.VolumeUp, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp))
                     }
                 }
+            }
+        }
+
+        item {
+            Surface(
+                color = MaterialTheme.colorScheme.secondaryContainer,
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(
+                    "Offline generated ambience • These are synthesized sound textures, not real-world field recordings. Authentic rain, forest and water recordings need a separately licensed audio pack.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer,
+                    modifier = Modifier.padding(12.dp)
+                )
             }
         }
 
@@ -575,7 +590,7 @@ private fun RealSoundscapesTab(
                             modifier = Modifier.size(24.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primary),
                             contentAlignment = Alignment.Center
                         ) {
-                            Icon(Icons.Default.Check, contentDescription = "Active", tint = Color(0xFF0B170E), modifier = Modifier.size(16.dp))
+                            Icon(Icons.Default.Check, contentDescription = "Active", tint = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(16.dp))
                         }
                     }
                 }
@@ -639,7 +654,7 @@ private fun OfflineMusicPlayerTab(
                                 Text(
                                     text = currentTrack?.title ?: "No Song Selected",
                                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                                    color = Color.White,
+                                    color = MaterialTheme.colorScheme.onSurface,
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis
                                 )
@@ -696,7 +711,7 @@ private fun OfflineMusicPlayerTab(
                             }
 
                             IconButton(onClick = onPrev) {
-                                Icon(Icons.Default.SkipPrevious, contentDescription = "Previous Track", tint = Color.White)
+                                Icon(Icons.Default.SkipPrevious, contentDescription = "Previous Track", tint = MaterialTheme.colorScheme.onSurface)
                             }
 
                             IconButton(onClick = { onSeekRelative(-10000) }) {
@@ -718,7 +733,7 @@ private fun OfflineMusicPlayerTab(
                             }
 
                             IconButton(onClick = onNext) {
-                                Icon(Icons.Default.SkipNext, contentDescription = "Next Track", tint = Color.White)
+                                Icon(Icons.Default.SkipNext, contentDescription = "Next Track", tint = MaterialTheme.colorScheme.onSurface)
                             }
 
                             IconButton(onClick = onToggleRepeat) {
@@ -777,7 +792,7 @@ private fun OfflineMusicPlayerTab(
                     Text(
                         text = "Focus Playlist (${playlist.size} tracks)",
                         style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
-                        color = Color.White
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                     TextButton(onClick = onClearPlaylist) {
                         Text("Clear All", fontSize = 12.sp, color = Color(0xFFE57373))
@@ -843,7 +858,7 @@ private fun OfflineMusicPlayerTab(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
-                        Text("Sync with Study Timer", style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold), color = Color.White)
+                        Text("Sync with Study Timer", style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold), color = MaterialTheme.colorScheme.onSurface)
                         Text("Automatically starts music when study timer starts, and pauses when paused.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     Spacer(modifier = Modifier.width(12.dp))
@@ -926,7 +941,7 @@ private fun PersonalBackgroundsTab(
                     )
 
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                        Text("Subtle Soft Blur", style = MaterialTheme.typography.bodySmall, color = Color.White)
+                        Text("Subtle Soft Blur", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface)
                         Switch(
                             checked = isBlur,
                             onCheckedChange = onToggleBlur,
@@ -936,7 +951,7 @@ private fun PersonalBackgroundsTab(
 
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                         Column {
-                            Text("Scale & Crop Mode", style = MaterialTheme.typography.bodySmall, color = Color.White)
+                            Text("Scale & Crop Mode", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface)
                             Text("Currently: $fitMode", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                         OutlinedButton(
@@ -968,7 +983,7 @@ private fun PersonalBackgroundsTab(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Column {
-                            Text("My Focus Backgrounds", style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold), color = Color.White)
+                            Text("My Focus Backgrounds", style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold), color = MaterialTheme.colorScheme.onSurface)
                             Text("${wallpapers.size} personal wallpapers in offline storage", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
 
@@ -1025,7 +1040,7 @@ private fun PersonalBackgroundsTab(
                                                         .align(Alignment.TopEnd),
                                                     contentAlignment = Alignment.Center
                                                 ) {
-                                                    Icon(Icons.Default.Check, contentDescription = null, tint = Color.Black, modifier = Modifier.size(14.dp))
+                                                    Icon(Icons.Default.Check, contentDescription = null, tint = MaterialTheme.colorScheme.background, modifier = Modifier.size(14.dp))
                                                 }
                                             }
 
@@ -1037,7 +1052,7 @@ private fun PersonalBackgroundsTab(
                                                     .align(Alignment.BottomEnd)
                                                     .padding(2.dp)
                                             ) {
-                                                Icon(Icons.Default.Delete, contentDescription = "Delete", tint = Color.White.copy(alpha = 0.8f), modifier = Modifier.size(16.dp))
+                                                Icon(Icons.Default.Delete, contentDescription = "Delete", tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f), modifier = Modifier.size(16.dp))
                                             }
                                         }
                                     }
@@ -1065,7 +1080,7 @@ private fun PersonalBackgroundsTab(
                                     colors = androidx.compose.material3.SwitchDefaults.colors(checkedThumbColor = MaterialTheme.colorScheme.onPrimary, checkedTrackColor = MaterialTheme.colorScheme.primary)
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
-                                Text("Slideshow (${slideshowInterval}m)", style = MaterialTheme.typography.bodySmall, color = Color.White)
+                                Text("Slideshow (${slideshowInterval}m)", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface)
                             }
 
                             TextButton(onClick = onClearAllWallpapers) {
@@ -1102,12 +1117,12 @@ private fun PersonalBackgroundsTab(
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Column {
-                        Text("Pure Minimal OLED Black", style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold), color = Color.White)
+                        Text("Pure Minimal OLED Black", style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold), color = MaterialTheme.colorScheme.onSurface)
                         Text("Zero distraction true black, maximum battery saving on OLED displays", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     if (isOledSelected) {
                         Box(modifier = Modifier.size(24.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primary), contentAlignment = Alignment.Center) {
-                            Icon(Icons.Default.Check, contentDescription = null, tint = Color.Black, modifier = Modifier.size(16.dp))
+                            Icon(Icons.Default.Check, contentDescription = null, tint = MaterialTheme.colorScheme.background, modifier = Modifier.size(16.dp))
                         }
                     }
                 }
@@ -1119,7 +1134,7 @@ private fun PersonalBackgroundsTab(
             Text(
                 text = "Curated Atmospheric Backdrops",
                 style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
-                color = Color.White
+                color = MaterialTheme.colorScheme.onSurface
             )
         }
 
@@ -1148,14 +1163,14 @@ private fun PersonalBackgroundsTab(
                         }
                         Spacer(modifier = Modifier.width(14.dp))
                         Column {
-                            Text(theme.displayName, style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold), color = Color.White)
+                            Text(theme.displayName, style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold), color = MaterialTheme.colorScheme.onSurface)
                             Text(theme.subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
 
                     if (isSelected) {
                         Box(modifier = Modifier.size(24.dp).clip(CircleShape).background(theme.primaryAccent), contentAlignment = Alignment.Center) {
-                            Icon(Icons.Default.Check, contentDescription = null, tint = Color.Black, modifier = Modifier.size(16.dp))
+                            Icon(Icons.Default.Check, contentDescription = null, tint = MaterialTheme.colorScheme.background, modifier = Modifier.size(16.dp))
                         }
                     }
                 }
@@ -1183,7 +1198,7 @@ private fun OnlineStreamingTab() {
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
-                    Text("Official Streaming Music Integrations", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold), color = Color.White)
+                    Text("Official Streaming Music Integrations", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold), color = MaterialTheme.colorScheme.onSurface)
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
                         text = "Rhythm strictly complies with open-source licensing and streaming terms of service. External music runs through your official installed applications.",
@@ -1254,7 +1269,7 @@ private fun OnlineServiceCard(
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Column(modifier = Modifier.weight(1f)) {
-                Text(title, style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold), color = Color.White)
+                Text(title, style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold), color = MaterialTheme.colorScheme.onSurface)
                 Text(description, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             Spacer(modifier = Modifier.width(10.dp))
@@ -1300,7 +1315,7 @@ private fun EnvironmentAndCuesTab(
         modifier = Modifier.fillMaxSize()
     ) {
         item {
-            Text("Focus Environment & Lifecycle", style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold), color = Color.White)
+            Text("Focus Environment & Lifecycle", style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold), color = MaterialTheme.colorScheme.onSurface)
         }
 
         // P0 Feature: Audio while studying in other apps
@@ -1343,7 +1358,7 @@ private fun EnvironmentAndCuesTab(
 
         item {
             Spacer(modifier = Modifier.height(6.dp))
-            Text("Gentle Audio Signals", style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold), color = Color.White)
+            Text("Gentle Audio Signals", style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold), color = MaterialTheme.colorScheme.onSurface)
         }
 
         item {
@@ -1380,7 +1395,7 @@ private fun EnvironmentSwitchCard(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(modifier = Modifier.weight(1f)) {
-                Text(title, style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold), color = Color.White)
+                Text(title, style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold), color = MaterialTheme.colorScheme.onSurface)
                 Text(description, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             Spacer(modifier = Modifier.width(12.dp))
@@ -1413,7 +1428,7 @@ private fun CueCard(
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Column(modifier = Modifier.weight(1f)) {
-                Text(title, style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold), color = Color.White)
+                Text(title, style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold), color = MaterialTheme.colorScheme.onSurface)
                 Text(description, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             Spacer(modifier = Modifier.width(10.dp))
