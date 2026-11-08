@@ -103,3 +103,26 @@ val HealthMetricHydration = Color(0xFF76A9CF)
 val HealthMetricOxygen = Color(0xFF67B5BE)
 val HealthMetricRespiratory = Color(0xFF75BCA7)
 val HealthMetricExercise = Color(0xFF67B99A)
+
+
+// Reminder category accents — stable identity, muted enough for calm UI.
+val ReminderWakeUp = Color(0xFFB98543)
+val ReminderBedtime = Color(0xFF8581BD)
+val ReminderWindDown = Color(0xFF9A83BC)
+val ReminderMeal = Color(0xFF5E9A7D)
+val ReminderMedication = Color(0xFFBD7181)
+val ReminderRoutineAnchor = Color(0xFF6F91B5)
+val ReminderStudyBreak = Color(0xFF5F9FA8)
+val ReminderHydration = Color(0xFF6499BC)
+val ReminderDefault = Color(0xFF7C8983)
+
+// Sleep stage series — shared by timeline, legend and any future sleep charts.
+val SleepStageAwake = Color(0xFFD5A06A)
+val SleepStageRem = Color(0xFFAA96D2)
+val SleepStageLight = Color(0xFF82B6D5)
+val SleepStageDeep = Color(0xFF687BB7)
+val SleepStageUnknown = Color(0xFF83B58A)
+
+// Focus backdrops are the only screen family allowed to use atmospheric surfaces.
+val FocusBackdropDeep = Color(0xFF030A09)
+val FocusBackdropMintShade = Color(0xFF70B9A4)

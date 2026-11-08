@@ -26,6 +26,12 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
+import com.example.ui.theme.RhythmMint
+import com.example.ui.theme.OledBackground
+import com.example.ui.theme.OledSurface
+import com.example.ui.theme.RhythmMidnightTeal
+import com.example.ui.theme.FocusBackdropDeep
+import com.example.ui.theme.FocusBackdropMintShade
 import kotlin.math.cos
 import kotlin.math.sin
 
@@ -56,25 +62,25 @@ enum class FocusAestheticTheme(
     // Backdrops may vary visually, but controls and surfaces always use Rhythm's
     // shared teal/mint identity. This prevents each backdrop from recolouring the UI.
     MINIMAL_OLED("minimal_oled", "Minimal OLED Black", "Pure black with a calm mint accent",
-        Color(0xFF9ADCC6), Color(0xFF70B9A4), Color(0xFF000000), Color(0xFF000000), Color(0xFF0A1110)),
+        RhythmMint, FocusBackdropMintShade, OledBackground, OledBackground, OledSurface),
     MISTY_FOREST("misty_forest", "Misty Forest", "Soft mist and quiet evergreen atmosphere",
-        Color(0xFF9ADCC6), Color(0xFF70B9A4), Color(0xFF102B2C), Color(0xFF030A09), Color(0xFF0A1110)),
+        RhythmMint, FocusBackdropMintShade, RhythmMidnightTeal, FocusBackdropDeep, OledSurface),
     RAINY_WINDOW("rainy_window", "Rainy Window", "Gentle rain-inspired twilight atmosphere",
-        Color(0xFF9ADCC6), Color(0xFF70B9A4), Color(0xFF102B2C), Color(0xFF030A09), Color(0xFF0A1110)),
+        RhythmMint, FocusBackdropMintShade, RhythmMidnightTeal, FocusBackdropDeep, OledSurface),
     DARK_BAMBOO("dark_bamboo", "Dark Bamboo Forest", "Quiet botanical shapes in deep teal",
-        Color(0xFF9ADCC6), Color(0xFF70B9A4), Color(0xFF102B2C), Color(0xFF030A09), Color(0xFF0A1110)),
+        RhythmMint, FocusBackdropMintShade, RhythmMidnightTeal, FocusBackdropDeep, OledSurface),
     MOUNTAIN_MIST("mountain_mist", "Mountain Mist", "Layered mountain silhouettes and soft mist",
-        Color(0xFF9ADCC6), Color(0xFF70B9A4), Color(0xFF102B2C), Color(0xFF030A09), Color(0xFF0A1110)),
+        RhythmMint, FocusBackdropMintShade, RhythmMidnightTeal, FocusBackdropDeep, OledSurface),
     QUIET_OCEAN("quiet_ocean", "Quiet Ocean", "A still horizon in deep teal",
-        Color(0xFF9ADCC6), Color(0xFF70B9A4), Color(0xFF102B2C), Color(0xFF030A09), Color(0xFF0A1110)),
+        RhythmMint, FocusBackdropMintShade, RhythmMidnightTeal, FocusBackdropDeep, OledSurface),
     STARRY_NIGHT("starry_night", "Starry Night", "A restrained night-sky ambience",
-        Color(0xFF9ADCC6), Color(0xFF70B9A4), Color(0xFF102B2C), Color(0xFF030A09), Color(0xFF0A1110)),
+        RhythmMint, FocusBackdropMintShade, RhythmMidnightTeal, FocusBackdropDeep, OledSurface),
     COZY_STUDY("cozy_study", "Cozy Study Room", "A warm, quiet study atmosphere",
-        Color(0xFF9ADCC6), Color(0xFF70B9A4), Color(0xFF102B2C), Color(0xFF030A09), Color(0xFF0A1110)),
+        RhythmMint, FocusBackdropMintShade, RhythmMidnightTeal, FocusBackdropDeep, OledSurface),
     GREEN_GARDEN("green_garden", "Green Garden", "Soft botanical shapes and restorative stillness",
-        Color(0xFF9ADCC6), Color(0xFF70B9A4), Color(0xFF102B2C), Color(0xFF030A09), Color(0xFF0A1110)),
+        RhythmMint, FocusBackdropMintShade, RhythmMidnightTeal, FocusBackdropDeep, OledSurface),
     SOFT_SUNSET("soft_sunset", "Soft Sunset", "A muted twilight glow without saturated accents",
-        Color(0xFF9ADCC6), Color(0xFF70B9A4), Color(0xFF102B2C), Color(0xFF030A09), Color(0xFF0A1110));
+        RhythmMint, FocusBackdropMintShade, RhythmMidnightTeal, FocusBackdropDeep, OledSurface);
 
     companion object {
         // Backward-compatibility aliases for existing calls

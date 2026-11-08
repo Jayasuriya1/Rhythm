@@ -50,6 +50,11 @@ import com.example.data.entity.HealthConnectDailySummaryEntity
 import com.example.data.entity.HealthConnectSleepStageEntity
 import com.example.ui.MainViewModel
 import com.example.ui.theme.HealthMetricSleep
+import com.example.ui.theme.SleepStageAwake
+import com.example.ui.theme.SleepStageRem
+import com.example.ui.theme.SleepStageLight
+import com.example.ui.theme.SleepStageDeep
+import com.example.ui.theme.SleepStageUnknown
 import java.text.SimpleDateFormat
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -297,11 +302,11 @@ fun HypnogramCard(
                         val blockWidth = (rightFrac - leftFrac) * w
 
                         val (stageY, stageColor) = when (stage.stageType) {
-                            "AWAKE" -> Pair(yAwake, Color(0xFFE5A970))
-                            "REM" -> Pair(yRem, Color(0xFFB39DDB))
-                            "LIGHT" -> Pair(yLight, Color(0xFF90CAF9))
-                            "DEEP" -> Pair(yDeep, Color(0xFF5C6BC0))
-                            else -> Pair(yLight, Color(0xFF81C784))
+                            "AWAKE" -> Pair(yAwake, SleepStageAwake)
+                            "REM" -> Pair(yRem, SleepStageRem)
+                            "LIGHT" -> Pair(yLight, SleepStageLight)
+                            "DEEP" -> Pair(yDeep, SleepStageDeep)
+                            else -> Pair(yLight, SleepStageUnknown)
                         }
 
                         drawRoundRect(
@@ -318,10 +323,10 @@ fun HypnogramCard(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    StageLegendPill("Deep", Color(0xFF5C6BC0))
-                    StageLegendPill("Light", Color(0xFF90CAF9))
-                    StageLegendPill("REM", Color(0xFFB39DDB))
-                    StageLegendPill("Awake", Color(0xFFE5A970))
+                    StageLegendPill("Deep", SleepStageDeep)
+                    StageLegendPill("Light", SleepStageLight)
+                    StageLegendPill("REM", SleepStageRem)
+                    StageLegendPill("Awake", SleepStageAwake)
                 }
             }
         }

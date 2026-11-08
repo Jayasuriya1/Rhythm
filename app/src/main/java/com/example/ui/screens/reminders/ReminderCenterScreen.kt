@@ -79,6 +79,15 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.data.entity.ReminderEntity
 import com.example.ui.MainViewModel
 import com.example.util.AlarmScheduler
+import com.example.ui.theme.ReminderWakeUp
+import com.example.ui.theme.ReminderBedtime
+import com.example.ui.theme.ReminderWindDown
+import com.example.ui.theme.ReminderMeal
+import com.example.ui.theme.ReminderMedication
+import com.example.ui.theme.ReminderRoutineAnchor
+import com.example.ui.theme.ReminderStudyBreak
+import com.example.ui.theme.ReminderHydration
+import com.example.ui.theme.ReminderDefault
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -825,14 +834,14 @@ fun getCategoryLabel(category: String): String {
 
 fun getCategoryColor(category: String): Color {
     return when (category.uppercase()) {
-        "WAKE_UP" -> Color(0xFFD97706)
-        "BEDTIME" -> Color(0xFF4F46E5)
-        "WIND_DOWN" -> Color(0xFF7C3AED)
-        "MEAL" -> Color(0xFF059669)
-        "MEDICATION" -> Color(0xFFE11D48)
-        "ROUTINE_ANCHOR" -> Color(0xFF2563EB)
-        "STUDY_BREAK" -> Color(0xFF0891B2)
-        "HYDRATION" -> Color(0xFF0284C7)
-        else -> Color(0xFF4B5563)
+        "WAKE_UP" -> ReminderWakeUp
+        "BEDTIME" -> ReminderBedtime
+        "WIND_DOWN" -> ReminderWindDown
+        "MEAL" -> ReminderMeal
+        "MEDICATION" -> ReminderMedication
+        "ROUTINE_ANCHOR" -> ReminderRoutineAnchor
+        "STUDY_BREAK" -> ReminderStudyBreak
+        "HYDRATION" -> ReminderHydration
+        else -> ReminderDefault
     }
 }

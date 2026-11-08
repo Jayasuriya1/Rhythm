@@ -73,3 +73,7 @@ Focus Studio may use atmospheric backdrops, but controls, text, dialogs and core
 - [ ] Phone/tablet/landscape/large-font layouts reviewed.
 - [ ] TalkBack and touch targets reviewed.
 - [ ] Real screenshots inspected; no mockup-only approval.
+
+
+## 10. Semantic feature tokens
+The central `Color.kt` also owns named tokens for reminder categories, sleep-stage chart series and focus-backdrop surfaces. Screens must import these tokens rather than define their own category or chart colors. Custom user-created study category colors remain user data and must be preserved; only default palette choices should be centralized when they are changed.
