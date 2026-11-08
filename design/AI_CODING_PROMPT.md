@@ -69,3 +69,7 @@ Rhythm is a calm, private, offline-first daily companion for routines, sleep, fo
 - Resolving conflicting requirements by guessing.
 
 **Success means:** the feature works, fits Rhythm's established visual language, remains accessible and responsive, preserves user data and existing behavior, and has honest test evidence.
+
+
+## Semantic color tokens
+Reminder category accents, sleep-stage chart series and Focus Studio backdrop colors are centrally defined in `Color.kt`. Reuse them; do not define screen-local color constants. User-created study category colors are persisted user choices and must not be overwritten by palette cleanup.
