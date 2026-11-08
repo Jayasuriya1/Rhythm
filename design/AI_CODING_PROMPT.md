@@ -54,11 +54,18 @@ Rhythm is a calm, private, offline-first daily companion for routines, sleep, fo
 3. Implement the smallest coherent change using existing tokens and components.
 4. Preserve existing behavior unless the task explicitly approves a behavior change.
 5. Add/update previews and automated tests where practical.
-6. Run the relevant Gradle build, tests and lint. Never report a check as passed unless it actually ran.
+6. Run these exact CI-equivalent commands from the repository root after the final edit:
+
+   ```bash
+   gradle :app:assembleDebug :app:lintDebug --stacktrace
+   gradle :app:testDebugUnitTest -ProbolectricOffline=false --stacktrace
+   ```
+
+   These execute assembleDebug, lintDebug and testDebugUnitTest. Repeat the full gate set after fixing any failure. Do not skip tests, disable lint, weaken assertions or suppress errors just to obtain a green result. The project currently has no Gradle wrapper; use installed Gradle. GitHub Actions uses Gradle 9.3.1 and JDK 17 and is the authoritative result if local tooling is unavailable.
 7. Inspect real screenshots in OLED Dark, Standard Dark and Light, plus relevant phone/tablet sizes. Generated mockups are not proof of implementation quality.
 8. Check contrast, TalkBack, 48dp touch targets, font scaling and reduced motion.
-9. Report files changed, behavior preserved/changed, exact test results, screenshot/device coverage and remaining limitations.
-10. Submit a focused branch/PR. Never merge without successful required CI.
+9. Report files changed, behavior preserved/changed, exact test results, screenshot/device coverage and remaining limitations. Clearly say if any command could not be run.
+10. Submit a focused branch/PR. Do not merge unless the latest PR commit has a successful required GitHub Actions run.
 
 ## Stop and ask before
 - Changing app identity/package ID, database schema or stored data.
@@ -68,4 +75,4 @@ Rhythm is a calm, private, offline-first daily companion for routines, sleep, fo
 - Changing the approved logo or brand palette.
 - Resolving conflicting requirements by guessing.
 
-**Success means:** the feature works, fits Rhythm's established visual language, remains accessible and responsive, preserves user data and existing behavior, and has honest test evidence.
+**Success means:** the feature works, fits Rhythm's established visual language, remains accessible and responsive, preserves user data and existing behavior, and has passed the required build, lint and unit-test gates with honest evidence.
