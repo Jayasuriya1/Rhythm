@@ -426,7 +426,7 @@ fun FocusBackdropAudioStudioDialog(
         AlertDialog(
             onDismissRequest = { showClearWallpapersDialog = false },
             containerColor = MaterialTheme.colorScheme.surfaceVariant,
-            titleContentColor = Color.White,
+            titleContentColor = MaterialTheme.colorScheme.onSurface,
             textContentColor = MaterialTheme.colorScheme.onSurface,
             shape = RoundedCornerShape(20.dp),
             title = { Text("Remove All Imported Backgrounds?") },
@@ -441,7 +441,7 @@ fun FocusBackdropAudioStudioDialog(
                         }
                         showClearWallpapersDialog = false
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE57373), contentColor = Color.Black)
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error, contentColor = MaterialTheme.colorScheme.onError)
                 ) {
                     Text("Delete All")
                 }
@@ -795,7 +795,7 @@ private fun OfflineMusicPlayerTab(
                         color = MaterialTheme.colorScheme.onSurface
                     )
                     TextButton(onClick = onClearPlaylist) {
-                        Text("Clear All", fontSize = 12.sp, color = Color(0xFFE57373))
+                        Text("Clear All", fontSize = 12.sp, color = MaterialTheme.colorScheme.error)
                     }
                 }
             }
@@ -830,7 +830,7 @@ private fun OfflineMusicPlayerTab(
                             Text(
                                 text = track.title,
                                 style = MaterialTheme.typography.bodyMedium.copy(fontWeight = if (isCurrent) FontWeight.Bold else FontWeight.Normal),
-                                color = if (isCurrent) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
+                                color = if (isCurrent) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
                             )
@@ -910,8 +910,8 @@ private fun PersonalBackgroundsTab(
         item {
             Card(
                 shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = Color(0xFF111713)),
-                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF1E2A21)),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Column(modifier = Modifier.padding(14.dp)) {
@@ -1017,7 +1017,7 @@ private fun PersonalBackgroundsTab(
                                                 .clip(RoundedCornerShape(12.dp))
                                                 .border(
                                                     width = if (isCurrent) 2.5.dp else 1.dp,
-                                                    color = if (isCurrent) MaterialTheme.colorScheme.primary else Color(0xFF233226),
+                                                    color = if (isCurrent) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant,
                                                     shape = RoundedCornerShape(12.dp)
                                                 )
                                                 .clickable { onSelectWallpaper(item) }
@@ -1084,7 +1084,7 @@ private fun PersonalBackgroundsTab(
                             }
 
                             TextButton(onClick = onClearAllWallpapers) {
-                                Text("Clear Gallery", fontSize = 11.sp, color = Color(0xFFE57373))
+                                Text("Clear Gallery", fontSize = 11.sp, color = MaterialTheme.colorScheme.error)
                             }
                         }
                     } else {
@@ -1147,7 +1147,7 @@ private fun PersonalBackgroundsTab(
                 colors = CardDefaults.cardColors(containerColor = theme.cardBackground),
                 border = androidx.compose.foundation.BorderStroke(
                     width = if (isSelected) 2.dp else 1.dp,
-                    color = if (isSelected) theme.primaryAccent else Color.White.copy(alpha = 0.10f)
+                    color = if (isSelected) theme.primaryAccent else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.10f)
                 ),
                 modifier = Modifier.fillMaxWidth().clickable { onSelectBuiltin(theme) }
             ) {
