@@ -32,6 +32,7 @@ private val DarkColorScheme =
     onSurfaceVariant = SageOnSurfaceVariantDark,
     outline = SageOutlineDark,
     outlineVariant = SageOutlineVariantDark,
+    error = StateErrorDark,
   )
 
 private val LightColorScheme =
@@ -56,6 +57,7 @@ private val LightColorScheme =
     onSurfaceVariant = SageOnSurfaceVariantLight,
     outline = SageOutlineLight,
     outlineVariant = SageOutlineVariantLight,
+    error = StateErrorLight,
   )
 
 private val OledDarkColorScheme =
@@ -99,6 +101,7 @@ fun RhythmFocusTheme(
   val isSystemDark = isSystemInDarkTheme()
   val colorScheme =
     when {
+      // Dynamic color is opt-in only; brand colors remain the default.
       dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
         val context = LocalContext.current
         if (themeMode == AppThemeMode.OLED_DARK) OledDarkColorScheme
@@ -115,7 +118,7 @@ fun RhythmFocusTheme(
   MaterialTheme(colorScheme = colorScheme, typography = Typography, content = content)
 }
 
-// Backwards compatibility alias
+// Backwards compatibility alias.
 @Composable
 fun MyApplicationTheme(
   darkTheme: Boolean = true,
@@ -128,4 +131,3 @@ fun MyApplicationTheme(
     content = content
   )
 }
-
