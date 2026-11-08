@@ -9,6 +9,7 @@ Before any task, read `design/AI_WORKFLOW.md` and `design/README.md`. The design
 - Preserve the Ribbon R logo, app ID, Room schema, user data and existing behavior unless explicitly authorized.
 - Keep the product calm, accessible, low-glare, responsive and privacy-first.
 - Do not remove existing features or introduce dependencies/services/assets without justification and approval.
+- **A feature is not complete until the required Android build, lint and Robolectric test gates pass.** Follow the exact commands and failure-handling process in `design/AI_WORKFLOW.md`.
 - Run relevant build, tests and lint; report exact results. Never claim unrun checks passed.
 - Review real screenshots for applicable themes and device sizes.
 - Keep changes focused, reversible and documented.
