@@ -95,15 +95,23 @@ class MainViewModel(
     private val context: Context? = null
 ) : ViewModel() {
 
-    private val appContext: Context get() = context ?: com.example.data.database.AppDatabase.appContext
-        ?: throw IllegalStateException("Application context not available")
+    private val appContext: Context? get() = (context ?: com.example.data.database.AppDatabase.appContext)?.applicationContext
+
+    val routineViewModel = com.example.ui.viewmodels.RoutineViewModel(repository)
+    val healthViewModel = com.example.ui.viewmodels.HealthViewModel(repository, context)
+    val studyViewModel = com.example.ui.viewmodels.StudyViewModel(repository, context)
+    val alarmViewModel = com.example.ui.viewmodels.AlarmViewModel(repository, context)
+    val brainDumpViewModel = com.example.ui.viewmodels.BrainDumpViewModel(repository)
+    val settingsViewModel = com.example.ui.viewmodels.SettingsViewModel(repository, context)
 
     val healthConnectManager: com.example.health.HealthConnectManager by lazy {
-        com.example.health.HealthConnectManager(appContext, repository)
+        val ctx = appContext ?: throw IllegalStateException("Application context not available for HealthConnectManager")
+        com.example.health.HealthConnectManager(ctx, repository)
     }
 
     val cloudSyncManager: com.example.sync.CloudSyncManager by lazy {
-        com.example.sync.CloudSyncManager(appContext, repository)
+        val ctx = appContext ?: throw IllegalStateException("Application context not available for CloudSyncManager")
+        com.example.sync.CloudSyncManager(ctx, repository)
     }
 
     private val _currentDestination = MutableStateFlow(AppDestination.TODAY)
@@ -400,7 +408,7 @@ class MainViewModel(
 
     init {
         try {
-            com.example.util.FocusAudioLifecycleManager.initialize(appContext)
+            appContext?.let { com.example.util.FocusAudioLifecycleManager.initialize(it) }
         } catch (_: Exception) {}
 
         viewModelScope.launch {
@@ -424,7 +432,7 @@ class MainViewModel(
         viewModelScope.launch {
             focusWallpapersList.collect { json ->
                 try {
-                    com.example.util.FocusWallpaperManager.loadWallpapers(appContext, json)
+                    appContext?.let { com.example.util.FocusWallpaperManager.loadWallpapers(it, json) }
                 } catch (_: Exception) {}
             }
         }
