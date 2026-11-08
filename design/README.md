@@ -4,19 +4,20 @@ This folder is the canonical source of truth for product direction, brand identi
 
 ## Start here
 1. [AI contribution contract](AI_WORKFLOW.md) — mandatory rules for every AI and human contributor.
-2. [Product vision](PRODUCT_VISION.md)
-3. [Design philosophy](DESIGN_PHILOSOPHY.md)
-4. [Design system](DESIGN_SYSTEM.md) — runtime token locations and usage rules.
-5. [Brand assets](BRAND_ASSETS.md)
-6. [Component standards](COMPONENTS.md)
-7. [Information architecture](INFORMATION_ARCHITECTURE.md)
-8. [Screen specifications](screens/README.md)
-9. [Accessibility](ACCESSIBILITY.md)
-10. [Visual QA](VISUAL_QA.md)
-11. [Quality gates](QUALITY_GATES.md)
-12. [Current UX audit](audit/UX_AUDIT.md)
-13. [Feature priority backlog](audit/FEATURE_PRIORITY.md)
-14. [F-Droid readiness](F_DROID_AUDIT.md)
+2. [Portable AI coding prompt](AI_CODING_PROMPT.md) — paste into Google AI Studio, Antigravity, ChatGPT or another coding agent.
+3. [Product vision](PRODUCT_VISION.md)
+4. [Design philosophy](DESIGN_PHILOSOPHY.md)
+5. [Design system](DESIGN_SYSTEM.md) — runtime token locations and usage rules.
+6. [Brand assets](BRAND_ASSETS.md)
+7. [Component standards](COMPONENTS.md)
+8. [Information architecture](INFORMATION_ARCHITECTURE.md)
+9. [Screen specifications](screens/README.md)
+10. [Accessibility](ACCESSIBILITY.md)
+11. [Visual QA](VISUAL_QA.md)
+12. [Quality gates](QUALITY_GATES.md)
+13. [Current UX audit](audit/UX_AUDIT.md)
+14. [Feature priority backlog](audit/FEATURE_PRIORITY.md)
+15. [F-Droid readiness](F_DROID_AUDIT.md)
 
 ## Current design direction
 Rhythm uses a calm, modern, editorial wellness aesthetic: deep teal, muted mint, restrained champagne and violet, purposeful spacing, readable typography and clear hierarchy. Default is OLED Dark, with Standard Dark and Light plus System following. All are first-class experiences.
