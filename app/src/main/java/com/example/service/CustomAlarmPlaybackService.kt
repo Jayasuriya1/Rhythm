@@ -76,9 +76,7 @@ class CustomAlarmPlaybackService : Service() {
         try {
             val powerManager = getSystemService(Context.POWER_SERVICE) as? PowerManager
             wakeLock = powerManager?.newWakeLock(
-                PowerManager.FULL_WAKE_LOCK or
-                        PowerManager.ACQUIRE_CAUSES_WAKEUP or
-                        PowerManager.ON_AFTER_RELEASE,
+                PowerManager.PARTIAL_WAKE_LOCK,
                 "rhythmfocus:active_alarm_wakelock"
             )?.apply {
                 acquire(15 * 60 * 1000L) // 15 min safety timeout

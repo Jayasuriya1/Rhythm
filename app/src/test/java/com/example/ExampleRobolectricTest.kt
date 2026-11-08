@@ -1702,11 +1702,12 @@ class ExampleRobolectricTest {
             writeBytes(byteArrayOf(1, 2, 3, 4))
         }
 
+        val escapedPath = testFile.absolutePath.replace("\\", "\\\\")
         val jsonInput = """
             [
                 {
                     "id": "wp-123",
-                    "filePath": "${testFile.absolutePath}",
+                    "filePath": "$escapedPath",
                     "displayName": "My Desk View",
                     "dateAddedMillis": 1700000000000
                 }

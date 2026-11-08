@@ -27,18 +27,18 @@ class CustomAlarmReceiver : BroadcastReceiver() {
 
         Log.i(TAG, "Custom alarm received: id=$alarmId, title=$alarmTitle, isBackup=$isBackup")
 
-        // 1. WakeLock & Screen Activation: Physically light up the screen immediately
-        try {
-            val powerManager = context.getSystemService(Context.POWER_SERVICE) as? PowerManager
-            val screenWakeLock = powerManager?.newWakeLock(
-                PowerManager.FULL_WAKE_LOCK or
-                        PowerManager.ACQUIRE_CAUSES_WAKEUP or
-                        PowerManager.ON_AFTER_RELEASE,
+        // 1. CPU WakeLock: Keep CPU awake during database lookup and service dispatch
+        val powerManager = context.getSystemService(Context.POWER_SERVICE) as? PowerManager
+        val wakeLock = try {
+            powerManager?.newWakeLock(
+                PowerManager.PARTIAL_WAKE_LOCK,
                 "rhythmfocus:alarm_receiver_wakelock"
-            )
-            screenWakeLock?.acquire(3 * 60 * 1000L) // 3 minute screen activation
+            )?.apply {
+                acquire(10 * 1000L) // 10 second safety timeout for background dispatch
+            }
         } catch (e: Exception) {
             Log.e(TAG, "Error acquiring wake lock in CustomAlarmReceiver", e)
+            null
         }
 
         val pendingResult = goAsync()
@@ -93,7 +93,12 @@ class CustomAlarmReceiver : BroadcastReceiver() {
             } catch (e: Exception) {
                 Log.e(TAG, "Error in CustomAlarmReceiver handling", e)
             } finally {
-                pendingResult.finish()
+                try {
+                    if (wakeLock?.isHeld == true) {
+                        wakeLock.release()
+                    }
+                } catch (_: Exception) {}
+                pendingResult?.finish()
             }
         }
     }
