@@ -204,9 +204,9 @@ fun FocusBackdropAudioStudioDialog(
                 .fillMaxWidth(0.96f)
                 .heightIn(max = 740.dp),
             shape = RoundedCornerShape(24.dp),
-            color = Color(0xFF0C100D), // OLED deep forest surface
+            color = MaterialTheme.colorScheme.surface, // OLED deep forest surface
             tonalElevation = 6.dp,
-            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF223326))
+            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
         ) {
             Column(modifier = Modifier.fillMaxSize()) {
                 // Header Bar
@@ -224,27 +224,27 @@ fun FocusBackdropAudioStudioDialog(
                                 fontWeight = FontWeight.Bold,
                                 letterSpacing = 0.5.sp
                             ),
-                            color = Color(0xFFE8ECE9)
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
-                            text = "Authentic soundscapes, offline music & personal gallery",
+                            text = "Ambient audio, offline music & your backgrounds",
                             style = MaterialTheme.typography.bodySmall,
-                            color = Color(0xFF8F9E94)
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                     IconButton(
                         onClick = onDismiss,
                         modifier = Modifier.testTag("close_studio_dialog_button")
                     ) {
-                        Icon(Icons.Default.Close, contentDescription = "Close", tint = Color(0xFF8F9E94))
+                        Icon(Icons.Default.Close, contentDescription = "Close", tint = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
 
                 // 5 Dedicated Tabs
                 ScrollableTabRow(
                     selectedTabIndex = selectedTab,
-                    containerColor = Color(0xFF080C09),
-                    contentColor = Color(0xFFA8C9B0),
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    contentColor = MaterialTheme.colorScheme.primary,
                     edgePadding = 12.dp
                 ) {
                     Tab(
@@ -252,40 +252,40 @@ fun FocusBackdropAudioStudioDialog(
                         onClick = { selectedTab = 0 },
                         text = { Text("Soundscapes", fontSize = 12.sp, fontWeight = FontWeight.SemiBold) },
                         icon = { Icon(Icons.Default.GraphicEq, contentDescription = null, modifier = Modifier.size(16.dp)) },
-                        selectedContentColor = Color(0xFFA8C9B0),
-                        unselectedContentColor = Color(0xFF6B7A70)
+                        selectedContentColor = MaterialTheme.colorScheme.primary,
+                        unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Tab(
                         selected = selectedTab == 1,
                         onClick = { selectedTab = 1 },
                         text = { Text("Offline Music", fontSize = 12.sp, fontWeight = FontWeight.SemiBold) },
                         icon = { Icon(Icons.Default.MusicNote, contentDescription = null, modifier = Modifier.size(16.dp)) },
-                        selectedContentColor = Color(0xFFA8C9B0),
-                        unselectedContentColor = Color(0xFF6B7A70)
+                        selectedContentColor = MaterialTheme.colorScheme.primary,
+                        unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Tab(
                         selected = selectedTab == 2,
                         onClick = { selectedTab = 2 },
                         text = { Text("Backgrounds", fontSize = 12.sp, fontWeight = FontWeight.SemiBold) },
                         icon = { Icon(Icons.Default.ColorLens, contentDescription = null, modifier = Modifier.size(16.dp)) },
-                        selectedContentColor = Color(0xFFA8C9B0),
-                        unselectedContentColor = Color(0xFF6B7A70)
+                        selectedContentColor = MaterialTheme.colorScheme.primary,
+                        unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Tab(
                         selected = selectedTab == 3,
                         onClick = { selectedTab = 3 },
                         text = { Text("Online Focus", fontSize = 12.sp, fontWeight = FontWeight.SemiBold) },
                         icon = { Icon(Icons.Default.Headphones, contentDescription = null, modifier = Modifier.size(16.dp)) },
-                        selectedContentColor = Color(0xFFA8C9B0),
-                        unselectedContentColor = Color(0xFF6B7A70)
+                        selectedContentColor = MaterialTheme.colorScheme.primary,
+                        unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Tab(
                         selected = selectedTab == 4,
                         onClick = { selectedTab = 4 },
                         text = { Text("Environment", fontSize = 12.sp, fontWeight = FontWeight.SemiBold) },
                         icon = { Icon(Icons.Default.Tune, contentDescription = null, modifier = Modifier.size(16.dp)) },
-                        selectedContentColor = Color(0xFFA8C9B0),
-                        unselectedContentColor = Color(0xFF6B7A70)
+                        selectedContentColor = MaterialTheme.colorScheme.primary,
+                        unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
 
@@ -410,8 +410,8 @@ fun FocusBackdropAudioStudioDialog(
                         onClick = onDismiss,
                         shape = RoundedCornerShape(12.dp),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = Color(0xFFA8C9B0),
-                            contentColor = Color(0xFF08140B)
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary
                         ),
                         modifier = Modifier.testTag("done_studio_button")
                     ) {
@@ -425,9 +425,9 @@ fun FocusBackdropAudioStudioDialog(
     if (showClearWallpapersDialog) {
         AlertDialog(
             onDismissRequest = { showClearWallpapersDialog = false },
-            containerColor = Color(0xFF0F1411),
+            containerColor = MaterialTheme.colorScheme.surfaceVariant,
             titleContentColor = Color.White,
-            textContentColor = Color(0xFFE2E8E4),
+            textContentColor = MaterialTheme.colorScheme.onSurface,
             shape = RoundedCornerShape(20.dp),
             title = { Text("Remove All Imported Backgrounds?") },
             text = { Text("This will remove all imported images from Rhythm's private offline gallery. Your original device photos will not be deleted.") },
@@ -448,7 +448,7 @@ fun FocusBackdropAudioStudioDialog(
             },
             dismissButton = {
                 TextButton(onClick = { showClearWallpapersDialog = false }) {
-                    Text("Cancel", color = Color(0xFF8F9E94))
+                    Text("Cancel", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         )
@@ -474,9 +474,9 @@ private fun RealSoundscapesTab(
         // Active Controller Card
         item {
             Card(
-                colors = CardDefaults.cardColors(containerColor = Color(0xFF131A15)),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
                 shape = RoundedCornerShape(16.dp),
-                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF202C23)),
+                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
                 modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp)
             ) {
                 Column(modifier = Modifier.padding(14.dp)) {
@@ -486,7 +486,7 @@ private fun RealSoundscapesTab(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Column {
-                            Text("Active Ambient Soundscape", style = MaterialTheme.typography.labelSmall, color = Color(0xFFA8C9B0))
+                            Text("Active Ambient Soundscape", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
                             Text(
                                 text = "${currentSoundscape.iconEmoji} ${currentSoundscape.displayName}",
                                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
@@ -497,7 +497,7 @@ private fun RealSoundscapesTab(
                         FilledTonalButton(
                             onClick = onTogglePlay,
                             shape = RoundedCornerShape(12.dp),
-                            colors = ButtonDefaults.filledTonalButtonColors(containerColor = Color(0xFF1E2B21), contentColor = Color(0xFFA8C9B0))
+                            colors = ButtonDefaults.filledTonalButtonColors(containerColor = MaterialTheme.colorScheme.secondaryContainer, contentColor = MaterialTheme.colorScheme.primary)
                         ) {
                             Icon(if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(16.dp))
                             Spacer(modifier = Modifier.width(4.dp))
@@ -508,20 +508,20 @@ private fun RealSoundscapesTab(
                     Spacer(modifier = Modifier.height(10.dp))
 
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.VolumeDown, contentDescription = null, tint = Color(0xFF8F9E94), modifier = Modifier.size(18.dp))
+                        Icon(Icons.Default.VolumeDown, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp))
                         Spacer(modifier = Modifier.width(8.dp))
                         Slider(
                             value = volume,
                             onValueChange = onVolumeChange,
                             modifier = Modifier.weight(1f),
                             colors = SliderDefaults.colors(
-                                thumbColor = Color(0xFFA8C9B0),
-                                activeTrackColor = Color(0xFFA8C9B0),
-                                inactiveTrackColor = Color(0xFF243026)
+                                thumbColor = MaterialTheme.colorScheme.primary,
+                                activeTrackColor = MaterialTheme.colorScheme.primary,
+                                inactiveTrackColor = MaterialTheme.colorScheme.outlineVariant
                             )
                         )
                         Spacer(modifier = Modifier.width(8.dp))
-                        Icon(Icons.Default.VolumeUp, contentDescription = null, tint = Color(0xFF8F9E94), modifier = Modifier.size(18.dp))
+                        Icon(Icons.Default.VolumeUp, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp))
                     }
                 }
             }
@@ -532,11 +532,11 @@ private fun RealSoundscapesTab(
             Card(
                 shape = RoundedCornerShape(14.dp),
                 colors = CardDefaults.cardColors(
-                    containerColor = if (isSelected) Color(0xFF18261C) else Color(0xFF0F1411)
+                    containerColor = if (isSelected) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceVariant
                 ),
                 border = androidx.compose.foundation.BorderStroke(
                     width = if (isSelected) 1.5.dp else 1.dp,
-                    color = if (isSelected) Color(0xFFA8C9B0) else Color(0xFF1B241E)
+                    color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant
                 ),
                 modifier = Modifier
                     .fillMaxWidth()
@@ -554,25 +554,25 @@ private fun RealSoundscapesTab(
                                 Text(
                                     text = item.displayName,
                                     style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
-                                    color = if (isSelected) Color(0xFFA8C9B0) else Color(0xFFE2E8E4)
+                                    color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
-                                Surface(color = Color(0xFF1A231C), shape = RoundedCornerShape(6.dp)) {
+                                Surface(color = MaterialTheme.colorScheme.secondaryContainer, shape = RoundedCornerShape(6.dp)) {
                                     Text(
                                         text = item.vibeTag,
                                         style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
-                                        color = Color(0xFF8F9E94),
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                                         modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                                     )
                                 }
                             }
-                            Text(item.description, style = MaterialTheme.typography.bodySmall, color = Color(0xFF7A897F))
+                            Text(item.description, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
 
                     if (isSelected) {
                         Box(
-                            modifier = Modifier.size(24.dp).clip(CircleShape).background(Color(0xFFA8C9B0)),
+                            modifier = Modifier.size(24.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primary),
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(Icons.Default.Check, contentDescription = "Active", tint = Color(0xFF0B170E), modifier = Modifier.size(16.dp))
@@ -621,8 +621,8 @@ private fun OfflineMusicPlayerTab(
         item {
             Card(
                 shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = Color(0xFF131A15)),
-                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF202C23)),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
@@ -632,10 +632,10 @@ private fun OfflineMusicPlayerTab(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
-                            Icon(Icons.Default.Audiotrack, contentDescription = null, tint = Color(0xFFA8C9B0), modifier = Modifier.size(24.dp))
+                            Icon(Icons.Default.Audiotrack, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(24.dp))
                             Spacer(modifier = Modifier.width(10.dp))
                             Column {
-                                Text("Now Playing", style = MaterialTheme.typography.labelSmall, color = Color(0xFFA8C9B0))
+                                Text("Now Playing", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
                                 Text(
                                     text = currentTrack?.title ?: "No Song Selected",
                                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
@@ -649,8 +649,8 @@ private fun OfflineMusicPlayerTab(
                         OutlinedButton(
                             onClick = onAddFiles,
                             shape = RoundedCornerShape(10.dp),
-                            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFA8C9B0).copy(alpha = 0.5f)),
-                            colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFA8C9B0))
+                            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)),
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.primary)
                         ) {
                             Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
                             Spacer(modifier = Modifier.width(4.dp))
@@ -671,16 +671,16 @@ private fun OfflineMusicPlayerTab(
                             value = if (durationMs > 0) positionMs.toFloat() / durationMs.toFloat() else 0f,
                             onValueChange = { frac -> onSeek((frac * durationMs).toInt()) },
                             colors = SliderDefaults.colors(
-                                thumbColor = Color(0xFFA8C9B0),
-                                activeTrackColor = Color(0xFFA8C9B0),
-                                inactiveTrackColor = Color(0xFF243026)
+                                thumbColor = MaterialTheme.colorScheme.primary,
+                                activeTrackColor = MaterialTheme.colorScheme.primary,
+                                inactiveTrackColor = MaterialTheme.colorScheme.outlineVariant
                             ),
                             modifier = Modifier.fillMaxWidth()
                         )
 
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                            Text(posString, style = MaterialTheme.typography.labelSmall, color = Color(0xFF8F9E94))
-                            Text(durString, style = MaterialTheme.typography.labelSmall, color = Color(0xFF8F9E94))
+                            Text(posString, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(durString, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
 
                         Spacer(modifier = Modifier.height(8.dp))
@@ -692,7 +692,7 @@ private fun OfflineMusicPlayerTab(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             IconButton(onClick = onToggleShuffle) {
-                                Icon(Icons.Default.Shuffle, contentDescription = "Shuffle", tint = if (isShuffle) Color(0xFFA8C9B0) else Color(0xFF556658))
+                                Icon(Icons.Default.Shuffle, contentDescription = "Shuffle", tint = if (isShuffle) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
                             }
 
                             IconButton(onClick = onPrev) {
@@ -700,7 +700,7 @@ private fun OfflineMusicPlayerTab(
                             }
 
                             IconButton(onClick = { onSeekRelative(-10000) }) {
-                                Icon(Icons.Default.Replay10, contentDescription = "Back 10s", tint = Color(0xFFC0CCC3))
+                                Icon(Icons.Default.Replay10, contentDescription = "Back 10s", tint = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
 
                             Button(
@@ -708,13 +708,13 @@ private fun OfflineMusicPlayerTab(
                                 shape = CircleShape,
                                 modifier = Modifier.size(52.dp),
                                 contentPadding = PaddingValues(0.dp),
-                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFA8C9B0), contentColor = Color(0xFF08140B))
+                                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary)
                             ) {
                                 Icon(if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(28.dp))
                             }
 
                             IconButton(onClick = { onSeekRelative(10000) }) {
-                                Icon(Icons.Default.Forward10, contentDescription = "Forward 10s", tint = Color(0xFFC0CCC3))
+                                Icon(Icons.Default.Forward10, contentDescription = "Forward 10s", tint = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
 
                             IconButton(onClick = onNext) {
@@ -722,7 +722,7 @@ private fun OfflineMusicPlayerTab(
                             }
 
                             IconButton(onClick = onToggleRepeat) {
-                                val tint = if (repeatMode != MusicRepeatMode.OFF) Color(0xFFA8C9B0) else Color(0xFF556658)
+                                val tint = if (repeatMode != MusicRepeatMode.OFF) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                                 when (repeatMode) {
                                     MusicRepeatMode.REPEAT_ONE -> Icon(Icons.Default.RepeatOne, contentDescription = "Repeat One", tint = tint)
                                     else -> Icon(Icons.Default.Repeat, contentDescription = "Repeat All", tint = tint)
@@ -734,16 +734,16 @@ private fun OfflineMusicPlayerTab(
 
                         // Volume Control
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.VolumeDown, contentDescription = null, tint = Color(0xFF8F9E94), modifier = Modifier.size(18.dp))
+                            Icon(Icons.Default.VolumeDown, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp))
                             Spacer(modifier = Modifier.width(8.dp))
                             Slider(
                                 value = volume,
                                 onValueChange = onVolumeChange,
                                 modifier = Modifier.weight(1f),
-                                colors = SliderDefaults.colors(thumbColor = Color(0xFFA8C9B0), activeTrackColor = Color(0xFFA8C9B0), inactiveTrackColor = Color(0xFF243026))
+                                colors = SliderDefaults.colors(thumbColor = MaterialTheme.colorScheme.primary, activeTrackColor = MaterialTheme.colorScheme.primary, inactiveTrackColor = MaterialTheme.colorScheme.outlineVariant)
                             )
                             Spacer(modifier = Modifier.width(8.dp))
-                            Icon(Icons.Default.VolumeUp, contentDescription = null, tint = Color(0xFF8F9E94), modifier = Modifier.size(18.dp))
+                            Icon(Icons.Default.VolumeUp, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp))
                         }
                     } else {
                         // Clear Empty State as required by specification
@@ -751,14 +751,14 @@ private fun OfflineMusicPlayerTab(
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .background(Color(0xFF0C130E), RoundedCornerShape(12.dp))
+                                .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(12.dp))
                                 .padding(16.dp),
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
                                 text = "Add music from your device to create your focus playlist.",
                                 style = MaterialTheme.typography.bodyMedium,
-                                color = Color(0xFFA8C9B0)
+                                color = MaterialTheme.colorScheme.primary
                             )
                         }
                     }
@@ -789,8 +789,8 @@ private fun OfflineMusicPlayerTab(
                 val isCurrent = (index == currentIndex)
                 Card(
                     shape = RoundedCornerShape(12.dp),
-                    colors = CardDefaults.cardColors(containerColor = if (isCurrent) Color(0xFF162419) else Color(0xFF0F1411)),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, if (isCurrent) Color(0xFFA8C9B0) else Color(0xFF1C271F)),
+                    colors = CardDefaults.cardColors(containerColor = if (isCurrent) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceVariant),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, if (isCurrent) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant),
                     modifier = Modifier.fillMaxWidth().clickable { onSelectTrack(index) }
                 ) {
                     Row(
@@ -802,27 +802,27 @@ private fun OfflineMusicPlayerTab(
                             Text(
                                 text = "${index + 1}",
                                 fontSize = 12.sp,
-                                color = if (isCurrent) Color(0xFFA8C9B0) else Color(0xFF6B7A70),
+                                color = if (isCurrent) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.width(24.dp)
                             )
                             Icon(
                                 if (isCurrent && isPlaying) Icons.Default.GraphicEq else Icons.Default.MusicNote,
                                 contentDescription = null,
-                                tint = if (isCurrent) Color(0xFFA8C9B0) else Color(0xFF8F9E94),
+                                tint = if (isCurrent) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.size(18.dp)
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
                                 text = track.title,
                                 style = MaterialTheme.typography.bodyMedium.copy(fontWeight = if (isCurrent) FontWeight.Bold else FontWeight.Normal),
-                                color = if (isCurrent) Color.White else Color(0xFFC0CCC3),
+                                color = if (isCurrent) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
                             )
                         }
 
                         IconButton(onClick = { onRemoveTrack(index) }, modifier = Modifier.size(32.dp)) {
-                            Icon(Icons.Default.Clear, contentDescription = "Remove", tint = Color(0xFF6B7A70), modifier = Modifier.size(16.dp))
+                            Icon(Icons.Default.Clear, contentDescription = "Remove", tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(16.dp))
                         }
                     }
                 }
@@ -833,8 +833,8 @@ private fun OfflineMusicPlayerTab(
         item {
             Card(
                 shape = RoundedCornerShape(14.dp),
-                colors = CardDefaults.cardColors(containerColor = Color(0xFF0F1411)),
-                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF1B241E)),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Row(
@@ -844,13 +844,13 @@ private fun OfflineMusicPlayerTab(
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text("Sync with Study Timer", style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold), color = Color.White)
-                        Text("Automatically starts music when study timer starts, and pauses when paused.", style = MaterialTheme.typography.bodySmall, color = Color(0xFF7A897F))
+                        Text("Automatically starts music when study timer starts, and pauses when paused.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     Spacer(modifier = Modifier.width(12.dp))
                     Switch(
                         checked = autoPlayWithTimer,
                         onCheckedChange = { onToggleAutoPlay() },
-                        colors = androidx.compose.material3.SwitchDefaults.colors(checkedThumbColor = Color(0xFF08140B), checkedTrackColor = Color(0xFFA8C9B0))
+                        colors = androidx.compose.material3.SwitchDefaults.colors(checkedThumbColor = MaterialTheme.colorScheme.onPrimary, checkedTrackColor = MaterialTheme.colorScheme.primary)
                     )
                 }
             }
@@ -900,29 +900,29 @@ private fun PersonalBackgroundsTab(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Column(modifier = Modifier.padding(14.dp)) {
-                    Text("Presentation & Clarity Controls", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold), color = Color(0xFFA8C9B0))
+                    Text("Presentation & Clarity Controls", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold), color = MaterialTheme.colorScheme.primary)
                     Spacer(modifier = Modifier.height(8.dp))
 
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text("Dark Overlay Opacity (${(overlayOpacity * 100).toInt()}%)", style = MaterialTheme.typography.bodySmall, color = Color(0xFFE2E8E4))
-                        Text("Preserves text legibility", style = MaterialTheme.typography.labelSmall, color = Color(0xFF6B7A70))
+                        Text("Dark Overlay Opacity (${(overlayOpacity * 100).toInt()}%)", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface)
+                        Text("Preserves text legibility", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     Slider(
                         value = overlayOpacity,
                         onValueChange = onOverlayOpacityChange,
                         valueRange = 0.20f..0.90f,
-                        colors = SliderDefaults.colors(thumbColor = Color(0xFFA8C9B0), activeTrackColor = Color(0xFFA8C9B0), inactiveTrackColor = Color(0xFF243026))
+                        colors = SliderDefaults.colors(thumbColor = MaterialTheme.colorScheme.primary, activeTrackColor = MaterialTheme.colorScheme.primary, inactiveTrackColor = MaterialTheme.colorScheme.outlineVariant)
                     )
 
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text("Brightness (${(brightness * 100).toInt()}%)", style = MaterialTheme.typography.bodySmall, color = Color(0xFFE2E8E4))
-                        Icon(Icons.Default.WbSunny, contentDescription = null, tint = Color(0xFF8F9E94), modifier = Modifier.size(16.dp))
+                        Text("Brightness (${(brightness * 100).toInt()}%)", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface)
+                        Icon(Icons.Default.WbSunny, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(16.dp))
                     }
                     Slider(
                         value = brightness,
                         onValueChange = onBrightnessChange,
                         valueRange = 0.30f..1.0f,
-                        colors = SliderDefaults.colors(thumbColor = Color(0xFFA8C9B0), activeTrackColor = Color(0xFFA8C9B0), inactiveTrackColor = Color(0xFF243026))
+                        colors = SliderDefaults.colors(thumbColor = MaterialTheme.colorScheme.primary, activeTrackColor = MaterialTheme.colorScheme.primary, inactiveTrackColor = MaterialTheme.colorScheme.outlineVariant)
                     )
 
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
@@ -930,23 +930,23 @@ private fun PersonalBackgroundsTab(
                         Switch(
                             checked = isBlur,
                             onCheckedChange = onToggleBlur,
-                            colors = androidx.compose.material3.SwitchDefaults.colors(checkedThumbColor = Color(0xFF08140B), checkedTrackColor = Color(0xFFA8C9B0))
+                            colors = androidx.compose.material3.SwitchDefaults.colors(checkedThumbColor = MaterialTheme.colorScheme.onPrimary, checkedTrackColor = MaterialTheme.colorScheme.primary)
                         )
                     }
 
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                         Column {
                             Text("Scale & Crop Mode", style = MaterialTheme.typography.bodySmall, color = Color.White)
-                            Text("Currently: $fitMode", style = MaterialTheme.typography.labelSmall, color = Color(0xFF8F9E94))
+                            Text("Currently: $fitMode", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                         OutlinedButton(
                             onClick = onToggleFitMode,
                             shape = RoundedCornerShape(8.dp),
-                            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF334437))
+                            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
                         ) {
                             Icon(Icons.Default.Crop, contentDescription = null, modifier = Modifier.size(14.dp))
                             Spacer(modifier = Modifier.width(4.dp))
-                            Text(if (fitMode == "CROP") "Fill / Crop" else "Fit Screen", fontSize = 11.sp, color = Color(0xFFA8C9B0))
+                            Text(if (fitMode == "CROP") "Fill / Crop" else "Fit Screen", fontSize = 11.sp, color = MaterialTheme.colorScheme.primary)
                         }
                     }
                 }
@@ -957,8 +957,8 @@ private fun PersonalBackgroundsTab(
         item {
             Card(
                 shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = Color(0xFF131A15)),
-                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF202C23)),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Column(modifier = Modifier.padding(14.dp)) {
@@ -969,13 +969,13 @@ private fun PersonalBackgroundsTab(
                     ) {
                         Column {
                             Text("My Focus Backgrounds", style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold), color = Color.White)
-                            Text("${wallpapers.size} personal wallpapers in offline storage", style = MaterialTheme.typography.bodySmall, color = Color(0xFF8F9E94))
+                            Text("${wallpapers.size} personal wallpapers in offline storage", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
 
                         Button(
                             onClick = onImportPhotos,
                             shape = RoundedCornerShape(10.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFA8C9B0), contentColor = Color(0xFF08140B))
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary)
                         ) {
                             Icon(Icons.Default.AddPhotoAlternate, contentDescription = null, modifier = Modifier.size(16.dp))
                             Spacer(modifier = Modifier.width(6.dp))
@@ -1002,7 +1002,7 @@ private fun PersonalBackgroundsTab(
                                                 .clip(RoundedCornerShape(12.dp))
                                                 .border(
                                                     width = if (isCurrent) 2.5.dp else 1.dp,
-                                                    color = if (isCurrent) Color(0xFFA8C9B0) else Color(0xFF233226),
+                                                    color = if (isCurrent) MaterialTheme.colorScheme.primary else Color(0xFF233226),
                                                     shape = RoundedCornerShape(12.dp)
                                                 )
                                                 .clickable { onSelectWallpaper(item) }
@@ -1021,7 +1021,7 @@ private fun PersonalBackgroundsTab(
                                                         .padding(6.dp)
                                                         .size(20.dp)
                                                         .clip(CircleShape)
-                                                        .background(Color(0xFFA8C9B0))
+                                                        .background(MaterialTheme.colorScheme.primary)
                                                         .align(Alignment.TopEnd),
                                                     contentAlignment = Alignment.Center
                                                 ) {
@@ -1062,7 +1062,7 @@ private fun PersonalBackgroundsTab(
                                 Switch(
                                     checked = isSlideshow,
                                     onCheckedChange = onToggleSlideshow,
-                                    colors = androidx.compose.material3.SwitchDefaults.colors(checkedThumbColor = Color(0xFF08140B), checkedTrackColor = Color(0xFFA8C9B0))
+                                    colors = androidx.compose.material3.SwitchDefaults.colors(checkedThumbColor = MaterialTheme.colorScheme.onPrimary, checkedTrackColor = MaterialTheme.colorScheme.primary)
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text("Slideshow (${slideshowInterval}m)", style = MaterialTheme.typography.bodySmall, color = Color.White)
@@ -1077,7 +1077,7 @@ private fun PersonalBackgroundsTab(
                         Text(
                             text = "Import multiple wallpapers to build your persistent offline focus gallery.",
                             style = MaterialTheme.typography.bodySmall,
-                            color = Color(0xFF7A897F)
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
@@ -1092,7 +1092,7 @@ private fun PersonalBackgroundsTab(
                 colors = CardDefaults.cardColors(containerColor = Color.Black),
                 border = androidx.compose.foundation.BorderStroke(
                     width = if (isOledSelected) 2.dp else 1.dp,
-                    color = if (isOledSelected) Color(0xFFA8C9B0) else Color(0xFF222222)
+                    color = if (isOledSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.background
                 ),
                 modifier = Modifier.fillMaxWidth().clickable { onSelectOled() }
             ) {
@@ -1103,10 +1103,10 @@ private fun PersonalBackgroundsTab(
                 ) {
                     Column {
                         Text("Pure Minimal OLED Black", style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold), color = Color.White)
-                        Text("Zero distraction true black, maximum battery saving on OLED displays", style = MaterialTheme.typography.bodySmall, color = Color(0xFF8F9E94))
+                        Text("Zero distraction true black, maximum battery saving on OLED displays", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     if (isOledSelected) {
-                        Box(modifier = Modifier.size(24.dp).clip(CircleShape).background(Color(0xFFA8C9B0)), contentAlignment = Alignment.Center) {
+                        Box(modifier = Modifier.size(24.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primary), contentAlignment = Alignment.Center) {
                             Icon(Icons.Default.Check, contentDescription = null, tint = Color.Black, modifier = Modifier.size(16.dp))
                         }
                     }
@@ -1149,7 +1149,7 @@ private fun PersonalBackgroundsTab(
                         Spacer(modifier = Modifier.width(14.dp))
                         Column {
                             Text(theme.displayName, style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold), color = Color.White)
-                            Text(theme.subtitle, style = MaterialTheme.typography.bodySmall, color = Color(0xFF9EABA2))
+                            Text(theme.subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
 
@@ -1178,8 +1178,8 @@ private fun OnlineStreamingTab() {
         item {
             Card(
                 shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = Color(0xFF131A15)),
-                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF202C23)),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
@@ -1188,7 +1188,7 @@ private fun OnlineStreamingTab() {
                     Text(
                         text = "Rhythm strictly complies with open-source licensing and streaming terms of service. External music runs through your official installed applications.",
                         style = MaterialTheme.typography.bodySmall,
-                        color = Color(0xFF8F9E94)
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
@@ -1244,8 +1244,8 @@ private fun OnlineServiceCard(
 ) {
     Card(
         shape = RoundedCornerShape(14.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFF0F1411)),
-        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF1B241E)),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
         modifier = Modifier.fillMaxWidth()
     ) {
         Row(
@@ -1255,14 +1255,14 @@ private fun OnlineServiceCard(
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(title, style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold), color = Color.White)
-                Text(description, style = MaterialTheme.typography.bodySmall, color = Color(0xFF7A897F))
+                Text(description, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             Spacer(modifier = Modifier.width(10.dp))
             OutlinedButton(
                 onClick = onClick,
                 shape = RoundedCornerShape(10.dp),
-                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFA8C9B0).copy(alpha = 0.5f)),
-                colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFA8C9B0))
+                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.primary)
             ) {
                 Icon(Icons.Default.OpenInNew, contentDescription = null, modifier = Modifier.size(14.dp))
                 Spacer(modifier = Modifier.width(4.dp))
@@ -1370,8 +1370,8 @@ private fun EnvironmentSwitchCard(
 ) {
     Card(
         shape = RoundedCornerShape(14.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFF0F1411)),
-        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF1B241E)),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
         modifier = Modifier.fillMaxWidth()
     ) {
         Row(
@@ -1381,13 +1381,13 @@ private fun EnvironmentSwitchCard(
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(title, style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold), color = Color.White)
-                Text(description, style = MaterialTheme.typography.bodySmall, color = Color(0xFF7A897F))
+                Text(description, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             Spacer(modifier = Modifier.width(12.dp))
             Switch(
                 checked = checked,
                 onCheckedChange = onCheckedChange,
-                colors = androidx.compose.material3.SwitchDefaults.colors(checkedThumbColor = Color(0xFF08140B), checkedTrackColor = Color(0xFFA8C9B0))
+                colors = androidx.compose.material3.SwitchDefaults.colors(checkedThumbColor = MaterialTheme.colorScheme.onPrimary, checkedTrackColor = MaterialTheme.colorScheme.primary)
             )
         }
     }
@@ -1403,8 +1403,8 @@ private fun CueCard(
 ) {
     Card(
         shape = RoundedCornerShape(14.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFF0F1411)),
-        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF1B241E)),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
         modifier = Modifier.fillMaxWidth()
     ) {
         Row(
@@ -1414,7 +1414,7 @@ private fun CueCard(
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(title, style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold), color = Color.White)
-                Text(description, style = MaterialTheme.typography.bodySmall, color = Color(0xFF7A897F))
+                Text(description, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             Spacer(modifier = Modifier.width(10.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -1422,17 +1422,17 @@ private fun CueCard(
                     onClick = onPreview,
                     shape = RoundedCornerShape(8.dp),
                     contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF334437))
+                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
                 ) {
-                    Icon(Icons.Default.VolumeUp, contentDescription = null, modifier = Modifier.size(14.dp), tint = Color(0xFFA8C9B0))
+                    Icon(Icons.Default.VolumeUp, contentDescription = null, modifier = Modifier.size(14.dp), tint = MaterialTheme.colorScheme.primary)
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("Test", fontSize = 11.sp, color = Color(0xFFA8C9B0))
+                    Text("Test", fontSize = 11.sp, color = MaterialTheme.colorScheme.primary)
                 }
                 Spacer(modifier = Modifier.width(8.dp))
                 Switch(
                     checked = isChecked,
                     onCheckedChange = onToggle,
-                    colors = androidx.compose.material3.SwitchDefaults.colors(checkedThumbColor = Color(0xFF08140B), checkedTrackColor = Color(0xFFA8C9B0))
+                    colors = androidx.compose.material3.SwitchDefaults.colors(checkedThumbColor = MaterialTheme.colorScheme.onPrimary, checkedTrackColor = MaterialTheme.colorScheme.primary)
                 )
             }
         }
