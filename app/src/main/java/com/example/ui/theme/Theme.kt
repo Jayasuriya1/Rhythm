@@ -80,6 +80,7 @@ private val OledDarkColorScheme =
     onSurfaceVariant = OledOnSurfaceVariant,
     outline = OledOutline,
     outlineVariant = OledOutlineVariant,
+    error = StateErrorDark,
   )
 
 enum class AppThemeMode(val displayName: String) {
