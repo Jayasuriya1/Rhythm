@@ -15,9 +15,12 @@ import com.example.ui.MainViewModel
 import com.example.ui.TimerMode
 import com.example.util.AlarmScheduler
 import com.example.util.DateTimeUtils
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -1160,47 +1163,55 @@ class ExampleRobolectricTest {
 
     @Test
     fun `viewModel persists app theme mode, meditation settings and study sound toggles`() = runTest {
-        // Direct repository persistence and retrieval verified through ViewModel
-        repository.saveSetting("app_theme_mode", com.example.ui.theme.AppThemeMode.OLED_DARK.name)
-        repository.saveSetting("meditation_audio_mode", com.example.util.MeditationAudioMode.BREATHING_CUES.name)
-        repository.saveSetting("meditation_inhale_sec", "5")
-        repository.saveSetting("meditation_hold_inhale_sec", "3")
-        repository.saveSetting("meditation_exhale_sec", "6")
-        repository.saveSetting("study_break_start_sound_enabled", "false")
-        repository.saveSetting("study_keep_screen_on_enabled", "true")
+        val testDispatcher = kotlinx.coroutines.test.StandardTestDispatcher(testScheduler)
+        kotlinx.coroutines.Dispatchers.setMain(testDispatcher)
+        try {
+            // Direct repository persistence and retrieval verified through ViewModel
+            repository.saveSetting("app_theme_mode", com.example.ui.theme.AppThemeMode.OLED_DARK.name)
+            repository.saveSetting("meditation_audio_mode", com.example.util.MeditationAudioMode.BREATHING_CUES.name)
+            repository.saveSetting("meditation_inhale_sec", "5")
+            repository.saveSetting("meditation_hold_inhale_sec", "3")
+            repository.saveSetting("meditation_exhale_sec", "6")
+            repository.saveSetting("study_break_start_sound_enabled", "false")
+            repository.saveSetting("study_keep_screen_on_enabled", "true")
 
-        val viewModel = MainViewModel(repository)
+            val viewModel = MainViewModel(repository)
 
-        // Read through repository & ViewModel flows
-        val savedTheme = repository.getSetting("app_theme_mode").first()
-        assertEquals(com.example.ui.theme.AppThemeMode.OLED_DARK.name, savedTheme?.value)
+            // Read through repository & ViewModel flows
+            val savedTheme = repository.getSetting("app_theme_mode").first()
+            assertEquals(com.example.ui.theme.AppThemeMode.OLED_DARK.name, savedTheme?.value)
 
-        val savedAudioMode = repository.getSetting("meditation_audio_mode").first()
-        assertEquals(com.example.util.MeditationAudioMode.BREATHING_CUES.name, savedAudioMode?.value)
+            val savedAudioMode = repository.getSetting("meditation_audio_mode").first()
+            assertEquals(com.example.util.MeditationAudioMode.BREATHING_CUES.name, savedAudioMode?.value)
 
-        val savedInhale = repository.getSetting("meditation_inhale_sec").first()
-        assertEquals("5", savedInhale?.value)
+            val savedInhale = repository.getSetting("meditation_inhale_sec").first()
+            assertEquals("5", savedInhale?.value)
 
-        val savedPause = repository.getSetting("meditation_hold_inhale_sec").first()
-        assertEquals("3", savedPause?.value)
+            val savedPause = repository.getSetting("meditation_hold_inhale_sec").first()
+            assertEquals("3", savedPause?.value)
 
-        val savedExhale = repository.getSetting("meditation_exhale_sec").first()
-        assertEquals("6", savedExhale?.value)
+            val savedExhale = repository.getSetting("meditation_exhale_sec").first()
+            assertEquals("6", savedExhale?.value)
 
-        val savedSound = repository.getSetting("study_break_start_sound_enabled").first()
-        assertEquals("false", savedSound?.value)
+            val savedSound = repository.getSetting("study_break_start_sound_enabled").first()
+            assertEquals("false", savedSound?.value)
 
-        val savedKeepScreen = repository.getSetting("study_keep_screen_on_enabled").first()
-        assertEquals("true", savedKeepScreen?.value)
+            val savedKeepScreen = repository.getSetting("study_keep_screen_on_enabled").first()
+            assertEquals("true", savedKeepScreen?.value)
 
-        // ViewModel setters test
-        viewModel.setAppThemeMode(com.example.ui.theme.AppThemeMode.LIGHT)
-        testScheduler.advanceUntilIdle()
-        assertEquals("LIGHT", repository.getSetting("app_theme_mode").first()?.value)
+            // ViewModel setters test
+            viewModel.setAppThemeMode(com.example.ui.theme.AppThemeMode.LIGHT)
+            testScheduler.advanceUntilIdle()
+            org.robolectric.shadows.ShadowLooper.idleMainLooper()
+            assertEquals("LIGHT", repository.getSetting("app_theme_mode").first()?.value)
 
-        viewModel.setStudyKeepScreenOn(false)
-        testScheduler.advanceUntilIdle()
-        assertEquals("false", repository.getSetting("study_keep_screen_on_enabled").first()?.value)
+            viewModel.setStudyKeepScreenOn(false)
+            testScheduler.advanceUntilIdle()
+            org.robolectric.shadows.ShadowLooper.idleMainLooper()
+            assertEquals("false", repository.getSetting("study_keep_screen_on_enabled").first()?.value)
+        } finally {
+            kotlinx.coroutines.Dispatchers.resetMain()
+        }
     }
 
     @Test
