@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -741,14 +742,14 @@ fun FocusTimerCard(
     Card(
         shape = RoundedCornerShape(22.dp),
         colors = CardDefaults.cardColors(
-            containerColor = activeTheme.cardBackground
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
         ),
         modifier = Modifier
             .fillMaxWidth()
             .padding(top = 8.dp)
             .border(
                 1.dp,
-                activeTheme.primaryAccent.copy(alpha = 0.25f),
+                MaterialTheme.colorScheme.primary.copy(alpha = 0.22f),
                 RoundedCornerShape(22.dp)
             )
             .testTag("focus_timer_card")
@@ -766,7 +767,7 @@ fun FocusTimerCard(
                     val isSelected = timerState.mode == mode
                     Surface(
                         shape = RoundedCornerShape(12.dp),
-                        color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface.copy(alpha = 0.7f),
+                        color = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface,
                         modifier = Modifier.clickable {
                             if (mode == TimerMode.PROTOCOL && isSelected) {
                                 onOpenProtocolConfig()
@@ -784,7 +785,7 @@ fun FocusTimerCard(
                                 TimerMode.STOPWATCH -> "Stopwatch"
                             },
                             style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
-                            color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
+                            color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface,
                             modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
                         )
                     }
@@ -919,15 +920,16 @@ fun FocusTimerCard(
                 shape = RoundedCornerShape(6.dp),
                 color = when {
                     timerState.isCompleted -> MaterialTheme.colorScheme.primary
-                    timerState.isRunning -> if (isBreakActive) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.tertiary
-                    timerState.isPaused -> MaterialTheme.colorScheme.secondary
-                    else -> MaterialTheme.colorScheme.surfaceVariant
+                    timerState.isRunning && isBreakActive -> MaterialTheme.colorScheme.tertiaryContainer
+                    timerState.isRunning -> MaterialTheme.colorScheme.secondaryContainer
+                    timerState.isPaused -> MaterialTheme.colorScheme.surfaceVariant
+                    else -> MaterialTheme.colorScheme.surface
                 }
             ) {
                 Text(
                     text = stateText,
                     style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, letterSpacing = 1.sp),
-                    color = if (timerState.isCompleted || timerState.isRunning) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
+                    color = when { timerState.isCompleted -> MaterialTheme.colorScheme.onPrimary; timerState.isRunning && isBreakActive -> MaterialTheme.colorScheme.onTertiary; timerState.isRunning -> MaterialTheme.colorScheme.onSecondary; else -> MaterialTheme.colorScheme.onSurface },
                     modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
                 )
             }
@@ -1278,7 +1280,7 @@ fun StudyTaskItemCard(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Action row
+            // Two calm action rows avoid cramped four-control layouts on narrow phones.
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -1286,22 +1288,30 @@ fun StudyTaskItemCard(
             ) {
                 OutlinedButton(
                     onClick = onSelectForTimer,
-                    shape = RoundedCornerShape(8.dp),
-                    modifier = Modifier.weight(1f)
+                    shape = RoundedCornerShape(10.dp),
+                    modifier = Modifier.weight(1f).heightIn(min = 44.dp)
                 ) {
-                    Icon(Icons.Default.Timer, contentDescription = null, modifier = Modifier.size(14.dp))
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text("Focus", style = MaterialTheme.typography.labelSmall)
+                    Icon(Icons.Default.Timer, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("Focus", style = MaterialTheme.typography.labelMedium)
                 }
 
                 FilledTonalButton(
                     onClick = onStuckClick,
-                    shape = RoundedCornerShape(8.dp),
-                    modifier = Modifier.weight(1f)
+                    shape = RoundedCornerShape(10.dp),
+                    modifier = Modifier.weight(1f).heightIn(min = 44.dp)
                 ) {
-                    Text("I'm Stuck", style = MaterialTheme.typography.labelSmall)
+                    Text("Break it down", style = MaterialTheme.typography.labelMedium)
                 }
+            }
 
+            Spacer(modifier = Modifier.height(6.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 Button(
                     onClick = {
                         val nextStatus = when (task.status) {
@@ -1311,24 +1321,26 @@ fun StudyTaskItemCard(
                         }
                         onStatusChange(nextStatus)
                     },
-                    shape = RoundedCornerShape(8.dp),
-                    modifier = Modifier.weight(1f)
+                    shape = RoundedCornerShape(10.dp),
+                    modifier = Modifier.weight(1f).heightIn(min = 44.dp)
                 ) {
                     Text(
                         text = when (task.status) {
-                            "COMPLETED" -> "Reset"
-                            "IN_PROGRESS" -> "Done"
-                            else -> "Start"
+                            "COMPLETED" -> "Reopen task"
+                            "IN_PROGRESS" -> "Mark complete"
+                            else -> "Start task"
                         },
-                        style = MaterialTheme.typography.labelSmall
+                        style = MaterialTheme.typography.labelMedium
                     )
                 }
 
-                IconButton(
+                TextButton(
                     onClick = onDelete,
-                    modifier = Modifier.size(32.dp)
+                    modifier = Modifier.heightIn(min = 44.dp)
                 ) {
-                    Icon(Icons.Default.Delete, contentDescription = "Delete", tint = MaterialTheme.colorScheme.outlineVariant)
+                    Icon(Icons.Default.Delete, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Delete", style = MaterialTheme.typography.labelMedium)
                 }
             }
         }
