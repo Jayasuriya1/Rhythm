@@ -514,11 +514,18 @@ fun SettingsScreen(
                                     tint = MaterialTheme.colorScheme.primary,
                                     modifier = Modifier.size(18.dp)
                                 )
-                                Text(
-                                    text = if (stats.isConsistent) "SQLite Integrity: Verified & Consistent" else "SQLite Check: Warning",
-                                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
-                                    color = MaterialTheme.colorScheme.onPrimaryContainer
-                                )
+                                Column {
+                                    Text(
+                                        text = if (stats.isConsistent) "SQLite Integrity: Verified & Consistent" else "SQLite Check: Warning",
+                                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+                                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                                    )
+                                    Text(
+                                        text = if (stats.isEncrypted) "Encryption: Active (SQLCipher AES-256 at rest)" else "Encryption: Hardware/Device protected",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
+                                    )
+                                }
                             }
                         }
 

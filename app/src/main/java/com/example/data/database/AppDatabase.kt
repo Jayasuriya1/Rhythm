@@ -357,15 +357,29 @@ abstract class AppDatabase : RoomDatabase() {
         fun getDatabase(context: Context): AppDatabase {
             appContext = context.applicationContext
             return INSTANCE ?: synchronized(this) {
-                val instance = Room.databaseBuilder(
-                    context.applicationContext,
+                val dbContext = context.applicationContext
+                val builder = Room.databaseBuilder(
+                    dbContext,
                     AppDatabase::class.java,
                     "rhythm_focus_database"
                 )
                     .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11)
                     .fallbackToDestructiveMigrationOnDowngrade()
                     .addCallback(DatabaseCallback())
-                    .build()
+
+                if (com.example.data.security.DatabaseKeyManager.isSqlCipherSupported()) {
+                    try {
+                        System.loadLibrary("sqlcipher")
+                        val key = com.example.data.security.DatabaseKeyManager.getOrCreateDatabaseKey(dbContext)
+                        DatabaseMigrationHelper.migratePlaintextToEncryptedIfNeeded(dbContext, key)
+                        val factory = net.zetetic.database.sqlcipher.SupportOpenHelperFactory(key)
+                        builder.openHelperFactory(factory)
+                    } catch (e: Throwable) {
+                        android.util.Log.e("AppDatabase", "Failed to initialize SQLCipher encryption; falling back to unencrypted", e)
+                    }
+                }
+
+                val instance = builder.build()
                 INSTANCE = instance
                 instance
             }
