@@ -47,10 +47,8 @@ class SettingsViewModel(
         _userFeedbackMessage.value = null
     }
 
-    fun setAppThemeMode(mode: AppThemeMode) {
-        viewModelScope.launch {
-            repository.saveSetting("app_theme_mode", mode.name)
-        }
+    fun setAppThemeMode(mode: AppThemeMode): kotlinx.coroutines.Job = viewModelScope.launch {
+        repository.saveSetting("app_theme_mode", mode.name)
     }
 
     fun refreshDatabaseIntegrityStats() {

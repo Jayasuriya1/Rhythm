@@ -1200,15 +1200,17 @@ class ExampleRobolectricTest {
             assertEquals("true", savedKeepScreen?.value)
 
             // ViewModel setters test
-            viewModel.setAppThemeMode(com.example.ui.theme.AppThemeMode.LIGHT)
+            viewModel.setAppThemeMode(com.example.ui.theme.AppThemeMode.LIGHT).join()
             testScheduler.advanceUntilIdle()
             org.robolectric.shadows.ShadowLooper.idleMainLooper()
-            assertEquals("LIGHT", repository.getSetting("app_theme_mode").first()?.value)
+            val updatedTheme = repository.getSetting("app_theme_mode").first { it?.value == "LIGHT" }
+            assertEquals("LIGHT", updatedTheme?.value)
 
-            viewModel.setStudyKeepScreenOn(false)
+            viewModel.setStudyKeepScreenOn(false).join()
             testScheduler.advanceUntilIdle()
             org.robolectric.shadows.ShadowLooper.idleMainLooper()
-            assertEquals("false", repository.getSetting("study_keep_screen_on_enabled").first()?.value)
+            val updatedSound = repository.getSetting("study_keep_screen_on_enabled").first { it?.value == "false" }
+            assertEquals("false", updatedSound?.value)
         } finally {
             kotlinx.coroutines.Dispatchers.resetMain()
         }

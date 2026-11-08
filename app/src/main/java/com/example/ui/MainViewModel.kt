@@ -334,10 +334,8 @@ class MainViewModel(
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), com.example.ui.theme.AppThemeMode.OLED_DARK)
 
-    fun setAppThemeMode(mode: com.example.ui.theme.AppThemeMode) {
-        viewModelScope.launch {
-            repository.saveSetting("app_theme_mode", mode.name)
-        }
+    fun setAppThemeMode(mode: com.example.ui.theme.AppThemeMode): Job = viewModelScope.launch {
+        repository.saveSetting("app_theme_mode", mode.name)
     }
 
     val keepScreenOnEnabled: StateFlow<Boolean> get() = studyKeepScreenOnEnabled
@@ -1131,11 +1129,9 @@ class MainViewModel(
         }
     }
 
-    fun setStudyKeepScreenOn(enabled: Boolean) {
-        viewModelScope.launch {
-            repository.saveSetting("study_keep_screen_on_enabled", enabled.toString())
-            _userFeedbackMessage.value = if (enabled) "Keep screen awake enabled during active timer" else "Keep screen awake disabled"
-        }
+    fun setStudyKeepScreenOn(enabled: Boolean): Job = viewModelScope.launch {
+        repository.saveSetting("study_keep_screen_on_enabled", enabled.toString())
+        _userFeedbackMessage.value = if (enabled) "Keep screen awake enabled during active timer" else "Keep screen awake disabled"
     }
 
     fun saveStudyProtocol(protocol: StudyProtocol) {
