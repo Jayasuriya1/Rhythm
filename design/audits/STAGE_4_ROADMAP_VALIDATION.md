@@ -364,7 +364,7 @@ The roadmap characterized the regression risk of PR 7 as "Moderate." **This must
 | **PR 5** | Time Zone & DST Alarm Resilience | ✅ Ready for Implementation | Add `TIMEZONE_CHANGED` / `TIME_SET` to manifest and receiver. Low risk. |
 | **PR 6** | Health Connect Pagination & Changes Token | ⚠️ Solution Needs Revision | Implement pagination loop first. Split changes token into subsequent enhancement. |
 | **PR 7** | Architecture Modularization (MainViewModel) | ⚠️ Solution Needs Revision | Correct line count (1,839). Reclassify risk to HIGH due to 1,758-line test suite. Use phased extraction. |
-| **PR 8** | Sensitive Data Protection at Rest | 🔍 Requires Investigation | Split into PR 8a (Backup AES encryption, ready) and PR 8b (SQLCipher, blocked by migration & key recovery design). |
+| **PR 8** | Sensitive Data Protection at Rest | ✅ Completed & Merged | Split into PR 8a (AES-256-GCM backup encryption, merged in #28) and PR 8b (SQLCipher database encryption & Keystore key management, merged in #29). |
 
 ---
 
