@@ -29,16 +29,16 @@ enum class SoundscapeType(
     val vibeTag: String
 ) {
     NONE("none", "Mute Soundscape", "🔇", "Silence / Timer chimes only", "Silent"),
-    GENTLE_RAIN("rain", "Gentle Rain", "🌧️", "Natural steady rainfall soothing the mind", "Cozy Calm"),
-    RAIN_ON_WINDOW("rain_window", "Rain on Window", "🪟", "Raindrops tapping softly against glass in quiet twilight", "Comfort"),
-    FOREST_BIRDS("forest_birds", "Forest Birds", "🌲", "Misty pine needles whispering with gentle distant birdsong", "Clarity"),
-    FLOWING_RIVER("river", "Flowing River", "🌊", "Continuous natural water current washing away distraction", "Flow State"),
-    OCEAN_WAVES("ocean", "Ocean Waves", "🏖️", "Gentle rhythmic shoreline swells and peaceful tides", "Rhythm"),
-    FIREPLACE("fireplace", "Fireplace", "🔥", "Soft crackling hearth fire with gentle glowing embers", "Warmth"),
-    WIND_THROUGH_TREES("wind", "Wind Through Trees", "🍃", "Natural gust of wind through high mountain canopy", "Deep Rest"),
-    NIGHT_CRICKETS("crickets", "Night Crickets", "🦗", "Quiet nighttime meadow ambience under starry skies", "Night Calm"),
-    BROWN_NOISE("brown", "Brown Noise", "🟤", "Smooth, deep waterfall rumble ideal for ADHD & hyperfocus", "ADHD Focus"),
-    PINK_NOISE("pink", "Pink Noise", "🌸", "Balanced 1/f soothing frequency mask for background reading", "Masking");
+    GENTLE_RAIN("rain", "Gentle Rain", "🌧️", "Soft generated rain-like noise texture", "Cozy Calm"),
+    RAIN_ON_WINDOW("rain_window", "Rain on Window", "🪟", "Generated rain-on-glass style texture", "Comfort"),
+    FOREST_BIRDS("forest_birds", "Forest Birds", "🌲", "Generated wind-like noise with simple chirp tones", "Clarity"),
+    FLOWING_RIVER("river", "Flowing River", "🌊", "Generated flowing-water style noise texture", "Flow State"),
+    OCEAN_WAVES("ocean", "Ocean Waves", "🏖️", "Generated slow ocean-like noise texture", "Rhythm"),
+    FIREPLACE("fireplace", "Fireplace", "🔥", "Generated low crackle-like texture", "Warmth"),
+    WIND_THROUGH_TREES("wind", "Wind Through Trees", "🍃", "Generated soft wind-like noise texture", "Deep Rest"),
+    NIGHT_CRICKETS("crickets", "Night Crickets", "🦗", "Generated nighttime tone texture", "Night Calm"),
+    BROWN_NOISE("brown", "Brown Noise", "🟤", "Deep generated low-frequency noise; personal preference varies", "ADHD Focus"),
+    PINK_NOISE("pink", "Pink Noise", "🌸", "Generated balanced noise texture for masking", "Masking");
 
     companion object {
         // Backward-compatibility aliases
