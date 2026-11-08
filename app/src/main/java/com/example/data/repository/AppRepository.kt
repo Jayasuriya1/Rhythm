@@ -1,5 +1,7 @@
 package com.example.data.repository
 
+import android.content.Context
+import androidx.room.withTransaction
 import com.example.data.database.AppDatabase
 import com.example.data.entity.ActiveTimerDraftEntity
 import com.example.data.entity.BrainDumpNoteEntity
@@ -154,12 +156,30 @@ class AppRepository(private val database: AppDatabase) {
         medicationDao.updateMedication(medication)
     }
 
-    suspend fun deleteMedication(id: Long) {
-        medicationDao.deleteMedication(id)
+    suspend fun deleteMedication(id: Long, context: Context? = null) {
+        val remindersToDelete = reminderDao.getRemindersForMedication(id)
+        database.withTransaction {
+            medicationDao.deleteMedication(id)
+            reminderDao.deleteRemindersForMedication(id)
+        }
+        val targetContext = context ?: AppDatabase.appContext
+        if (targetContext != null) {
+            for (reminder in remindersToDelete) {
+                AlarmScheduler.cancelAlarm(targetContext, reminder.id)
+            }
+        }
     }
 
     suspend fun archiveMedication(id: Long, isArchived: Boolean) {
-        medicationDao.setMedicationArchived(id = id, isArchived = isArchived, isActive = !isArchived)
+        database.withTransaction {
+            medicationDao.setMedicationArchived(id = id, isArchived = isArchived, isActive = !isArchived)
+            if (isArchived) {
+                val reminders = reminderDao.getRemindersForMedication(id)
+                for (reminder in reminders) {
+                    reminderDao.setReminderEnabled(reminder.id, false)
+                }
+            }
+        }
     }
 
     suspend fun recordMedicationIntake(intake: MedicationIntakeEntity) {
@@ -211,8 +231,10 @@ class AppRepository(private val database: AppDatabase) {
     }
 
     suspend fun deleteCategoryAndReassignTasks(categoryId: Long, categoryName: String, fallbackCategory: String = "General") {
-        studyCategoryDao.reassignTaskCategory(categoryName, fallbackCategory)
-        studyCategoryDao.deleteCategory(categoryId)
+        database.withTransaction {
+            studyCategoryDao.reassignTaskCategory(categoryName, fallbackCategory)
+            studyCategoryDao.deleteCategory(categoryId)
+        }
     }
 
     // Study Tasks
@@ -236,8 +258,10 @@ class AppRepository(private val database: AppDatabase) {
     }
 
     suspend fun setDailyPriority(taskId: Long) {
-        studyDao.clearDailyPriorities()
-        studyDao.setDailyPriority(taskId)
+        database.withTransaction {
+            studyDao.clearDailyPriorities()
+            studyDao.setDailyPriority(taskId)
+        }
     }
 
     suspend fun clearDailyPriority() {
@@ -432,87 +456,91 @@ class AppRepository(private val database: AppDatabase) {
 
     suspend fun syncRoutinesToReminders() {
         val anchors = routineDao.getAllAnchors().first()
-        for (anchor in anchors) {
-            val refId = when (anchor.id) {
-                "out_of_bed" -> "default:wake_up"
-                "dinner" -> "default:dinner"
-                "getting_into_bed" -> "default:bedtime"
-                else -> "anchor:${anchor.id}"
-            }
-            val existing = reminderDao.getReminderByReferenceId(refId)
-                ?: reminderDao.getReminderByReferenceId("anchor:${anchor.id}")
-            val category = when (anchor.id) {
-                "out_of_bed" -> "WAKE_UP"
-                "getting_into_bed" -> "BEDTIME"
-                "dinner" -> "MEAL"
-                else -> "ROUTINE_ANCHOR"
-            }
-            if (existing != null) {
-                reminderDao.updateReminder(
-                    existing.copy(
-                        title = anchor.name,
-                        timeMinutes = anchor.defaultTargetMinutes,
-                        category = category,
-                        referenceId = refId
+        database.withTransaction {
+            for (anchor in anchors) {
+                val refId = when (anchor.id) {
+                    "out_of_bed" -> "default:wake_up"
+                    "dinner" -> "default:dinner"
+                    "getting_into_bed" -> "default:bedtime"
+                    else -> "anchor:${anchor.id}"
+                }
+                val existing = reminderDao.getReminderByReferenceId(refId)
+                    ?: reminderDao.getReminderByReferenceId("anchor:${anchor.id}")
+                val category = when (anchor.id) {
+                    "out_of_bed" -> "WAKE_UP"
+                    "getting_into_bed" -> "BEDTIME"
+                    "dinner" -> "MEAL"
+                    else -> "ROUTINE_ANCHOR"
+                }
+                if (existing != null) {
+                    reminderDao.updateReminder(
+                        existing.copy(
+                            title = anchor.name,
+                            timeMinutes = anchor.defaultTargetMinutes,
+                            category = category,
+                            referenceId = refId
+                        )
                     )
-                )
-            } else {
-                reminderDao.insertReminder(
-                    ReminderEntity(
-                        title = anchor.name,
-                        category = category,
-                        timeMinutes = anchor.defaultTargetMinutes,
-                        repeatDays = "DAILY",
-                        isEnabled = anchor.isEnabled,
-                        soundEnabled = true,
-                        vibrateEnabled = true,
-                        isUrgent = false,
-                        referenceId = refId,
-                        customMessage = anchor.description
+                } else {
+                    reminderDao.insertReminder(
+                        ReminderEntity(
+                            title = anchor.name,
+                            category = category,
+                            timeMinutes = anchor.defaultTargetMinutes,
+                            repeatDays = "DAILY",
+                            isEnabled = anchor.isEnabled,
+                            soundEnabled = true,
+                            vibrateEnabled = true,
+                            isUrgent = false,
+                            referenceId = refId,
+                            customMessage = anchor.description
+                        )
                     )
-                )
+                }
             }
         }
     }
 
     suspend fun syncMedicationsToReminders() {
         val meds = medicationDao.getAllMedications().first()
-        for (med in meds) {
-            if (med.isArchived || !med.isActive) continue
-            val scheduledTimes = med.getScheduledTimes()
-            for ((index, timeMin) in scheduledTimes.withIndex()) {
-                val refId = "med:${med.id}_$index"
-                val existing = reminderDao.getReminderByReferenceId(refId)
-                val dosageDisplay = if (med.dosage.isNotBlank()) " (${med.dosage} ${med.unit})" else ""
-                val title = "${med.name}$dosageDisplay"
-                val customMessage = if (med.instructions.isNotBlank()) med.instructions else "Scheduled dose"
+        database.withTransaction {
+            for (med in meds) {
+                if (med.isArchived || !med.isActive) continue
+                val scheduledTimes = med.getScheduledTimes()
+                for ((index, timeMin) in scheduledTimes.withIndex()) {
+                    val refId = "med:${med.id}_$index"
+                    val existing = reminderDao.getReminderByReferenceId(refId)
+                    val dosageDisplay = if (med.dosage.isNotBlank()) " (${med.dosage} ${med.unit})" else ""
+                    val title = "${med.name}$dosageDisplay"
+                    val customMessage = if (med.instructions.isNotBlank()) med.instructions else "Scheduled dose"
 
-                if (existing != null) {
-                    reminderDao.updateReminder(
-                        existing.copy(
-                            title = title,
-                            timeMinutes = timeMin,
-                            repeatDays = med.repeatDays,
-                            isEnabled = med.reminderEnabled,
-                            isUrgent = true,
-                            customMessage = customMessage
+                    if (existing != null) {
+                        reminderDao.updateReminder(
+                            existing.copy(
+                                title = title,
+                                timeMinutes = timeMin,
+                                repeatDays = med.repeatDays,
+                                isEnabled = med.reminderEnabled,
+                                isUrgent = true,
+                                customMessage = customMessage
+                            )
                         )
-                    )
-                } else if (med.reminderEnabled) {
-                    reminderDao.insertReminder(
-                        ReminderEntity(
-                            title = title,
-                            category = "MEDICATION",
-                            timeMinutes = timeMin,
-                            repeatDays = med.repeatDays,
-                            isEnabled = true,
-                            soundEnabled = true,
-                            vibrateEnabled = true,
-                            isUrgent = true,
-                            referenceId = refId,
-                            customMessage = customMessage
+                    } else if (med.reminderEnabled) {
+                        reminderDao.insertReminder(
+                            ReminderEntity(
+                                title = title,
+                                category = "MEDICATION",
+                                timeMinutes = timeMin,
+                                repeatDays = med.repeatDays,
+                                isEnabled = true,
+                                soundEnabled = true,
+                                vibrateEnabled = true,
+                                isUrgent = true,
+                                referenceId = refId,
+                                customMessage = customMessage
+                            )
                         )
-                    )
+                    }
                 }
             }
         }
@@ -634,14 +662,16 @@ class AppRepository(private val database: AppDatabase) {
         sleepStages: List<com.example.data.entity.HealthConnectSleepStageEntity> = emptyList(),
         heartSamples: List<com.example.data.entity.HealthConnectHeartSampleEntity> = emptyList()
     ) {
-        healthConnectDao.upsertDailySummary(summary)
-        if (sleepStages.isNotEmpty()) {
-            healthConnectDao.deleteSleepStagesForDate(summary.date)
-            healthConnectDao.insertSleepStages(sleepStages)
-        }
-        if (heartSamples.isNotEmpty()) {
-            healthConnectDao.deleteHeartSamplesForDate(summary.date)
-            healthConnectDao.insertHeartSamples(heartSamples)
+        database.withTransaction {
+            healthConnectDao.upsertDailySummary(summary)
+            if (sleepStages.isNotEmpty()) {
+                healthConnectDao.deleteSleepStagesForDate(summary.date)
+                healthConnectDao.insertSleepStages(sleepStages)
+            }
+            if (heartSamples.isNotEmpty()) {
+                healthConnectDao.deleteHeartSamplesForDate(summary.date)
+                healthConnectDao.insertHeartSamples(heartSamples)
+            }
         }
     }
 
