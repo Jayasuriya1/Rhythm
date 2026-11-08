@@ -17,9 +17,9 @@ import kotlin.math.cos
 import kotlin.math.sin
 
 /**
- * Curated authentic environmental soundscapes for deep focus and study.
+ * Curated procedurally synthesized ambient sound textures for focus and study.
  * Designed with ADHD and mood stabilization in mind: non-jarring, seamless,
- * organic audio synthesis with zero boundary clicks and zero network dependencies.
+ * offline audio synthesis with zero boundary clicks and no network dependency. These are generated textures, not field recordings.
  */
 enum class SoundscapeType(
     val id: String,
