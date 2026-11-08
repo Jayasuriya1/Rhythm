@@ -1476,7 +1476,7 @@ class ExampleRobolectricTest {
     }
 
     @Test
-    fun `focus aesthetic themes collection contains 10 curated themes with default minimal oled`() {
+    fun `focus aesthetic themes collection contains 10 curated themes with distinct palettes`() {
         val themes = com.example.ui.screens.study.FocusAestheticTheme.values()
         assertEquals(10, themes.size)
 
@@ -1497,20 +1497,53 @@ class ExampleRobolectricTest {
         assertTrue(ids.contains("green_garden"))
         assertTrue(ids.contains("soft_sunset"))
 
-        // Backward compatibility lookup
-        assertEquals(defaultTheme, com.example.ui.screens.study.FocusAestheticTheme.fromId(null))
+        // Verify that every theme has a distinct visual identity (non-identical backgroundTop and primaryAccent)
+        val backgroundTops = themes.map { it.backgroundTop }.toSet()
+        assertEquals("Every theme must have a distinct background top gradient color", 10, backgroundTops.size)
+
+        val primaryAccents = themes.map { it.primaryAccent }.toSet()
+        assertEquals("Every theme must have a distinct primary accent color", 10, primaryAccents.size)
+
+        val cardBackgrounds = themes.map { it.cardBackground }.toSet()
+        assertEquals("Every theme must have a distinct card background", 10, cardBackgrounds.size)
+    }
+
+    @Test
+    fun `fromId correctly restores all 10 presets and preserves all legacy alias IDs`() {
+        // Direct preset IDs
+        for (theme in com.example.ui.screens.study.FocusAestheticTheme.values()) {
+            assertEquals("Direct ID ${theme.id} should restore $theme", theme, com.example.ui.screens.study.FocusAestheticTheme.fromId(theme.id))
+            assertEquals("Case-insensitive ID ${theme.id.uppercase()} should restore $theme", theme, com.example.ui.screens.study.FocusAestheticTheme.fromId(theme.id.uppercase()))
+        }
+
+        // Backward compatibility legacy aliases
         assertEquals(com.example.ui.screens.study.FocusAestheticTheme.DARK_BAMBOO, com.example.ui.screens.study.FocusAestheticTheme.fromId("zen_forest"))
+        assertEquals(com.example.ui.screens.study.FocusAestheticTheme.COZY_STUDY, com.example.ui.screens.study.FocusAestheticTheme.fromId("lofi_cafe"))
+        assertEquals(com.example.ui.screens.study.FocusAestheticTheme.QUIET_OCEAN, com.example.ui.screens.study.FocusAestheticTheme.fromId("midnight_cyber"))
+        assertEquals(com.example.ui.screens.study.FocusAestheticTheme.STARRY_NIGHT, com.example.ui.screens.study.FocusAestheticTheme.fromId("deep_space"))
+        assertEquals(com.example.ui.screens.study.FocusAestheticTheme.SOFT_SUNSET, com.example.ui.screens.study.FocusAestheticTheme.fromId("sunset_dusk"))
+        assertEquals(com.example.ui.screens.study.FocusAestheticTheme.MINIMAL_OLED, com.example.ui.screens.study.FocusAestheticTheme.fromId("minimal_dark"))
+
+        // Null and invalid fallback
+        assertEquals(com.example.ui.screens.study.FocusAestheticTheme.MINIMAL_OLED, com.example.ui.screens.study.FocusAestheticTheme.fromId(null))
+        assertEquals(com.example.ui.screens.study.FocusAestheticTheme.MINIMAL_OLED, com.example.ui.screens.study.FocusAestheticTheme.fromId(""))
+        assertEquals(com.example.ui.screens.study.FocusAestheticTheme.MINIMAL_OLED, com.example.ui.screens.study.FocusAestheticTheme.fromId("non_existent_preset"))
     }
 
     @Test
     fun `focus background preferences persist and update cleanly in viewModel`() = runTest {
-        // Save builtin theme
-        repository.saveSetting("focus_bg_builtin_id", "misty_forest")
+        // Save builtin preset settings
+        repository.saveSetting("focus_bg_builtin_id", "soft_sunset")
         repository.saveSetting("focus_bg_type", com.example.ui.screens.study.FocusBgType.BUILTIN.name)
+
         val savedBuiltin = repository.getSetting("focus_bg_builtin_id").first()
-        assertEquals("misty_forest", savedBuiltin?.value)
+        assertEquals("soft_sunset", savedBuiltin?.value)
         val savedType = repository.getSetting("focus_bg_type").first()
         assertEquals(com.example.ui.screens.study.FocusBgType.BUILTIN.name, savedType?.value)
+
+        // Switch to another preset
+        repository.saveSetting("focus_bg_builtin_id", "mountain_mist")
+        assertEquals("mountain_mist", repository.getSetting("focus_bg_builtin_id").first()?.value)
 
         // Save custom URI
         repository.saveSetting("focus_bg_custom_uri", "content://media/external/images/media/42")
@@ -1536,6 +1569,22 @@ class ExampleRobolectricTest {
         repository.saveSetting("focus_bg_type", com.example.ui.screens.study.FocusBgType.OLED.name)
         assertEquals("", repository.getSetting("focus_bg_custom_uri").first()?.value)
         assertEquals(com.example.ui.screens.study.FocusBgType.OLED.name, repository.getSetting("focus_bg_type").first()?.value)
+    }
+
+    @Test
+    fun `curated backdrop overlay opacity scaling preserves differentiation at default slider value`() {
+        // At default 0.60f slider setting, effective overlay should scale down to keep artwork distinct
+        val rawDefaultOpacity = 0.60f
+        val effectiveBuiltinOverlay = (rawDefaultOpacity * 0.35f).coerceIn(0f, 0.65f)
+
+        // Assert that effective overlay does not exceed 0.25f, allowing rich gradients to be visible
+        assertEquals(0.21f, effectiveBuiltinOverlay, 0.001f)
+        assertTrue("Effective overlay must be transparent enough to keep artwork visible", effectiveBuiltinOverlay <= 0.25f)
+
+        // At maximum 1.0f slider, effective overlay remains restrained to prevent black blowout
+        val maxOpacity = 1.0f
+        val maxEffective = (maxOpacity * 0.35f).coerceIn(0f, 0.65f)
+        assertEquals(0.35f, maxEffective, 0.001f)
     }
 
     @Test

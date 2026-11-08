@@ -87,6 +87,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -1116,9 +1117,19 @@ private fun PersonalBackgroundsTab(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Column {
-                        Text("Pure Minimal OLED Black", style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold), color = MaterialTheme.colorScheme.onSurface)
-                        Text("Zero distraction true black, maximum battery saving on OLED displays", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+                        Box(
+                            modifier = Modifier
+                                .size(width = 38.dp, height = 28.dp)
+                                .clip(RoundedCornerShape(6.dp))
+                                .background(Color.Black)
+                                .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(6.dp))
+                        )
+                        Spacer(modifier = Modifier.width(14.dp))
+                        Column {
+                            Text("Pure Minimal OLED Black", style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold), color = MaterialTheme.colorScheme.onSurface)
+                            Text("Zero distraction true black, maximum battery saving on OLED displays", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
                     }
                     if (isOledSelected) {
                         Box(modifier = Modifier.size(24.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primary), contentAlignment = Alignment.Center) {
@@ -1157,10 +1168,17 @@ private fun PersonalBackgroundsTab(
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
-                        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                            Box(modifier = Modifier.size(16.dp).clip(CircleShape).background(theme.primaryAccent))
-                            Box(modifier = Modifier.size(16.dp).clip(CircleShape).background(theme.secondaryAccent))
-                        }
+                        Box(
+                            modifier = Modifier
+                                .size(width = 38.dp, height = 28.dp)
+                                .clip(RoundedCornerShape(6.dp))
+                                .background(
+                                    Brush.linearGradient(
+                                        listOf(theme.backgroundTop, theme.primaryAccent, theme.secondaryAccent, theme.backgroundBottom)
+                                    )
+                                )
+                                .border(1.dp, Color.White.copy(alpha = 0.20f), RoundedCornerShape(6.dp))
+                        )
                         Spacer(modifier = Modifier.width(14.dp))
                         Column {
                             Text(theme.displayName, style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold), color = MaterialTheme.colorScheme.onSurface)
