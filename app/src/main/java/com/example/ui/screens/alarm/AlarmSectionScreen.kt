@@ -75,6 +75,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.data.entity.CustomAlarmEntity
 import com.example.ui.MainViewModel
 import com.example.util.CustomAlarmScheduler
+import com.example.ui.theme.StateInfo
 
 @OptIn(ExperimentalLayoutApi::class, androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
@@ -576,7 +577,7 @@ fun AlarmCard(
                 // Mission Badge
                 if (alarm.missionType == "BARCODE") {
                     Surface(
-                        color = Color(0xFF1E88E5).copy(alpha = 0.15f),
+                        color = StateInfo.copy(alpha = 0.15f),
                         shape = RoundedCornerShape(8.dp)
                     ) {
                         Row(
@@ -586,7 +587,7 @@ fun AlarmCard(
                             Icon(
                                 imageVector = Icons.Default.QrCodeScanner,
                                 contentDescription = null,
-                                tint = Color(0xFF1976D2),
+                                tint = StateInfo,
                                 modifier = Modifier.size(12.dp)
                             )
                             Spacer(modifier = Modifier.width(4.dp))
@@ -601,7 +602,7 @@ fun AlarmCard(
                                 text = missionText,
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = Color(0xFF1976D2)
+                                color = StateInfo
                             )
                         }
                     }
