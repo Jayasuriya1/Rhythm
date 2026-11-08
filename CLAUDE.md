@@ -1,0 +1,3 @@
+# Claude / Antigravity project instructions
+
+Follow `AGENTS.md` and the mandatory `design/AI_WORKFLOW.md` contract before making any change. Read the full design references listed there. Do not create a separate design system: the Kotlin theme package and `design/DESIGN_SYSTEM.md` are canonical. Use shared Material 3 semantic tokens, preserve the Ribbon R identity, and follow the documented visual/accessibility checks. Preserve existing features, persisted data, app ID and behavior unless explicitly approved.

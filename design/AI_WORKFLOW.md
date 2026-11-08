@@ -1,32 +1,53 @@
-# AI-Assisted Design and Engineering Workflow
+# AI Contribution Contract — Rhythm
 
-This is the operating contract for Gemini, Antigravity and other agents.
+This is a mandatory instruction for **Google AI Studio (Gemini), Antigravity, ChatGPT, Claude, Codex and human contributors**. These rules apply to every UI, design, refactor and feature task in this repository.
 
-## Before every task
-Read this folder's README, product vision, philosophy, design system and relevant screen specification. Inspect implementation and tests. Identify affected files, behavior, assumptions and open questions. Separate visual changes from behavior changes and refactoring.
+## Mandatory reading order
+Before editing any file, read:
+1. `AGENTS.md` (repository-wide rules)
+2. `design/README.md`
+3. `design/PRODUCT_VISION.md`
+4. `design/DESIGN_PHILOSOPHY.md`
+5. `design/DESIGN_SYSTEM.md`
+6. `design/BRAND_ASSETS.md`
+7. `design/COMPONENTS.md`
+8. The relevant screen specification and `design/QUALITY_GATES.md`
 
-## Design / audit mode
-Inspect source and real screenshots when available. Describe current behavior and user problem. Propose hierarchy, interaction and components. Produce a screen spec or design proposal. Do not edit app source unless explicitly asked.
+For visual tasks also read `design/VISUAL_QA.md` and `design/ACCESSIBILITY.md`.
 
-## Implementation mode
-Implement only an approved specification. Preserve business logic and persistence unless behavior changes are explicitly in scope. Reuse tokens/components. Add previews/tests. Build and run relevant tests. Capture real screenshots where tools permit. Report deviations.
+## Absolute design rules
+- The Kotlin theme package is the runtime source of truth. Never create another theme or local palette.
+- Use `MaterialTheme.colorScheme` for all normal UI surfaces, text, borders and controls.
+- Never hardcode hex/RGB colors in screen files or reusable components. Add missing semantic tokens centrally.
+- Preserve the approved Ribbon R logo and brand palette. Do not redraw, replace, recolor or create a competing logo without explicit approval.
+- Keep the product calm, modern, low-glare and editorial. Avoid neon, gratuitous gradients, glassmorphism, card-in-card layouts and decorative clutter.
+- Use one clear focal point and one primary action per screen.
+- Preserve OLED Dark, Standard Dark, Light and System behavior. Check all applicable themes.
+- Reuse existing Compose components before creating duplicates. Follow Material 3.
+- Support compact phone and expanded tablet layouts; do not assume phone-only dimensions.
+- Respect font scaling, TalkBack, 48dp touch targets, contrast and reduced motion.
 
-## Non-negotiable rules
-- Never claim build/tests passed unless executed and observed.
-- Never invent paths, APIs or behavior.
-- Never silently remove features or change database schemas.
-- Explain dependency purpose, license and maintenance cost before adding one.
-- No analytics, trackers or remote services without explicit privacy approval.
-- No proprietary dependency in F-Droid build without an approved compliant flavor and policy review.
-- No fake production data, secrets, signing keys or personal health data in commits.
-- Keep changes reviewable and reversible.
-- Update design docs when decisions change.
+## Engineering and safety rules
+- Inspect the existing implementation before changing it. State affected files and behavior.
+- Keep visual-only changes visual-only. Do not change business logic, Room schema, stored data, application ID, alarms, timers, medication logic or navigation unless explicitly required.
+- Do not remove, hide or replace existing features to simplify a screen.
+- Do not add dependencies without explaining need, license, size and maintenance.
+- Privacy-first and offline-first. No analytics, trackers, remote APIs or cloud sync without explicit approval.
+- No medical diagnosis, treatment recommendations or unsupported health conclusions in product copy.
+- Do not commit secrets, real personal/health data, fake production metrics or unlicensed assets.
+- Update design documentation when a design decision changes.
 
-## Required task report
-Summarize user-visible changes, files changed, behavior preserved/changed, exact commands/results, devices/themes/screens inspected, accessibility considerations and limitations.
+## Required workflow
+1. Inspect current code, tokens/components, related screens and tests.
+2. Identify the user problem and current screen hierarchy.
+3. Plan the smallest coherent change; separate behavior from visual work.
+4. Implement using shared tokens/components.
+5. Add/update previews and automated tests where practical.
+6. Run relevant Gradle build, tests and lint. Never claim a command passed if it was not run.
+7. Review real rendered screenshots for OLED, Standard Dark and Light; include compact phone/tablet when relevant.
+8. Check accessibility, empty/loading/error/permission/offline states.
+9. Report changed files, behavior preserved/changed, commands/results, screenshot/device coverage and limitations.
+10. Submit a focused branch/PR. Never merge without successful required CI and review.
 
-## Visual QA loop
-Build; install; open exact screen; capture light/dark screenshots; compare hierarchy, spacing, typography, contrast and alignment; test interactions and TalkBack; fix the highest-impact issue; repeat.
-
-## Git
-Use a feature branch, focused commits and scoped pull requests. Never force-push shared branches.
+## Stop conditions
+If instructions conflict with the current source of truth, stop and explain instead of inventing a new style. If a visual change would alter persisted data or core behavior, ask before proceeding.

@@ -1,51 +1,43 @@
 # Brand and Visual Asset Guidelines
 
 ## Brand expression
-Rhythm is a calm, private daily companion for steadier routines, sleep, focus and emotional wellbeing. The identity should feel restorative, quietly optimistic and modern—not clinical, gamified or overstimulating.
+Rhythm is a calm, private daily companion for steadier routines, sleep, focus and emotional wellbeing. It should feel restorative, quietly optimistic and modern—not clinical, gamified or overstimulating.
 
 ## Approved app mark
 - Primary mark: the original Ribbon R with a small check motif, representing continuity and gentle progress.
-- The adaptive icon uses a deep teal-to-charcoal/violet background and a mint, champagne and muted-violet ribbon.
-- Keep the mark simple, centred and legible within Android's adaptive-icon safe area.
-- Do not add text to the launcher icon.
-- Use the same vector foreground and background for round and standard adaptive icons.
-- The notification icon must remain a simple monochrome silhouette for Android status-bar legibility.
+- Adaptive icon background: deep teal / midnight teal with a quiet violet depth.
+- Foreground: mint-led Ribbon R with restrained champagne and violet detail.
+- Keep the mark centered and legible in Android's adaptive icon safe area.
+- No text in the launcher icon.
+- Standard and round adaptive icons share the same foreground/background artwork.
+- Notification icon is a simple monochrome silhouette.
 
 ## Brand palette
-| Role | Colour | Hex |
+| Role | Hex | Use |
 |---|---|---|
-| Deep teal | Primary dark surface | #123C3A |
-| Midnight teal | Supporting dark surface | #102B2C |
-| Mint | Primary brand accent | #9ADCC6 |
-| Seafoam | Supporting accent | #49BBA8 |
-| Champagne | Warm highlight | #FFE6B9 |
-| Muted violet | Reflective accent | #BDA6DC |
-| Light canvas | Warm low-glare surface | #F5F8F6 |
-| OLED canvas | True black | #000000 |
+| Deep teal | #123C3A | Brand depth |
+| Midnight teal | #102B2C | Supporting depth |
+| Mint | #9ADCC6 | Main accent |
+| Seafoam | #49BBA8 | Supporting accent, sparingly |
+| Champagne | #FFE6B9 | Warm highlight, sparingly |
+| Muted violet | #BDA6DC | Reflective accent, sparingly |
+| Light canvas | #F5F8F6 | Warm, low-glare light theme |
+| OLED canvas | #000000 | OLED theme |
 
-## Product UI principles
-- Use mint for primary actions and selected states, not every control.
-- Use champagne sparingly for time-related highlights and gentle emphasis.
-- Use muted violet for reflective, mindfulness and secondary states.
-- Keep warning, error and health metric colours semantically distinct from brand colours.
-- Maintain comfortable contrast and calm, low-glare surfaces in both themes.
-- Focus timer backdrops may retain their own atmospheric identity, but controls and key accents should harmonise with the Rhythm palette.
-- Do not force gradients into content surfaces; reserve them for brand moments and artwork.
+## Product UI
+- Mint for primary actions and selected states, not every control.
+- Champagne sparingly for time-related highlights.
+- Muted violet for reflective and mindfulness contexts.
+- Warning, error and health-series colors remain semantically distinct.
+- Maintain readable contrast and calm surfaces in every theme.
+- Focus backdrops may retain atmospheric identity; controls use shared Rhythm tokens.
+- Do not force gradients into routine content surfaces.
 
 ## Wordmark and typography
-- Use the product name “Rhythm” consistently in launcher and product-facing copy.
-- Use one primary wordmark treatment and one system type family.
-- Do not mix decorative fonts across feature areas.
+Use the product name “Rhythm” consistently. Use one wordmark treatment and the shared system type family. Do not mix decorative fonts across features.
 
 ## Illustration and licensing
-- Illustrations are optional and rare. Use them to explain an empty state or a concept, not to fill space.
-- Keep a consistent stroke, perspective, palette and level of detail.
-- Do not copy assets from inspiration products.
-- Track source, license, author and attribution for every bundled font, sound, icon and illustration. No asset enters a release until redistribution rights are clear.
+Illustrations are rare and purposeful. Never copy inspiration-product artwork. Track source, license, author and attribution for every bundled font, sound, icon and illustration before release.
 
-## Screenshots and store media
-- Capture real running app screens, never mockups presented as shipped UI.
-- Show a real task outcome, not fabricated health data.
-- Include OLED, light and tablet screenshots where they demonstrate supported modes.
-- Keep private notifications, names, medication details and health values out of public screenshots.
-- F-Droid screenshots and descriptions must match the actual F-Droid build and feature set.
+## Store media
+Use real running app screenshots, never mockups presented as shipped UI. Do not expose private notifications, names, medication details or health values in public screenshots. F-Droid media must match the F-Droid build.
