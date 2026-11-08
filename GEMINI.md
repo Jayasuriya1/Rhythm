@@ -1,3 +1,5 @@
 # Gemini / Google AI Studio project instructions
 
 Follow `AGENTS.md` and the mandatory `design/AI_WORKFLOW.md` contract before making any change. Read the full design references listed there. Do not create a separate design system: the Kotlin theme package and `design/DESIGN_SYSTEM.md` are canonical. Use shared Material 3 semantic tokens, preserve the Ribbon R identity, and follow the documented visual/accessibility checks. Preserve existing features, persisted data, app ID and behavior unless explicitly approved.
+
+**Mandatory build gate for every feature, bug fix, refactor or dependency change:** before reporting completion, run the exact three CI-equivalent checks documented in `design/AI_WORKFLOW.md`: `gradle :app:assembleDebug :app:lintDebug --stacktrace`, then `gradle :app:testDebugUnitTest -ProbolectricOffline=false --stacktrace`. Fix failures introduced by your changes, rerun all three checks, and report the actual result. Do not hand off a knowingly broken build or claim success based only on code inspection.
