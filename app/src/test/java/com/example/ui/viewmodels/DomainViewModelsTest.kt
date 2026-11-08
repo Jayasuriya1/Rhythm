@@ -110,11 +110,13 @@ class DomainViewModelsTest {
     }
 
     @Test
-    fun healthViewModel_recordsSleepAndMedication() = runBlocking {
+    fun healthViewModel_recordsSleepAndMedication() = runTest {
         val viewModel = HealthViewModel(repository, context)
 
         // Sleep
         viewModel.saveSleepRecord(bedtimeMin = 1380, wakeTimeMin = 420, quality = 4, notes = "Restful sleep")
+        ShadowLooper.idleMainLooper()
+
         val sleep = repository.getSleepForDate(viewModel.selectedDate.value).first()
         assertNotNull(sleep)
         assertEquals(480, sleep!!.durationMinutes) // 8 hours
@@ -143,6 +145,8 @@ class DomainViewModelsTest {
             status = "TAKEN",
             notes = "With food"
         )
+        ShadowLooper.idleMainLooper()
+
         val intakes = repository.getMedicationIntakesForDate(viewModel.selectedDate.value).first()
         assertEquals(1, intakes.size)
         assertEquals("TAKEN", intakes.first().status)
@@ -207,20 +211,19 @@ class DomainViewModelsTest {
         try {
             val viewModel = SettingsViewModel(repository, context)
 
-            viewModel.setAppThemeMode(AppThemeMode.LIGHT)
+            viewModel.setAppThemeMode(AppThemeMode.LIGHT).join()
             testScheduler.advanceUntilIdle()
             ShadowLooper.idleMainLooper()
-
-            val savedTheme = repository.getSetting("app_theme_mode").first()
+            val savedTheme = repository.getSetting("app_theme_mode").first { it?.value == AppThemeMode.LIGHT.name }
             assertEquals(AppThemeMode.LIGHT.name, savedTheme?.value)
 
-            viewModel.setBreathingDurations(inhale = 4, pause = 7, exhale = 8)
+            viewModel.setBreathingDurations(inhale = 4, pause = 7, exhale = 8).join()
             testScheduler.advanceUntilIdle()
             ShadowLooper.idleMainLooper()
 
-            val inhale = repository.getSetting("meditation_inhale_sec").first()
-            val hold = repository.getSetting("meditation_hold_inhale_sec").first()
-            val exhale = repository.getSetting("meditation_exhale_sec").first()
+            val inhale = repository.getSetting("meditation_inhale_sec").first { it?.value == "4" }
+            val hold = repository.getSetting("meditation_hold_inhale_sec").first { it?.value == "7" }
+            val exhale = repository.getSetting("meditation_exhale_sec").first { it?.value == "8" }
 
             assertEquals("4", inhale?.value)
             assertEquals("7", hold?.value)

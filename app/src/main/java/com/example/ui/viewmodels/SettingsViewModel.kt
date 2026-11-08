@@ -143,8 +143,8 @@ class SettingsViewModel(
         setMeditationAudioMode(mode)
     }
 
-    fun setMeditationBreathingPacing(inhale: Int, holdInhale: Int, exhale: Int, holdExhale: Int) {
-        viewModelScope.launch {
+    fun setMeditationBreathingPacing(inhale: Int, holdInhale: Int, exhale: Int, holdExhale: Int): kotlinx.coroutines.Job {
+        return viewModelScope.launch {
             repository.saveSetting("meditation_inhale_sec", inhale.toString())
             repository.saveSetting("meditation_hold_inhale_sec", holdInhale.toString())
             repository.saveSetting("meditation_exhale_sec", exhale.toString())
@@ -152,8 +152,8 @@ class SettingsViewModel(
         }
     }
 
-    fun setBreathingDurations(inhale: Int, pause: Int, exhale: Int) {
-        setMeditationBreathingPacing(inhale, pause, exhale, pause)
+    fun setBreathingDurations(inhale: Int, pause: Int, exhale: Int): kotlinx.coroutines.Job {
+        return setMeditationBreathingPacing(inhale, pause, exhale, pause)
     }
 }
 
