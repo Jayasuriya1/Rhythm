@@ -17,6 +17,7 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Backup
@@ -57,6 +58,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.ui.MainViewModel
@@ -76,8 +79,11 @@ fun SettingsScreen(
     var showResetConfirmDialog by remember { mutableStateOf(false) }
     var showExportDialog by remember { mutableStateOf(false) }
     var exportedJsonText by remember { mutableStateOf("") }
+    var exportPasswordInput by remember { mutableStateOf("") }
+    var isExportEncrypted by remember { mutableStateOf(false) }
     var showImportDialog by remember { mutableStateOf(false) }
     var importJsonInput by remember { mutableStateOf("") }
+    var importPasswordInput by remember { mutableStateOf("") }
     var importValidationSummary by remember { mutableStateOf<com.example.util.BackupSummary?>(null) }
     var importErrorMessage by remember { mutableStateOf<String?>(null) }
     var copyFeedbackMessage by remember { mutableStateOf<String?>(null) }
@@ -411,6 +417,8 @@ fun SettingsScreen(
                     ) {
                         FilledTonalButton(
                             onClick = {
+                                exportPasswordInput = ""
+                                isExportEncrypted = false
                                 viewModel.exportBackupJson { json ->
                                     exportedJsonText = json
                                     copyFeedbackMessage = null
@@ -428,6 +436,7 @@ fun SettingsScreen(
                         OutlinedButton(
                             onClick = {
                                 importJsonInput = ""
+                                importPasswordInput = ""
                                 importValidationSummary = null
                                 importErrorMessage = null
                                 showImportDialog = true
@@ -755,6 +764,54 @@ fun SettingsScreen(
                         }
                     }
 
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        OutlinedTextField(
+                            value = exportPasswordInput,
+                            onValueChange = { exportPasswordInput = it },
+                            label = { Text("Password protection (Optional)") },
+                            placeholder = { Text("Enter passphrase") },
+                            visualTransformation = PasswordVisualTransformation(),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                            singleLine = true,
+                            modifier = Modifier.weight(1f).testTag("export_password_input_field")
+                        )
+                        OutlinedButton(
+                            onClick = {
+                                val pass = exportPasswordInput.trim()
+                                if (pass.isNotEmpty()) {
+                                    viewModel.exportBackupJson(pass) { json ->
+                                        exportedJsonText = json
+                                        isExportEncrypted = true
+                                        copyFeedbackMessage = "Encrypted with AES-256-GCM!"
+                                    }
+                                } else {
+                                    viewModel.exportBackupJson(null) { json ->
+                                        exportedJsonText = json
+                                        isExportEncrypted = false
+                                        copyFeedbackMessage = "Exported as plain JSON"
+                                    }
+                                }
+                            },
+                            modifier = Modifier.testTag("apply_encryption_button")
+                        ) {
+                            Text(if (exportPasswordInput.isBlank()) "Plain" else "Encrypt")
+                        }
+                    }
+
+                    if (isExportEncrypted) {
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "🔒 Protected with AES-256-GCM & PBKDF2",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+
                     if (copyFeedbackMessage != null) {
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
@@ -790,6 +847,7 @@ fun SettingsScreen(
 
     // Import / Restore Backup Dialog
     if (showImportDialog) {
+        val isImportEncrypted = com.example.util.DataBackupManager.isEncryptedBackup(importJsonInput)
         AlertDialog(
             onDismissRequest = { showImportDialog = false },
             title = { Text("Restore Data from Backup") },
@@ -822,6 +880,32 @@ fun SettingsScreen(
                         maxLines = 8
                     )
 
+                    if (isImportEncrypted) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        OutlinedTextField(
+                            value = importPasswordInput,
+                            onValueChange = {
+                                importPasswordInput = it
+                                importValidationSummary = null
+                                importErrorMessage = null
+                            },
+                            label = { Text("Backup Password") },
+                            placeholder = { Text("Enter password to decrypt") },
+                            visualTransformation = PasswordVisualTransformation(),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                            singleLine = true,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .testTag("import_password_input_field")
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "🔒 This backup is encrypted with AES-256-GCM. Enter password to decrypt.",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+
                     Spacer(modifier = Modifier.height(8.dp))
 
                     Row(
@@ -834,7 +918,10 @@ fun SettingsScreen(
                                     importErrorMessage = "Please paste JSON text first"
                                     return@OutlinedButton
                                 }
-                                val result = com.example.util.DataBackupManager.validateBackup(importJsonInput)
+                                val result = com.example.util.DataBackupManager.validateBackup(
+                                    jsonString = importJsonInput,
+                                    passphrase = if (isImportEncrypted) importPasswordInput.ifBlank { null } else null
+                                )
                                 if (result.isSuccess) {
                                     importValidationSummary = result.getOrNull()
                                     importErrorMessage = null
@@ -905,7 +992,11 @@ fun SettingsScreen(
                 if (importValidationSummary != null) {
                     Button(
                         onClick = {
-                            viewModel.restoreBackupJson(importJsonInput, context) { success, _ ->
+                            viewModel.restoreBackupJson(
+                                jsonString = importJsonInput,
+                                context = context,
+                                passphrase = if (isImportEncrypted) importPasswordInput.ifBlank { null } else null
+                            ) { success, _ ->
                                 if (success) {
                                     showImportDialog = false
                                 }

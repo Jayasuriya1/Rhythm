@@ -18,6 +18,13 @@ import com.example.data.entity.StudyTaskEntity
 import com.example.data.entity.WaterEntryEntity
 import org.json.JSONArray
 import org.json.JSONObject
+import java.security.SecureRandom
+import java.util.Base64
+import javax.crypto.Cipher
+import javax.crypto.SecretKeyFactory
+import javax.crypto.spec.GCMParameterSpec
+import javax.crypto.spec.PBEKeySpec
+import javax.crypto.spec.SecretKeySpec
 
 data class BackupSummary(
     val exportTimestamp: Long,
@@ -61,6 +68,113 @@ object DataBackupManager {
     const val MIN_SUPPORTED_BACKUP_SCHEMA_VERSION = 1
     const val MAX_SUPPORTED_BACKUP_SCHEMA_VERSION = 5
 
+    private const val PBKDF2_ALGORITHM = "PBKDF2WithHmacSHA256"
+    private const val CIPHER_ALGORITHM = "AES/GCM/NoPadding"
+    private const val KEY_LENGTH_BITS = 256
+    const val PBKDF2_ITERATIONS = 100_000
+    private const val SALT_LENGTH_BYTES = 16
+    private const val IV_LENGTH_BYTES = 12
+    private const val GCM_TAG_LENGTH_BITS = 128
+    const val FORMAT_ENCRYPTED_BACKUP = "encrypted_backup"
+
+    fun isEncryptedBackup(content: String): Boolean {
+        return try {
+            val trimmed = content.trim()
+            if (!trimmed.startsWith("{")) return false
+            val root = JSONObject(trimmed)
+            root.optString("format") == FORMAT_ENCRYPTED_BACKUP ||
+                (root.has("ciphertext") && root.has("crypto"))
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    private fun deriveKey(
+        passphrase: CharArray,
+        salt: ByteArray,
+        iterations: Int = PBKDF2_ITERATIONS
+    ): SecretKeySpec {
+        val spec = PBEKeySpec(passphrase, salt, iterations, KEY_LENGTH_BITS)
+        val factory = SecretKeyFactory.getInstance(PBKDF2_ALGORITHM)
+        val keyBytes = factory.generateSecret(spec).encoded
+        return SecretKeySpec(keyBytes, "AES")
+    }
+
+    fun encryptPayload(
+        plainText: String,
+        passphrase: CharArray,
+        iterations: Int = PBKDF2_ITERATIONS
+    ): String {
+        require(passphrase.isNotEmpty()) { "Passphrase cannot be empty" }
+        val salt = ByteArray(SALT_LENGTH_BYTES).also { SecureRandom().nextBytes(it) }
+        val iv = ByteArray(IV_LENGTH_BYTES).also { SecureRandom().nextBytes(it) }
+        val secretKey = deriveKey(passphrase, salt, iterations)
+
+        val cipher = Cipher.getInstance(CIPHER_ALGORITHM)
+        val spec = GCMParameterSpec(GCM_TAG_LENGTH_BITS, iv)
+        cipher.init(Cipher.ENCRYPT_MODE, secretKey, spec)
+
+        val plainBytes = plainText.toByteArray(Charsets.UTF_8)
+        val cipherBytes = cipher.doFinal(plainBytes)
+
+        val encoder = Base64.getEncoder()
+        val saltB64 = encoder.encodeToString(salt)
+        val ivB64 = encoder.encodeToString(iv)
+        val ciphertextB64 = encoder.encodeToString(cipherBytes)
+
+        val root = JSONObject()
+        root.put("app", "Rhythm & Focus")
+        root.put("format", FORMAT_ENCRYPTED_BACKUP)
+        root.put("version", 1)
+
+        val crypto = JSONObject()
+        crypto.put("algorithm", "AES-256-GCM")
+        crypto.put("kdf", PBKDF2_ALGORITHM)
+        crypto.put("iterations", iterations)
+        crypto.put("salt", saltB64)
+        crypto.put("iv", ivB64)
+        root.put("crypto", crypto)
+
+        root.put("ciphertext", ciphertextB64)
+
+        return root.toString(2)
+    }
+
+    fun decryptPayload(
+        encryptedJson: String,
+        passphrase: CharArray
+    ): String {
+        require(passphrase.isNotEmpty()) { "Passphrase cannot be empty" }
+        val root = JSONObject(encryptedJson)
+        val app = root.optString("app")
+        if (app != "Rhythm & Focus") {
+            throw IllegalArgumentException("Invalid backup file: App identifier missing or mismatched")
+        }
+        val crypto = root.optJSONObject("crypto")
+            ?: throw IllegalArgumentException("Missing crypto metadata in encrypted backup")
+        val iterations = crypto.optInt("iterations", PBKDF2_ITERATIONS)
+        val saltB64 = crypto.optString("salt")
+        val ivB64 = crypto.optString("iv")
+        val ciphertextB64 = root.optString("ciphertext")
+
+        if (saltB64.isNullOrEmpty() || ivB64.isNullOrEmpty() || ciphertextB64.isNullOrEmpty()) {
+            throw IllegalArgumentException("Corrupted backup: Missing encryption components")
+        }
+
+        val decoder = Base64.getDecoder()
+        val salt = decoder.decode(saltB64)
+        val iv = decoder.decode(ivB64)
+        val cipherBytes = decoder.decode(ciphertextB64)
+
+        val secretKey = deriveKey(passphrase, salt, iterations)
+        val cipher = Cipher.getInstance(CIPHER_ALGORITHM)
+        val spec = GCMParameterSpec(GCM_TAG_LENGTH_BITS, iv)
+        cipher.init(Cipher.DECRYPT_MODE, secretKey, spec)
+
+        val decryptedBytes = cipher.doFinal(cipherBytes)
+        return String(decryptedBytes, Charsets.UTF_8)
+    }
+
     private fun JSONObject.optNullableString(name: String): String? {
         return if (has(name) && !isNull(name)) {
             val s = getString(name)
@@ -68,7 +182,7 @@ object DataBackupManager {
         } else null
     }
 
-    suspend fun exportBackup(database: AppDatabase): String {
+    suspend fun exportBackup(database: AppDatabase, passphrase: String? = null): String {
         val root = JSONObject()
         root.put("app", "Rhythm & Focus")
         root.put("version", 1)
@@ -357,12 +471,34 @@ object DataBackupManager {
         }
         root.put("registeredCodes", codesArr)
 
-        return root.toString(2)
+        val plainJson = root.toString(2)
+        return if (passphrase.isNullOrBlank()) {
+            plainJson
+        } else {
+            encryptPayload(plainJson, passphrase.toCharArray())
+        }
     }
 
-    fun validateBackup(jsonString: String): Result<BackupSummary> {
+    fun validateBackup(jsonString: String, passphrase: String? = null): Result<BackupSummary> {
+        val payload = if (isEncryptedBackup(jsonString)) {
+            if (passphrase.isNullOrBlank()) {
+                return Result.failure(
+                    IllegalArgumentException("This backup is encrypted with a password. Please provide the password to restore.")
+                )
+            }
+            try {
+                decryptPayload(jsonString, passphrase.toCharArray())
+            } catch (e: Exception) {
+                return Result.failure(
+                    IllegalArgumentException("Incorrect password or corrupted backup file.")
+                )
+            }
+        } else {
+            jsonString
+        }
+
         return try {
-            val root = JSONObject(jsonString)
+            val root = JSONObject(payload)
             if (!root.has("app") || root.getString("app") != "Rhythm & Focus") {
                 return Result.failure(IllegalArgumentException("Invalid backup file: App identifier missing or mismatched"))
             }
@@ -401,13 +537,31 @@ object DataBackupManager {
     suspend fun restoreBackup(
         database: AppDatabase,
         jsonString: String,
-        remapAutoIds: Boolean = false
+        remapAutoIds: Boolean = false,
+        passphrase: String? = null
     ): Result<BackupSummary> {
-        val validation = validateBackup(jsonString)
+        val payload = if (isEncryptedBackup(jsonString)) {
+            if (passphrase.isNullOrBlank()) {
+                return Result.failure(
+                    IllegalArgumentException("This backup is encrypted with a password. Please provide the password to restore.")
+                )
+            }
+            try {
+                decryptPayload(jsonString, passphrase.toCharArray())
+            } catch (e: Exception) {
+                return Result.failure(
+                    IllegalArgumentException("Incorrect password or corrupted backup file.")
+                )
+            }
+        } else {
+            jsonString
+        }
+
+        val validation = validateBackup(payload)
         if (validation.isFailure) return validation
 
         return try {
-            val root = JSONObject(jsonString)
+            val root = JSONObject(payload)
 
             // Parse Routine Anchors
             val anchorsList = mutableListOf<RoutineAnchorEntity>()

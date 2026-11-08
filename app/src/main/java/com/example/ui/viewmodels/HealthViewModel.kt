@@ -11,6 +11,7 @@ import com.example.data.entity.WaterEntryEntity
 import com.example.data.repository.AppRepository
 import com.example.health.HealthConnectManager
 import com.example.util.DateTimeUtils
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -87,14 +88,14 @@ class HealthViewModel(
     }
 
     // --- Sleep Actions ---
-    fun saveSleepRecord(bedtimeMin: Int, wakeTimeMin: Int, quality: Int, notes: String?) {
+    fun saveSleepRecord(bedtimeMin: Int, wakeTimeMin: Int, quality: Int, notes: String?): Job {
         val duration = if (wakeTimeMin >= bedtimeMin) {
             wakeTimeMin - bedtimeMin
         } else {
             (1440 - bedtimeMin) + wakeTimeMin
         }
 
-        viewModelScope.launch {
+        return viewModelScope.launch {
             repository.saveSleepEntry(
                 SleepEntryEntity(
                     date = _selectedDate.value,
@@ -109,8 +110,8 @@ class HealthViewModel(
         }
     }
 
-    fun deleteSleep() {
-        viewModelScope.launch {
+    fun deleteSleep(): Job {
+        return viewModelScope.launch {
             repository.deleteSleep(_selectedDate.value)
             _userFeedbackMessage.value = "Sleep entry cleared"
         }
@@ -124,8 +125,8 @@ class HealthViewModel(
         irritability: Int?,
         activation: Int?,
         notes: String?
-    ) {
-        viewModelScope.launch {
+    ): Job {
+        return viewModelScope.launch {
             repository.saveHealthCheckin(
                 HealthCheckinEntity(
                     date = _selectedDate.value,
@@ -142,15 +143,15 @@ class HealthViewModel(
     }
 
     // --- Water Actions ---
-    fun addWater(volumeMl: Int) {
-        viewModelScope.launch {
+    fun addWater(volumeMl: Int): Job {
+        return viewModelScope.launch {
             repository.addWater(_selectedDate.value, volumeMl)
             _userFeedbackMessage.value = "+${volumeMl}ml water logged"
         }
     }
 
-    fun removeWaterEntry(id: Long) {
-        viewModelScope.launch {
+    fun removeWaterEntry(id: Long): Job {
+        return viewModelScope.launch {
             repository.removeWaterEntry(id)
         }
     }
@@ -227,8 +228,8 @@ class HealthViewModel(
         scheduledTimeMinutes: Int = medication.scheduledTimeMinutes,
         status: String,
         notes: String? = null
-    ) {
-        viewModelScope.launch {
+    ): Job {
+        return viewModelScope.launch {
             val intake = MedicationIntakeEntity(
                 date = _selectedDate.value,
                 medicationId = medication.id,
@@ -250,8 +251,8 @@ class HealthViewModel(
         intake: MedicationIntakeEntity,
         newStatus: String,
         newNotes: String? = null
-    ) {
-        viewModelScope.launch {
+    ): Job {
+        return viewModelScope.launch {
             val updated = intake.copy(
                 status = newStatus,
                 actualActionTime = System.currentTimeMillis(),
@@ -264,15 +265,15 @@ class HealthViewModel(
         }
     }
 
-    fun archiveMedication(id: Long, isArchived: Boolean) {
-        viewModelScope.launch {
+    fun archiveMedication(id: Long, isArchived: Boolean): Job {
+        return viewModelScope.launch {
             repository.archiveMedication(id, isArchived)
             _userFeedbackMessage.value = if (isArchived) "Medication schedule archived (past history kept)" else "Medication restored"
         }
     }
 
-    fun deleteMedication(id: Long, ctx: Context? = appContext) {
-        viewModelScope.launch {
+    fun deleteMedication(id: Long, ctx: Context? = appContext): Job {
+        return viewModelScope.launch {
             repository.deleteMedication(id, ctx)
             _userFeedbackMessage.value = "Medication schedule deleted (past intakes preserved)"
         }

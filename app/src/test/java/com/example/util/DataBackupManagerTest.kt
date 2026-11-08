@@ -366,5 +366,164 @@ class DataBackupManagerTest {
 
         assertEquals(0, db.routineDao().getEntriesCount())
     }
+
+    @Test
+    fun `encryptPayload and decryptPayload round-trip preserves exact plaintext`() {
+        val testPayload = """{"message":"Secret health information","user":"test_user","values":[1,2,3]}"""
+        val password = "MySecurePassword123!".toCharArray()
+
+        val encryptedJson = DataBackupManager.encryptPayload(testPayload, password)
+        assertTrue(DataBackupManager.isEncryptedBackup(encryptedJson))
+
+        val decrypted = DataBackupManager.decryptPayload(encryptedJson, password)
+        assertEquals(testPayload, decrypted)
+    }
+
+    @Test
+    fun `exportBackup with password produces valid encrypted backup JSON`() = runTest {
+        repository.ensureDefaultAnchors()
+        repository.ensureDefaultCategories()
+
+        db.routineDao().insertOrUpdateEntry(
+            RoutineEntryEntity(
+                id = 1L,
+                date = "2026-11-08",
+                anchorId = "wake_up",
+                targetTimeMinutes = 420,
+                actualTimeMinutes = null,
+                status = "COMPLETED"
+            )
+        )
+
+        val password = "BackupPassword2026"
+        val encryptedJson = DataBackupManager.exportBackup(db, password)
+
+        assertTrue(DataBackupManager.isEncryptedBackup(encryptedJson))
+        val root = JSONObject(encryptedJson)
+        assertEquals("Rhythm & Focus", root.getString("app"))
+        assertEquals("encrypted_backup", root.getString("format"))
+        assertEquals(1, root.getInt("version"))
+
+        val crypto = root.getJSONObject("crypto")
+        assertEquals("AES-256-GCM", crypto.getString("algorithm"))
+        assertEquals("PBKDF2WithHmacSHA256", crypto.getString("kdf"))
+        assertEquals(DataBackupManager.PBKDF2_ITERATIONS, crypto.getInt("iterations"))
+        assertTrue(crypto.getString("salt").isNotEmpty())
+        assertTrue(crypto.getString("iv").isNotEmpty())
+
+        val ciphertext = root.getString("ciphertext")
+        assertTrue(ciphertext.isNotEmpty())
+        assertFalse(ciphertext.contains("wake_up"))
+        assertFalse(ciphertext.contains("routineEntries"))
+    }
+
+    @Test
+    fun `validateBackup and restoreBackup succeed with correct password for encrypted backup`() = runTest {
+        repository.ensureDefaultAnchors()
+        repository.ensureDefaultCategories()
+
+        db.routineDao().insertOrUpdateEntry(
+            RoutineEntryEntity(
+                id = 1L,
+                date = "2026-11-08",
+                anchorId = "wake_up",
+                targetTimeMinutes = 420,
+                actualTimeMinutes = 415,
+                status = "COMPLETED",
+                notes = "Encrypted routine test"
+            )
+        )
+
+        val password = "StrongPassword987!"
+        val encryptedBackup = DataBackupManager.exportBackup(db, password)
+
+        // Validate with correct password
+        val validation = DataBackupManager.validateBackup(encryptedBackup, password)
+        assertTrue("Validation should succeed with correct password", validation.isSuccess)
+        val summary = validation.getOrThrow()
+        assertEquals(1, summary.routineEntriesCount)
+
+        // Restore into cleared db
+        db.routineDao().deleteEntry(1L)
+        assertEquals(0, db.routineDao().getEntriesCount())
+
+        val restoreResult = DataBackupManager.restoreBackup(db, encryptedBackup, remapAutoIds = false, passphrase = password)
+        assertTrue("Restore should succeed with correct password", restoreResult.isSuccess)
+
+        val restoredEntries = db.routineDao().getEntriesForDate("2026-11-08").first()
+        assertEquals(1, restoredEntries.size)
+        assertEquals("wake_up", restoredEntries[0].anchorId)
+        assertEquals("Encrypted routine test", restoredEntries[0].notes)
+    }
+
+    @Test
+    fun `validateBackup and restoreBackup fail when password is missing on encrypted backup`() = runTest {
+        val password = "ProtectedPassword"
+        val encryptedBackup = DataBackupManager.exportBackup(db, password)
+
+        val validationNoPassword = DataBackupManager.validateBackup(encryptedBackup)
+        assertTrue(validationNoPassword.isFailure)
+        assertTrue(validationNoPassword.exceptionOrNull()?.message?.contains("password") == true)
+
+        val validationBlankPassword = DataBackupManager.validateBackup(encryptedBackup, "   ")
+        assertTrue(validationBlankPassword.isFailure)
+
+        val restoreNoPassword = DataBackupManager.restoreBackup(db, encryptedBackup, passphrase = null)
+        assertTrue(restoreNoPassword.isFailure)
+        assertTrue(restoreNoPassword.exceptionOrNull()?.message?.contains("password") == true)
+    }
+
+    @Test
+    fun `validateBackup and restoreBackup fail when incorrect password is provided`() = runTest {
+        val password = "CorrectPassword123"
+        val encryptedBackup = DataBackupManager.exportBackup(db, password)
+
+        val validationWrongPassword = DataBackupManager.validateBackup(encryptedBackup, "WrongPassword")
+        assertTrue(validationWrongPassword.isFailure)
+        assertTrue(validationWrongPassword.exceptionOrNull()?.message?.contains("Incorrect password") == true)
+
+        val restoreWrongPassword = DataBackupManager.restoreBackup(db, encryptedBackup, passphrase = "WrongPassword")
+        assertTrue(restoreWrongPassword.isFailure)
+        assertTrue(restoreWrongPassword.exceptionOrNull()?.message?.contains("Incorrect password") == true)
+    }
+
+    @Test
+    fun `unencrypted legacy and v5 backups restore seamlessly with or without password parameter`() = runTest {
+        val unencryptedJson = """
+            {
+              "app": "Rhythm & Focus",
+              "schemaVersion": 5,
+              "exportTimestamp": 1700000000000,
+              "routineEntries": [
+                {
+                  "id": 99,
+                  "date": "2026-11-08",
+                  "anchorId": "wake_up",
+                  "targetTimeMinutes": 420,
+                  "actualTimeMinutes": null,
+                  "status": "COMPLETED",
+                  "notes": "Unencrypted backup entry"
+                }
+              ]
+            }
+        """.trimIndent()
+
+        assertFalse(DataBackupManager.isEncryptedBackup(unencryptedJson))
+
+        // Validate without password
+        val valWithoutPass = DataBackupManager.validateBackup(unencryptedJson, null)
+        assertTrue(valWithoutPass.isSuccess)
+
+        // Validate with unnecessary password still succeeds on unencrypted backup
+        val valWithPass = DataBackupManager.validateBackup(unencryptedJson, "AnyPassword")
+        assertTrue(valWithPass.isSuccess)
+
+        // Restore without password succeeds
+        val restoreResult = DataBackupManager.restoreBackup(db, unencryptedJson, remapAutoIds = false, passphrase = null)
+        assertTrue(restoreResult.isSuccess)
+
+        val entries = db.routineDao().getEntriesForDate("2026-11-08").first()
+        assertTrue(entries.any { it.notes == "Unencrypted backup entry" })
+    }
 }
 

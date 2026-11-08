@@ -57,10 +57,10 @@ class SettingsViewModel(
         }
     }
 
-    fun exportBackupJson(onResult: (String) -> Unit) {
+    fun exportBackupJson(passphrase: String? = null, onResult: (String) -> Unit) {
         viewModelScope.launch {
-            val json = repository.exportDataBackup()
-            _userFeedbackMessage.value = "Backup generated successfully"
+            val json = repository.exportDataBackup(passphrase)
+            _userFeedbackMessage.value = if (passphrase.isNullOrBlank()) "Backup generated successfully" else "Encrypted backup generated successfully"
             onResult(json)
         }
     }
@@ -69,10 +69,11 @@ class SettingsViewModel(
         jsonString: String,
         context: Context? = appContext,
         remapAutoIds: Boolean = false,
+        passphrase: String? = null,
         onComplete: (Boolean, String) -> Unit
     ) {
         viewModelScope.launch {
-            val result = repository.restoreDataBackup(jsonString, remapAutoIds)
+            val result = repository.restoreDataBackup(jsonString, remapAutoIds, passphrase)
             if (result.isSuccess) {
                 val summary = result.getOrThrow()
                 refreshDatabaseIntegrityStats()
@@ -88,6 +89,14 @@ class SettingsViewModel(
                 onComplete(false, errorMsg)
             }
         }
+    }
+
+    fun isBackupEncrypted(jsonString: String): Boolean {
+        return repository.isBackupEncrypted(jsonString)
+    }
+
+    fun validateBackupJson(jsonString: String, passphrase: String? = null): Result<com.example.util.BackupSummary> {
+        return repository.validateBackup(jsonString, passphrase)
     }
 
     fun cleanDuplicateAlarms(context: Context? = appContext) {
@@ -134,8 +143,8 @@ class SettingsViewModel(
         setMeditationAudioMode(mode)
     }
 
-    fun setMeditationBreathingPacing(inhale: Int, holdInhale: Int, exhale: Int, holdExhale: Int) {
-        viewModelScope.launch {
+    fun setMeditationBreathingPacing(inhale: Int, holdInhale: Int, exhale: Int, holdExhale: Int): kotlinx.coroutines.Job {
+        return viewModelScope.launch {
             repository.saveSetting("meditation_inhale_sec", inhale.toString())
             repository.saveSetting("meditation_hold_inhale_sec", holdInhale.toString())
             repository.saveSetting("meditation_exhale_sec", exhale.toString())
@@ -143,8 +152,8 @@ class SettingsViewModel(
         }
     }
 
-    fun setBreathingDurations(inhale: Int, pause: Int, exhale: Int) {
-        setMeditationBreathingPacing(inhale, pause, exhale, pause)
+    fun setBreathingDurations(inhale: Int, pause: Int, exhale: Int): kotlinx.coroutines.Job {
+        return setMeditationBreathingPacing(inhale, pause, exhale, pause)
     }
 }
 

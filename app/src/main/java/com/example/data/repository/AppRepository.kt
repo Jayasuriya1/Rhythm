@@ -684,12 +684,24 @@ class AppRepository(private val database: AppDatabase) {
         ensureDefaultAlarms()
     }
 
-    suspend fun exportDataBackup(): String {
-        return com.example.util.DataBackupManager.exportBackup(database)
+    suspend fun exportDataBackup(passphrase: String? = null): String {
+        return com.example.util.DataBackupManager.exportBackup(database, passphrase)
     }
 
-    suspend fun restoreDataBackup(jsonString: String, remapAutoIds: Boolean = false): Result<com.example.util.BackupSummary> {
-        return com.example.util.DataBackupManager.restoreBackup(database, jsonString, remapAutoIds)
+    suspend fun restoreDataBackup(
+        jsonString: String,
+        remapAutoIds: Boolean = false,
+        passphrase: String? = null
+    ): Result<com.example.util.BackupSummary> {
+        return com.example.util.DataBackupManager.restoreBackup(database, jsonString, remapAutoIds, passphrase)
+    }
+
+    fun isBackupEncrypted(jsonString: String): Boolean {
+        return com.example.util.DataBackupManager.isEncryptedBackup(jsonString)
+    }
+
+    fun validateBackup(jsonString: String, passphrase: String? = null): Result<com.example.util.BackupSummary> {
+        return com.example.util.DataBackupManager.validateBackup(jsonString, passphrase)
     }
 
     suspend fun getDatabaseIntegrityStats(): com.example.util.DatabaseIntegrityStats {

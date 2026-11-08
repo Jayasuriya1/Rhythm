@@ -680,33 +680,12 @@ class MainViewModel(
     }
 
     // --- Sleep Actions ---
-    fun saveSleepRecord(bedtimeMin: Int, wakeTimeMin: Int, quality: Int, notes: String?) {
-        val duration = if (wakeTimeMin >= bedtimeMin) {
-            wakeTimeMin - bedtimeMin
-        } else {
-            (1440 - bedtimeMin) + wakeTimeMin
-        }
-
-        viewModelScope.launch {
-            repository.saveSleepEntry(
-                SleepEntryEntity(
-                    date = _selectedDate.value,
-                    bedtimeMinutes = bedtimeMin,
-                    wakeTimeMinutes = wakeTimeMin,
-                    durationMinutes = duration,
-                    qualityRating = quality,
-                    notes = notes
-                )
-            )
-            _userFeedbackMessage.value = "Sleep recorded: ${DateTimeUtils.formatDurationMinutes(duration)}"
-        }
+    fun saveSleepRecord(bedtimeMin: Int, wakeTimeMin: Int, quality: Int, notes: String?): kotlinx.coroutines.Job {
+        return healthViewModel.saveSleepRecord(bedtimeMin, wakeTimeMin, quality, notes)
     }
 
-    fun deleteSleep() {
-        viewModelScope.launch {
-            repository.deleteSleep(_selectedDate.value)
-            _userFeedbackMessage.value = "Sleep entry cleared"
-        }
+    fun deleteSleep(): kotlinx.coroutines.Job {
+        return healthViewModel.deleteSleep()
     }
 
     // --- Health Actions ---
@@ -820,41 +799,16 @@ class MainViewModel(
         scheduledTimeMinutes: Int = medication.scheduledTimeMinutes,
         status: String,
         notes: String? = null
-    ) {
-        viewModelScope.launch {
-            val intake = MedicationIntakeEntity(
-                date = _selectedDate.value,
-                medicationId = medication.id,
-                scheduledTimeMinutes = scheduledTimeMinutes,
-                actualActionTime = System.currentTimeMillis(),
-                status = status,
-                notes = notes,
-                medicationName = medication.name,
-                dosageSnapshot = "${medication.dosage} ${medication.unit}",
-                isCorrected = false,
-                correctedAt = null
-            )
-            repository.recordMedicationIntake(intake)
-            _userFeedbackMessage.value = "${medication.name} (${DateTimeUtils.formatMinutesToTime(scheduledTimeMinutes)}) marked as $status"
-        }
+    ): kotlinx.coroutines.Job {
+        return healthViewModel.recordMedicationIntake(medication, scheduledTimeMinutes, status, notes)
     }
 
     fun correctMedicationIntake(
         intake: MedicationIntakeEntity,
         newStatus: String,
         newNotes: String? = null
-    ) {
-        viewModelScope.launch {
-            val updated = intake.copy(
-                status = newStatus,
-                actualActionTime = System.currentTimeMillis(),
-                notes = newNotes ?: intake.notes,
-                isCorrected = true,
-                correctedAt = System.currentTimeMillis()
-            )
-            repository.recordMedicationIntake(updated)
-            _userFeedbackMessage.value = "Entry corrected to $newStatus"
-        }
+    ): kotlinx.coroutines.Job {
+        return healthViewModel.correctMedicationIntake(intake, newStatus, newNotes)
     }
 
     fun archiveMedication(id: Long, isArchived: Boolean) {
@@ -1953,37 +1907,32 @@ class MainViewModel(
         }
     }
 
-    fun exportBackupJson(onResult: (String) -> Unit) {
-        viewModelScope.launch {
-            val json = repository.exportDataBackup()
-            _userFeedbackMessage.value = "Backup generated successfully"
-            onResult(json)
-        }
+    fun exportBackupJson(passphrase: String? = null, onResult: (String) -> Unit) {
+        settingsViewModel.exportBackupJson(passphrase, onResult)
     }
 
     fun restoreBackupJson(
         jsonString: String,
         context: Context? = null,
         remapAutoIds: Boolean = false,
+        passphrase: String? = null,
         onComplete: (Boolean, String) -> Unit
     ) {
-        viewModelScope.launch {
-            val result = repository.restoreDataBackup(jsonString, remapAutoIds)
-            if (result.isSuccess) {
-                val summary = result.getOrThrow()
-                refreshDatabaseIntegrityStats()
-                if (context != null) {
-                    val activeReminders = repository.getEnabledRemindersSync()
-                    AlarmScheduler.scheduleAllEnabledAlarms(context, activeReminders)
-                }
-                _userFeedbackMessage.value = "Data restored successfully (${summary.routineEntriesCount} routines, ${summary.medicationsCount} meds)"
-                onComplete(true, "Restored successfully: ${summary.routineEntriesCount} routines, ${summary.sleepCount} sleep records, ${summary.medicationsCount} meds, ${summary.studySessionsCount} study sessions.")
-            } else {
-                val errorMsg = result.exceptionOrNull()?.message ?: "Failed to restore backup"
-                _userFeedbackMessage.value = "Error: $errorMsg"
-                onComplete(false, errorMsg)
-            }
-        }
+        settingsViewModel.restoreBackupJson(
+            jsonString = jsonString,
+            context = context ?: appContext,
+            remapAutoIds = remapAutoIds,
+            passphrase = passphrase,
+            onComplete = onComplete
+        )
+    }
+
+    fun isBackupEncrypted(jsonString: String): Boolean {
+        return settingsViewModel.isBackupEncrypted(jsonString)
+    }
+
+    fun validateBackupJson(jsonString: String, passphrase: String? = null): Result<com.example.util.BackupSummary> {
+        return settingsViewModel.validateBackupJson(jsonString, passphrase)
     }
 
     fun cleanDuplicateAlarms(context: Context? = null) {
@@ -2030,17 +1979,12 @@ class MainViewModel(
         setMeditationAudioMode(mode)
     }
 
-    fun setMeditationBreathingPacing(inhale: Int, holdInhale: Int, exhale: Int, holdExhale: Int) {
-        viewModelScope.launch {
-            repository.saveSetting("meditation_inhale_sec", inhale.toString())
-            repository.saveSetting("meditation_hold_inhale_sec", holdInhale.toString())
-            repository.saveSetting("meditation_exhale_sec", exhale.toString())
-            repository.saveSetting("meditation_hold_exhale_sec", holdExhale.toString())
-        }
+    fun setMeditationBreathingPacing(inhale: Int, holdInhale: Int, exhale: Int, holdExhale: Int): kotlinx.coroutines.Job {
+        return settingsViewModel.setMeditationBreathingPacing(inhale, holdInhale, exhale, holdExhale)
     }
 
-    fun setBreathingDurations(inhale: Int, pause: Int, exhale: Int) {
-        setMeditationBreathingPacing(inhale, pause, exhale, pause)
+    fun setBreathingDurations(inhale: Int, pause: Int, exhale: Int): kotlinx.coroutines.Job {
+        return settingsViewModel.setBreathingDurations(inhale, pause, exhale)
     }
 
     // Health Connect Imported Data Helpers
