@@ -18,13 +18,16 @@ import androidx.health.connect.client.records.RestingHeartRateRecord
 import androidx.health.connect.client.records.SleepSessionRecord
 import androidx.health.connect.client.records.StepsRecord
 import androidx.health.connect.client.records.TotalCaloriesBurnedRecord
+import androidx.health.connect.client.request.ChangesTokenRequest
 import androidx.health.connect.client.request.ReadRecordsRequest
+import androidx.health.connect.client.response.ChangesResponse
 import androidx.health.connect.client.time.TimeRangeFilter
 import com.example.data.entity.HealthConnectDailySummaryEntity
 import com.example.data.entity.HealthConnectHeartSampleEntity
 import com.example.data.entity.HealthConnectSleepStageEntity
 import com.example.data.repository.AppRepository
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -101,6 +104,7 @@ class HealthConnectManager(
 
     companion object {
         const val HEALTH_CONNECT_PACKAGE = "com.google.android.apps.healthdata"
+        const val SETTING_KEY_CHANGES_TOKEN = "health_connect_changes_token"
 
         val PERMISSION_RECORDS_MAP: Map<HealthCategory, List<KClass<out Record>>> = mapOf(
             HealthCategory.ACTIVITY to listOf(
@@ -203,9 +207,9 @@ class HealthConnectManager(
      */
     suspend fun syncDateRange(
         startDate: LocalDate,
-        endDate: LocalDate
+        endDate: LocalDate,
+        client: HealthConnectClient? = healthConnectClient
     ): SyncResult = withContext(Dispatchers.IO) {
-        val client = healthConnectClient
         if (client == null) {
             return@withContext SyncResult(
                 isSuccess = false,
@@ -260,14 +264,9 @@ class HealthConnectManager(
             // 1. Steps Record
             if (granted.contains(HealthPermission.getReadPermission(StepsRecord::class))) {
                 try {
-                    val stepsResponse = client.readRecords(
-                        ReadRecordsRequest(
-                            recordType = StepsRecord::class,
-                            timeRangeFilter = timeFilter
-                        )
-                    )
+                    val stepsRecords = readAllRecords(client, StepsRecord::class, timeFilter)
                     // Aggregate and deduplicate steps: group by source app to avoid double-counting phone + watch
-                    val stepsByApp = stepsResponse.records.groupBy { it.metadata.dataOrigin.packageName }
+                    val stepsByApp = stepsRecords.groupBy { it.metadata.dataOrigin.packageName }
                     stepsByApp.keys.forEach { contributingSources.add(it) }
 
                     // Deduplication rule: If a dedicated wearable app (Garmin, Samsung, Fitbit, Pixel Watch) is present,
@@ -277,7 +276,7 @@ class HealthConnectManager(
                         maxSourceSteps
                     } else 0L
 
-                    totalRecords += stepsResponse.records.size
+                    totalRecords += stepsRecords.size
                 } catch (e: Exception) {
                     partialWarnings.add("Steps read warning: ${e.message}")
                 }
@@ -286,18 +285,13 @@ class HealthConnectManager(
             // 2. Distance Record
             if (granted.contains(HealthPermission.getReadPermission(DistanceRecord::class))) {
                 try {
-                    val distResponse = client.readRecords(
-                        ReadRecordsRequest(
-                            recordType = DistanceRecord::class,
-                            timeRangeFilter = timeFilter
-                        )
-                    )
-                    val distByApp = distResponse.records.groupBy { it.metadata.dataOrigin.packageName }
+                    val distRecords = readAllRecords(client, DistanceRecord::class, timeFilter)
+                    val distByApp = distRecords.groupBy { it.metadata.dataOrigin.packageName }
                     distByApp.keys.forEach { contributingSources.add(it) }
                     distanceMetersTotal = distByApp.values.maxOfOrNull { list ->
                         list.sumOf { it.distance.inMeters }
                     } ?: 0.0
-                    totalRecords += distResponse.records.size
+                    totalRecords += distRecords.size
                 } catch (e: Exception) {
                     partialWarnings.add("Distance read warning: ${e.message}")
                 }
@@ -306,39 +300,24 @@ class HealthConnectManager(
             // 3. Active & Total Calories
             if (granted.contains(HealthPermission.getReadPermission(ActiveCaloriesBurnedRecord::class))) {
                 try {
-                    val activeCalResponse = client.readRecords(
-                        ReadRecordsRequest(
-                            recordType = ActiveCaloriesBurnedRecord::class,
-                            timeRangeFilter = timeFilter
-                        )
-                    )
-                    activeCaloriesTotal = activeCalResponse.records.sumOf { it.energy.inKilocalories }
-                    totalRecords += activeCalResponse.records.size
+                    val activeCalRecords = readAllRecords(client, ActiveCaloriesBurnedRecord::class, timeFilter)
+                    activeCaloriesTotal = activeCalRecords.sumOf { it.energy.inKilocalories }
+                    totalRecords += activeCalRecords.size
                 } catch (_: Exception) {}
             }
             if (granted.contains(HealthPermission.getReadPermission(TotalCaloriesBurnedRecord::class))) {
                 try {
-                    val totalCalResponse = client.readRecords(
-                        ReadRecordsRequest(
-                            recordType = TotalCaloriesBurnedRecord::class,
-                            timeRangeFilter = timeFilter
-                        )
-                    )
-                    totalCaloriesTotal = totalCalResponse.records.sumOf { it.energy.inKilocalories }
-                    totalRecords += totalCalResponse.records.size
+                    val totalCalRecords = readAllRecords(client, TotalCaloriesBurnedRecord::class, timeFilter)
+                    totalCaloriesTotal = totalCalRecords.sumOf { it.energy.inKilocalories }
+                    totalRecords += totalCalRecords.size
                 } catch (_: Exception) {}
             }
 
             // 4. Sleep & Stages (Hypnogram without fabricating stages!)
             if (granted.contains(HealthPermission.getReadPermission(SleepSessionRecord::class))) {
                 try {
-                    val sleepResponse = client.readRecords(
-                        ReadRecordsRequest(
-                            recordType = SleepSessionRecord::class,
-                            timeRangeFilter = timeFilter
-                        )
-                    )
-                    for (session in sleepResponse.records) {
+                    val sleepRecords = readAllRecords(client, SleepSessionRecord::class, timeFilter)
+                    for (session in sleepRecords) {
                         contributingSources.add(session.metadata.dataOrigin.packageName)
                         val duration = java.time.Duration.between(session.startTime, session.endTime).toMinutes().toInt()
                         sleepMinutes += duration
@@ -376,7 +355,7 @@ class HealthConnectManager(
                             }
                         }
                     }
-                    totalRecords += sleepResponse.records.size
+                    totalRecords += sleepRecords.size
                 } catch (e: Exception) {
                     partialWarnings.add("Sleep read warning: ${e.message}")
                 }
@@ -385,19 +364,14 @@ class HealthConnectManager(
             // 5. Heart Rate Series
             if (granted.contains(HealthPermission.getReadPermission(HeartRateRecord::class))) {
                 try {
-                    val hrResponse = client.readRecords(
-                        ReadRecordsRequest(
-                            recordType = HeartRateRecord::class,
-                            timeRangeFilter = timeFilter
-                        )
-                    )
-                    val allSamples = hrResponse.records.flatMap { it.samples }
+                    val hrRecords = readAllRecords(client, HeartRateRecord::class, timeFilter)
+                    val allSamples = hrRecords.flatMap { it.samples }
                     if (allSamples.isNotEmpty()) {
                         avgHeartRate = allSamples.map { it.beatsPerMinute }.average()
                         minHeartRate = allSamples.minOf { it.beatsPerMinute }.toDouble()
                         maxHeartRate = allSamples.maxOf { it.beatsPerMinute }.toDouble()
 
-                        for (hrRecord in hrResponse.records) {
+                        for (hrRecord in hrRecords) {
                             contributingSources.add(hrRecord.metadata.dataOrigin.packageName)
                             for (sample in hrRecord.samples) {
                                 heartSampleEntities.add(
@@ -411,7 +385,7 @@ class HealthConnectManager(
                             }
                         }
                     }
-                    totalRecords += hrResponse.records.size
+                    totalRecords += hrRecords.size
                 } catch (e: Exception) {
                     partialWarnings.add("Heart rate read warning: ${e.message}")
                 }
@@ -420,99 +394,69 @@ class HealthConnectManager(
             // 6. Resting Heart Rate (Only if genuine record exists!)
             if (granted.contains(HealthPermission.getReadPermission(RestingHeartRateRecord::class))) {
                 try {
-                    val rhrResponse = client.readRecords(
-                        ReadRecordsRequest(
-                            recordType = RestingHeartRateRecord::class,
-                            timeRangeFilter = timeFilter
-                        )
-                    )
-                    if (rhrResponse.records.isNotEmpty()) {
-                        restingHeartRate = rhrResponse.records.last().beatsPerMinute.toDouble()
-                        contributingSources.add(rhrResponse.records.last().metadata.dataOrigin.packageName)
+                    val rhrRecords = readAllRecords(client, RestingHeartRateRecord::class, timeFilter)
+                    if (rhrRecords.isNotEmpty()) {
+                        restingHeartRate = rhrRecords.last().beatsPerMinute.toDouble()
+                        contributingSources.add(rhrRecords.last().metadata.dataOrigin.packageName)
                     }
-                    totalRecords += rhrResponse.records.size
+                    totalRecords += rhrRecords.size
                 } catch (_: Exception) {}
             }
 
             // 7. Heart Rate Variability (HRV)
             if (granted.contains(HealthPermission.getReadPermission(HeartRateVariabilityRmssdRecord::class))) {
                 try {
-                    val hrvResponse = client.readRecords(
-                        ReadRecordsRequest(
-                            recordType = HeartRateVariabilityRmssdRecord::class,
-                            timeRangeFilter = timeFilter
-                        )
-                    )
-                    if (hrvResponse.records.isNotEmpty()) {
-                        hrvRmssd = hrvResponse.records.map { it.heartRateVariabilityMillis }.average()
-                        contributingSources.add(hrvResponse.records.last().metadata.dataOrigin.packageName)
+                    val hrvRecords = readAllRecords(client, HeartRateVariabilityRmssdRecord::class, timeFilter)
+                    if (hrvRecords.isNotEmpty()) {
+                        hrvRmssd = hrvRecords.map { it.heartRateVariabilityMillis }.average()
+                        contributingSources.add(hrvRecords.last().metadata.dataOrigin.packageName)
                     }
-                    totalRecords += hrvResponse.records.size
+                    totalRecords += hrvRecords.size
                 } catch (_: Exception) {}
             }
 
             // 8. Respiratory Rate
             if (granted.contains(HealthPermission.getReadPermission(RespiratoryRateRecord::class))) {
                 try {
-                    val respResponse = client.readRecords(
-                        ReadRecordsRequest(
-                            recordType = RespiratoryRateRecord::class,
-                            timeRangeFilter = timeFilter
-                        )
-                    )
-                    if (respResponse.records.isNotEmpty()) {
-                        respiratoryRate = respResponse.records.map { it.rate }.average()
-                        contributingSources.add(respResponse.records.last().metadata.dataOrigin.packageName)
+                    val respRecords = readAllRecords(client, RespiratoryRateRecord::class, timeFilter)
+                    if (respRecords.isNotEmpty()) {
+                        respiratoryRate = respRecords.map { it.rate }.average()
+                        contributingSources.add(respRecords.last().metadata.dataOrigin.packageName)
                     }
-                    totalRecords += respResponse.records.size
+                    totalRecords += respRecords.size
                 } catch (_: Exception) {}
             }
 
             // 9. Oxygen Saturation (SpO2)
             if (granted.contains(HealthPermission.getReadPermission(OxygenSaturationRecord::class))) {
                 try {
-                    val oxyResponse = client.readRecords(
-                        ReadRecordsRequest(
-                            recordType = OxygenSaturationRecord::class,
-                            timeRangeFilter = timeFilter
-                        )
-                    )
-                    if (oxyResponse.records.isNotEmpty()) {
-                        oxygenSaturation = oxyResponse.records.map { it.percentage.value }.average()
-                        contributingSources.add(oxyResponse.records.last().metadata.dataOrigin.packageName)
+                    val oxyRecords = readAllRecords(client, OxygenSaturationRecord::class, timeFilter)
+                    if (oxyRecords.isNotEmpty()) {
+                        oxygenSaturation = oxyRecords.map { it.percentage.value }.average()
+                        contributingSources.add(oxyRecords.last().metadata.dataOrigin.packageName)
                     }
-                    totalRecords += oxyResponse.records.size
+                    totalRecords += oxyRecords.size
                 } catch (_: Exception) {}
             }
 
             // 10. Hydration
             if (granted.contains(HealthPermission.getReadPermission(HydrationRecord::class))) {
                 try {
-                    val hydroResponse = client.readRecords(
-                        ReadRecordsRequest(
-                            recordType = HydrationRecord::class,
-                            timeRangeFilter = timeFilter
-                        )
-                    )
-                    hydrationVolumeMl = hydroResponse.records.sumOf { it.volume.inMilliliters.toInt() }
-                    totalRecords += hydroResponse.records.size
+                    val hydroRecords = readAllRecords(client, HydrationRecord::class, timeFilter)
+                    hydrationVolumeMl = hydroRecords.sumOf { it.volume.inMilliliters.toInt() }
+                    totalRecords += hydroRecords.size
                 } catch (_: Exception) {}
             }
 
             // 11. Exercise Sessions
             if (granted.contains(HealthPermission.getReadPermission(ExerciseSessionRecord::class))) {
                 try {
-                    val exerciseResponse = client.readRecords(
-                        ReadRecordsRequest(
-                            recordType = ExerciseSessionRecord::class,
-                            timeRangeFilter = timeFilter
-                        )
-                    )
-                    exerciseCount = exerciseResponse.records.size
-                    exerciseMinutesTotal = exerciseResponse.records.sumOf {
+                    val exerciseRecords = readAllRecords(client, ExerciseSessionRecord::class, timeFilter)
+                    exerciseCount = exerciseRecords.size
+                    exerciseMinutesTotal = exerciseRecords.sumOf {
                         java.time.Duration.between(it.startTime, it.endTime).toMinutes().toInt()
                     }
-                    totalRecords += exerciseResponse.records.size
+                    totalRecords += exerciseRecords.size
                 } catch (_: Exception) {}
             }
 
@@ -556,6 +500,11 @@ class HealthConnectManager(
         val lastSyncNow = System.currentTimeMillis()
         repository.saveSetting("health_connect_last_sync", lastSyncNow.toString())
 
+        // Initialize or update changes token after sync
+        try {
+            initChangesToken(client)
+        } catch (_: Exception) {}
+
         _uiState.value = _uiState.value.copy(
             isSyncing = false,
             lastSyncTime = lastSyncNow,
@@ -571,6 +520,116 @@ class HealthConnectManager(
             contributingSources = contributingSources,
             partialWarnings = partialWarnings
         )
+    }
+
+    suspend fun <T : Record> readAllRecords(
+        client: HealthConnectClient,
+        recordType: KClass<T>,
+        timeRangeFilter: TimeRangeFilter,
+        pageSize: Int = 1000
+    ): List<T> {
+        val allRecords = mutableListOf<T>()
+        var pageToken: String? = null
+        do {
+            val request = ReadRecordsRequest(
+                recordType = recordType,
+                timeRangeFilter = timeRangeFilter,
+                pageSize = pageSize,
+                pageToken = pageToken
+            )
+            val response = client.readRecords(request)
+            allRecords.addAll(response.records)
+            pageToken = response.pageToken
+        } while (pageToken != null)
+        return allRecords
+    }
+
+    suspend fun initChangesToken(client: HealthConnectClient): String? {
+        return try {
+            val recordTypes = PERMISSION_RECORDS_MAP.values.flatten().toSet()
+            val token = client.getChangesToken(
+                ChangesTokenRequest(
+                    recordTypes = recordTypes
+                )
+            )
+            repository.saveSetting(SETTING_KEY_CHANGES_TOKEN, token)
+            token
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    suspend fun getOrInitChangesToken(client: HealthConnectClient): String {
+        val savedToken = repository.getSetting(SETTING_KEY_CHANGES_TOKEN).first()?.value
+        if (!savedToken.isNullOrEmpty()) {
+            return savedToken
+        }
+        return initChangesToken(client) ?: ""
+    }
+
+    suspend fun syncIncremental(
+        startDateFallback: LocalDate = LocalDate.now().minusDays(1),
+        endDateFallback: LocalDate = LocalDate.now(),
+        client: HealthConnectClient? = healthConnectClient
+    ): SyncResult = withContext(Dispatchers.IO) {
+        if (client == null) {
+            return@withContext SyncResult(
+                isSuccess = false,
+                errorMessage = "Health Connect client is not available."
+            )
+        }
+
+        val token = getOrInitChangesToken(client)
+        if (token.isEmpty()) {
+            return@withContext syncDateRange(startDateFallback, endDateFallback, client)
+        }
+
+        try {
+            var currentToken: String = token
+            var tokenExpired = false
+            var totalChangesCount = 0
+
+            do {
+                val response = client.getChanges(currentToken)
+                if (response.changesTokenExpired) {
+                    tokenExpired = true
+                    break
+                }
+                totalChangesCount += response.changes.size
+                currentToken = response.nextChangesToken
+            } while (response.hasMore)
+
+            if (tokenExpired) {
+                // If token expired, get fresh token and fallback to date range sync
+                initChangesToken(client)
+                return@withContext syncDateRange(startDateFallback, endDateFallback, client)
+            }
+
+            repository.saveSetting(SETTING_KEY_CHANGES_TOKEN, currentToken)
+            val lastSyncNow = System.currentTimeMillis()
+            repository.saveSetting("health_connect_last_sync", lastSyncNow.toString())
+
+            // If there were changes detected, refresh the date range to ensure Room entities reflect latest state
+            if (totalChangesCount > 0) {
+                syncDateRange(startDateFallback, endDateFallback, client)
+            }
+
+            _uiState.value = _uiState.value.copy(
+                isSyncing = false,
+                lastSyncTime = lastSyncNow,
+                syncErrorMessage = null
+            )
+
+            SyncResult(
+                isSuccess = true,
+                syncedDatesCount = if (totalChangesCount > 0) 1 else 0,
+                recordsReadCount = totalChangesCount
+            )
+        } catch (e: Exception) {
+            // Fall back to historical date range sync on any unexpected changes API failure
+            initChangesToken(client)
+            syncDateRange(startDateFallback, endDateFallback, client)
+        }
     }
 
     fun openHealthConnectPlayStore(context: Context) {
