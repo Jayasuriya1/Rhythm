@@ -1,0 +1,1577 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 11,
+    "identityHash": "013ec465274e8c7b7824892d0989d2e5",
+    "entities": [
+      {
+        "tableName": "routine_anchors",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `name` TEXT NOT NULL, `description` TEXT NOT NULL, `defaultTargetMinutes` INTEGER NOT NULL, `sortOrder` INTEGER NOT NULL, `isEnabled` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "description",
+            "columnName": "description",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "defaultTargetMinutes",
+            "columnName": "defaultTargetMinutes",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sortOrder",
+            "columnName": "sortOrder",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "isEnabled",
+            "columnName": "isEnabled",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        }
+      },
+      {
+        "tableName": "routine_entries",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `date` TEXT NOT NULL, `anchorId` TEXT NOT NULL, `targetTimeMinutes` INTEGER NOT NULL, `actualTimeMinutes` INTEGER, `status` TEXT NOT NULL, `notes` TEXT, `disruptionNote` TEXT, `updatedAt` INTEGER NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "date",
+            "columnName": "date",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "anchorId",
+            "columnName": "anchorId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "targetTimeMinutes",
+            "columnName": "targetTimeMinutes",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "actualTimeMinutes",
+            "columnName": "actualTimeMinutes",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "status",
+            "columnName": "status",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "notes",
+            "columnName": "notes",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "disruptionNote",
+            "columnName": "disruptionNote",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "updatedAt",
+            "columnName": "updatedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_routine_entries_date_anchorId",
+            "unique": true,
+            "columnNames": [
+              "date",
+              "anchorId"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_routine_entries_date_anchorId` ON `${TABLE_NAME}` (`date`, `anchorId`)"
+          }
+        ]
+      },
+      {
+        "tableName": "sleep_entries",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `date` TEXT NOT NULL, `bedtimeMinutes` INTEGER NOT NULL, `wakeTimeMinutes` INTEGER NOT NULL, `durationMinutes` INTEGER NOT NULL, `qualityRating` INTEGER NOT NULL, `notes` TEXT, `updatedAt` INTEGER NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "date",
+            "columnName": "date",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "bedtimeMinutes",
+            "columnName": "bedtimeMinutes",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "wakeTimeMinutes",
+            "columnName": "wakeTimeMinutes",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "durationMinutes",
+            "columnName": "durationMinutes",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "qualityRating",
+            "columnName": "qualityRating",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "notes",
+            "columnName": "notes",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "updatedAt",
+            "columnName": "updatedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_sleep_entries_date",
+            "unique": true,
+            "columnNames": [
+              "date"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_sleep_entries_date` ON `${TABLE_NAME}` (`date`)"
+          }
+        ]
+      },
+      {
+        "tableName": "health_checkins",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `date` TEXT NOT NULL, `mood` INTEGER, `energy` INTEGER, `stress` INTEGER, `irritability` INTEGER, `activationEnergy` INTEGER, `symptomsNotes` TEXT, `updatedAt` INTEGER NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "date",
+            "columnName": "date",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "mood",
+            "columnName": "mood",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "energy",
+            "columnName": "energy",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "stress",
+            "columnName": "stress",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "irritability",
+            "columnName": "irritability",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "activationEnergy",
+            "columnName": "activationEnergy",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "symptomsNotes",
+            "columnName": "symptomsNotes",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "updatedAt",
+            "columnName": "updatedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_health_checkins_date",
+            "unique": true,
+            "columnNames": [
+              "date"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_health_checkins_date` ON `${TABLE_NAME}` (`date`)"
+          }
+        ]
+      },
+      {
+        "tableName": "water_entries",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `date` TEXT NOT NULL, `volumeMl` INTEGER NOT NULL, `timestamp` INTEGER NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "date",
+            "columnName": "date",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "volumeMl",
+            "columnName": "volumeMl",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "timestamp",
+            "columnName": "timestamp",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        }
+      },
+      {
+        "tableName": "medications",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `name` TEXT NOT NULL, `dosage` TEXT NOT NULL, `unit` TEXT NOT NULL, `instructions` TEXT NOT NULL, `scheduledTimeMinutes` INTEGER NOT NULL, `reminderEnabled` INTEGER NOT NULL, `isActive` INTEGER NOT NULL, `notes` TEXT, `dosageForm` TEXT, `scheduledTimesJson` TEXT NOT NULL, `repeatDays` TEXT NOT NULL, `startDate` TEXT NOT NULL, `endDate` TEXT, `isArchived` INTEGER NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "dosage",
+            "columnName": "dosage",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "unit",
+            "columnName": "unit",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "instructions",
+            "columnName": "instructions",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "scheduledTimeMinutes",
+            "columnName": "scheduledTimeMinutes",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "reminderEnabled",
+            "columnName": "reminderEnabled",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "isActive",
+            "columnName": "isActive",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "notes",
+            "columnName": "notes",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "dosageForm",
+            "columnName": "dosageForm",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "scheduledTimesJson",
+            "columnName": "scheduledTimesJson",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "repeatDays",
+            "columnName": "repeatDays",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "startDate",
+            "columnName": "startDate",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "endDate",
+            "columnName": "endDate",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "isArchived",
+            "columnName": "isArchived",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        }
+      },
+      {
+        "tableName": "medication_intakes",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `date` TEXT NOT NULL, `medicationId` INTEGER NOT NULL, `scheduledTimeMinutes` INTEGER NOT NULL, `actualActionTime` INTEGER, `status` TEXT NOT NULL, `notes` TEXT, `medicationName` TEXT NOT NULL, `dosageSnapshot` TEXT NOT NULL, `isCorrected` INTEGER NOT NULL, `correctedAt` INTEGER)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "date",
+            "columnName": "date",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "medicationId",
+            "columnName": "medicationId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "scheduledTimeMinutes",
+            "columnName": "scheduledTimeMinutes",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "actualActionTime",
+            "columnName": "actualActionTime",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "status",
+            "columnName": "status",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "notes",
+            "columnName": "notes",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "medicationName",
+            "columnName": "medicationName",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "dosageSnapshot",
+            "columnName": "dosageSnapshot",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "isCorrected",
+            "columnName": "isCorrected",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "correctedAt",
+            "columnName": "correctedAt",
+            "affinity": "INTEGER"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_medication_intakes_date_medicationId_scheduledTimeMinutes",
+            "unique": true,
+            "columnNames": [
+              "date",
+              "medicationId",
+              "scheduledTimeMinutes"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_medication_intakes_date_medicationId_scheduledTimeMinutes` ON `${TABLE_NAME}` (`date`, `medicationId`, `scheduledTimeMinutes`)"
+          }
+        ]
+      },
+      {
+        "tableName": "study_categories",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `name` TEXT NOT NULL, `description` TEXT, `colorHex` TEXT NOT NULL, `iconName` TEXT NOT NULL, `sortOrder` INTEGER NOT NULL, `isArchived` INTEGER NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "description",
+            "columnName": "description",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "colorHex",
+            "columnName": "colorHex",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "iconName",
+            "columnName": "iconName",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sortOrder",
+            "columnName": "sortOrder",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "isArchived",
+            "columnName": "isArchived",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        }
+      },
+      {
+        "tableName": "study_tasks",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `title` TEXT NOT NULL, `category` TEXT NOT NULL, `status` TEXT NOT NULL, `isDailyPriority` INTEGER NOT NULL, `estimatedMinutes` INTEGER NOT NULL, `dateCreated` TEXT NOT NULL, `dateCompleted` TEXT, `nextSmallStep` TEXT, `sortOrder` INTEGER NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "title",
+            "columnName": "title",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "category",
+            "columnName": "category",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "status",
+            "columnName": "status",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "isDailyPriority",
+            "columnName": "isDailyPriority",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "estimatedMinutes",
+            "columnName": "estimatedMinutes",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "dateCreated",
+            "columnName": "dateCreated",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "dateCompleted",
+            "columnName": "dateCompleted",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "nextSmallStep",
+            "columnName": "nextSmallStep",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "sortOrder",
+            "columnName": "sortOrder",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        }
+      },
+      {
+        "tableName": "study_sessions",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `taskId` INTEGER, `taskTitle` TEXT NOT NULL, `category` TEXT NOT NULL, `durationMinutes` INTEGER NOT NULL, `sessionType` TEXT NOT NULL, `date` TEXT NOT NULL, `timestamp` INTEGER NOT NULL, `startTimeMillis` INTEGER, `endTimeMillis` INTEGER, `completionStatus` TEXT NOT NULL, `learnedNotes` TEXT)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "taskId",
+            "columnName": "taskId",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "taskTitle",
+            "columnName": "taskTitle",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "category",
+            "columnName": "category",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "durationMinutes",
+            "columnName": "durationMinutes",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sessionType",
+            "columnName": "sessionType",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "date",
+            "columnName": "date",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "timestamp",
+            "columnName": "timestamp",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "startTimeMillis",
+            "columnName": "startTimeMillis",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "endTimeMillis",
+            "columnName": "endTimeMillis",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "completionStatus",
+            "columnName": "completionStatus",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "learnedNotes",
+            "columnName": "learnedNotes",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        }
+      },
+      {
+        "tableName": "active_timer_draft",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER NOT NULL, `taskId` INTEGER, `taskTitle` TEXT NOT NULL, `category` TEXT NOT NULL, `mode` TEXT NOT NULL, `targetSeconds` INTEGER NOT NULL, `startWallClockMillis` INTEGER NOT NULL, `accumulatedElapsedSeconds` INTEGER NOT NULL, `isRunning` INTEGER NOT NULL, `isPaused` INTEGER NOT NULL, `isCompleted` INTEGER NOT NULL, `lastUpdatedMillis` INTEGER NOT NULL, `currentPhase` TEXT NOT NULL, `phaseElapsedSeconds` INTEGER NOT NULL, `phaseTargetSeconds` INTEGER NOT NULL, `protocolJson` TEXT, `passedBreakPointIds` TEXT NOT NULL, `activeBreakExtensionSeconds` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "taskId",
+            "columnName": "taskId",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "taskTitle",
+            "columnName": "taskTitle",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "category",
+            "columnName": "category",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "mode",
+            "columnName": "mode",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "targetSeconds",
+            "columnName": "targetSeconds",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "startWallClockMillis",
+            "columnName": "startWallClockMillis",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "accumulatedElapsedSeconds",
+            "columnName": "accumulatedElapsedSeconds",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "isRunning",
+            "columnName": "isRunning",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "isPaused",
+            "columnName": "isPaused",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "isCompleted",
+            "columnName": "isCompleted",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lastUpdatedMillis",
+            "columnName": "lastUpdatedMillis",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "currentPhase",
+            "columnName": "currentPhase",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "phaseElapsedSeconds",
+            "columnName": "phaseElapsedSeconds",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "phaseTargetSeconds",
+            "columnName": "phaseTargetSeconds",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "protocolJson",
+            "columnName": "protocolJson",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "passedBreakPointIds",
+            "columnName": "passedBreakPointIds",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "activeBreakExtensionSeconds",
+            "columnName": "activeBreakExtensionSeconds",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        }
+      },
+      {
+        "tableName": "brain_dump_notes",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `title` TEXT, `content` TEXT NOT NULL, `tag` TEXT, `isPinned` INTEGER NOT NULL, `isArchived` INTEGER NOT NULL, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "title",
+            "columnName": "title",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "content",
+            "columnName": "content",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "tag",
+            "columnName": "tag",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "isPinned",
+            "columnName": "isPinned",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "isArchived",
+            "columnName": "isArchived",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "createdAt",
+            "columnName": "createdAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "updatedAt",
+            "columnName": "updatedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        }
+      },
+      {
+        "tableName": "app_settings",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`key` TEXT NOT NULL, `value` TEXT NOT NULL, PRIMARY KEY(`key`))",
+        "fields": [
+          {
+            "fieldPath": "key",
+            "columnName": "key",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "value",
+            "columnName": "value",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "key"
+          ]
+        }
+      },
+      {
+        "tableName": "reminders",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `title` TEXT NOT NULL, `category` TEXT NOT NULL, `timeMinutes` INTEGER NOT NULL, `repeatDays` TEXT NOT NULL, `isEnabled` INTEGER NOT NULL, `soundEnabled` INTEGER NOT NULL, `vibrateEnabled` INTEGER NOT NULL, `isUrgent` INTEGER NOT NULL, `referenceId` TEXT, `customMessage` TEXT, `voiceAnnouncementEnabled` INTEGER NOT NULL, `spokenAnnouncementText` TEXT, `customAudioUri` TEXT, `customAudioTitle` TEXT, `customAudioCollectionJson` TEXT, `audioPlaybackMode` TEXT NOT NULL, `lastPlayedAudioUri` TEXT, `createdAt` INTEGER NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "title",
+            "columnName": "title",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "category",
+            "columnName": "category",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "timeMinutes",
+            "columnName": "timeMinutes",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "repeatDays",
+            "columnName": "repeatDays",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "isEnabled",
+            "columnName": "isEnabled",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "soundEnabled",
+            "columnName": "soundEnabled",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "vibrateEnabled",
+            "columnName": "vibrateEnabled",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "isUrgent",
+            "columnName": "isUrgent",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "referenceId",
+            "columnName": "referenceId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "customMessage",
+            "columnName": "customMessage",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "voiceAnnouncementEnabled",
+            "columnName": "voiceAnnouncementEnabled",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "spokenAnnouncementText",
+            "columnName": "spokenAnnouncementText",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "customAudioUri",
+            "columnName": "customAudioUri",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "customAudioTitle",
+            "columnName": "customAudioTitle",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "customAudioCollectionJson",
+            "columnName": "customAudioCollectionJson",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "audioPlaybackMode",
+            "columnName": "audioPlaybackMode",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lastPlayedAudioUri",
+            "columnName": "lastPlayedAudioUri",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "createdAt",
+            "columnName": "createdAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        }
+      },
+      {
+        "tableName": "meditation_sessions",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `techniqueId` TEXT NOT NULL, `title` TEXT NOT NULL, `durationMinutes` INTEGER NOT NULL, `completedAt` INTEGER NOT NULL, `reflectionNotes` TEXT, `status` TEXT NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "techniqueId",
+            "columnName": "techniqueId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "title",
+            "columnName": "title",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "durationMinutes",
+            "columnName": "durationMinutes",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "completedAt",
+            "columnName": "completedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "reflectionNotes",
+            "columnName": "reflectionNotes",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "status",
+            "columnName": "status",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        }
+      },
+      {
+        "tableName": "custom_alarms",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `title` TEXT NOT NULL, `timeMinutes` INTEGER NOT NULL, `repeatDays` TEXT NOT NULL, `isEnabled` INTEGER NOT NULL, `vibrateEnabled` INTEGER NOT NULL, `customAudioUri` TEXT, `customAudioTitle` TEXT, `crescendoDurationSeconds` INTEGER NOT NULL, `isLooping` INTEGER NOT NULL, `wallpaperUri` TEXT, `wallpaperPresetColor` TEXT NOT NULL, `timeClockFont` TEXT NOT NULL, `missionType` TEXT NOT NULL, `targetBarcode` TEXT, `targetBarcodeLabel` TEXT, `targetBarcodeFormat` TEXT, `targetBarcodeLocation` TEXT, `registeredCodeId` INTEGER, `chainedBackupAlarmEnabled` INTEGER NOT NULL, `createdAt` INTEGER NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "title",
+            "columnName": "title",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "timeMinutes",
+            "columnName": "timeMinutes",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "repeatDays",
+            "columnName": "repeatDays",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "isEnabled",
+            "columnName": "isEnabled",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "vibrateEnabled",
+            "columnName": "vibrateEnabled",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "customAudioUri",
+            "columnName": "customAudioUri",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "customAudioTitle",
+            "columnName": "customAudioTitle",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "crescendoDurationSeconds",
+            "columnName": "crescendoDurationSeconds",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "isLooping",
+            "columnName": "isLooping",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "wallpaperUri",
+            "columnName": "wallpaperUri",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "wallpaperPresetColor",
+            "columnName": "wallpaperPresetColor",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "timeClockFont",
+            "columnName": "timeClockFont",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "missionType",
+            "columnName": "missionType",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "targetBarcode",
+            "columnName": "targetBarcode",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "targetBarcodeLabel",
+            "columnName": "targetBarcodeLabel",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "targetBarcodeFormat",
+            "columnName": "targetBarcodeFormat",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "targetBarcodeLocation",
+            "columnName": "targetBarcodeLocation",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "registeredCodeId",
+            "columnName": "registeredCodeId",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "chainedBackupAlarmEnabled",
+            "columnName": "chainedBackupAlarmEnabled",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "createdAt",
+            "columnName": "createdAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        }
+      },
+      {
+        "tableName": "registered_codes",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `codeValue` TEXT NOT NULL, `codeFormat` TEXT NOT NULL, `label` TEXT NOT NULL, `locationHint` TEXT, `isCustomGenerated` INTEGER NOT NULL, `designTemplate` TEXT NOT NULL, `designConfigJson` TEXT, `createdAt` INTEGER NOT NULL, `lastScannedAt` INTEGER)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "codeValue",
+            "columnName": "codeValue",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "codeFormat",
+            "columnName": "codeFormat",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "label",
+            "columnName": "label",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "locationHint",
+            "columnName": "locationHint",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "isCustomGenerated",
+            "columnName": "isCustomGenerated",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "designTemplate",
+            "columnName": "designTemplate",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "designConfigJson",
+            "columnName": "designConfigJson",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "createdAt",
+            "columnName": "createdAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lastScannedAt",
+            "columnName": "lastScannedAt",
+            "affinity": "INTEGER"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_registered_codes_codeValue",
+            "unique": false,
+            "columnNames": [
+              "codeValue"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_registered_codes_codeValue` ON `${TABLE_NAME}` (`codeValue`)"
+          }
+        ]
+      },
+      {
+        "tableName": "health_connect_daily_summaries",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`date` TEXT NOT NULL, `steps` INTEGER NOT NULL, `distanceMeters` REAL NOT NULL, `activeCaloriesKcal` REAL NOT NULL, `totalCaloriesKcal` REAL NOT NULL, `sleepDurationMinutes` INTEGER NOT NULL, `sleepStartTimeEpoch` INTEGER, `sleepEndTimeEpoch` INTEGER, `restingHeartRateBpm` REAL, `avgHeartRateBpm` REAL, `minHeartRateBpm` REAL, `maxHeartRateBpm` REAL, `hrvRmssdMs` REAL, `respiratoryRateRpm` REAL, `oxygenSaturationPercent` REAL, `waterMl` INTEGER NOT NULL, `exerciseMinutes` INTEGER NOT NULL, `exerciseSessionsCount` INTEGER NOT NULL, `primarySourceApp` TEXT, `sourcesListJson` TEXT NOT NULL, `lastSyncedAt` INTEGER NOT NULL, `hasSleepStages` INTEGER NOT NULL, PRIMARY KEY(`date`))",
+        "fields": [
+          {
+            "fieldPath": "date",
+            "columnName": "date",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "steps",
+            "columnName": "steps",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "distanceMeters",
+            "columnName": "distanceMeters",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "activeCaloriesKcal",
+            "columnName": "activeCaloriesKcal",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "totalCaloriesKcal",
+            "columnName": "totalCaloriesKcal",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sleepDurationMinutes",
+            "columnName": "sleepDurationMinutes",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sleepStartTimeEpoch",
+            "columnName": "sleepStartTimeEpoch",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "sleepEndTimeEpoch",
+            "columnName": "sleepEndTimeEpoch",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "restingHeartRateBpm",
+            "columnName": "restingHeartRateBpm",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "avgHeartRateBpm",
+            "columnName": "avgHeartRateBpm",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "minHeartRateBpm",
+            "columnName": "minHeartRateBpm",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "maxHeartRateBpm",
+            "columnName": "maxHeartRateBpm",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "hrvRmssdMs",
+            "columnName": "hrvRmssdMs",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "respiratoryRateRpm",
+            "columnName": "respiratoryRateRpm",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "oxygenSaturationPercent",
+            "columnName": "oxygenSaturationPercent",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "waterMl",
+            "columnName": "waterMl",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "exerciseMinutes",
+            "columnName": "exerciseMinutes",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "exerciseSessionsCount",
+            "columnName": "exerciseSessionsCount",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "primarySourceApp",
+            "columnName": "primarySourceApp",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "sourcesListJson",
+            "columnName": "sourcesListJson",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lastSyncedAt",
+            "columnName": "lastSyncedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "hasSleepStages",
+            "columnName": "hasSleepStages",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "date"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_health_connect_daily_summaries_date",
+            "unique": true,
+            "columnNames": [
+              "date"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_health_connect_daily_summaries_date` ON `${TABLE_NAME}` (`date`)"
+          }
+        ]
+      },
+      {
+        "tableName": "health_connect_sleep_stages",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `date` TEXT NOT NULL, `sessionStartTimeEpoch` INTEGER NOT NULL, `stageStartTimeEpoch` INTEGER NOT NULL, `stageEndTimeEpoch` INTEGER NOT NULL, `stageType` TEXT NOT NULL, `durationMinutes` INTEGER NOT NULL, `sourceApp` TEXT)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "date",
+            "columnName": "date",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sessionStartTimeEpoch",
+            "columnName": "sessionStartTimeEpoch",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "stageStartTimeEpoch",
+            "columnName": "stageStartTimeEpoch",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "stageEndTimeEpoch",
+            "columnName": "stageEndTimeEpoch",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "stageType",
+            "columnName": "stageType",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "durationMinutes",
+            "columnName": "durationMinutes",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sourceApp",
+            "columnName": "sourceApp",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_health_connect_sleep_stages_date",
+            "unique": false,
+            "columnNames": [
+              "date"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_health_connect_sleep_stages_date` ON `${TABLE_NAME}` (`date`)"
+          },
+          {
+            "name": "index_health_connect_sleep_stages_stageStartTimeEpoch_stageEndTimeEpoch",
+            "unique": false,
+            "columnNames": [
+              "stageStartTimeEpoch",
+              "stageEndTimeEpoch"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_health_connect_sleep_stages_stageStartTimeEpoch_stageEndTimeEpoch` ON `${TABLE_NAME}` (`stageStartTimeEpoch`, `stageEndTimeEpoch`)"
+          }
+        ]
+      },
+      {
+        "tableName": "health_connect_heart_samples",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `date` TEXT NOT NULL, `timestampEpoch` INTEGER NOT NULL, `bpm` REAL NOT NULL, `sourceApp` TEXT, `sampleType` TEXT NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "date",
+            "columnName": "date",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "timestampEpoch",
+            "columnName": "timestampEpoch",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "bpm",
+            "columnName": "bpm",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sourceApp",
+            "columnName": "sourceApp",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "sampleType",
+            "columnName": "sampleType",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_health_connect_heart_samples_date",
+            "unique": false,
+            "columnNames": [
+              "date"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_health_connect_heart_samples_date` ON `${TABLE_NAME}` (`date`)"
+          },
+          {
+            "name": "index_health_connect_heart_samples_timestampEpoch",
+            "unique": false,
+            "columnNames": [
+              "timestampEpoch"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_health_connect_heart_samples_timestampEpoch` ON `${TABLE_NAME}` (`timestampEpoch`)"
+          }
+        ]
+      }
+    ],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '013ec465274e8c7b7824892d0989d2e5')"
+    ]
+  }
+}

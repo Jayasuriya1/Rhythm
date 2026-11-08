@@ -67,7 +67,7 @@ import com.example.data.entity.HealthConnectSleepStageEntity
         HealthConnectHeartSampleEntity::class
     ],
     version = 11,
-    exportSchema = false
+    exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {
 
