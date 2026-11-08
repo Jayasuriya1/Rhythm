@@ -53,106 +53,28 @@ enum class FocusAestheticTheme(
     val backgroundBottom: Color,
     val cardBackground: Color
 ) {
-    MINIMAL_OLED(
-        id = "minimal_oled",
-        displayName = "Minimal OLED Black",
-        subtitle = "Zero-distraction black with a soft mint focus accent",
-        primaryAccent = Color(0xFF9ADCC6),
-        secondaryAccent = Color(0xFF70B9A4),
-        backgroundTop = Color(0xFF000000),
-        backgroundBottom = Color(0xFF000000),
-        cardBackground = Color(0xFF0A1110)
-    ),
-    MISTY_FOREST(
-        id = "misty_forest",
-        displayName = "Misty Forest",
-        subtitle = "Deep teal-green canopy with soft mint mist and quiet stillness",
-        primaryAccent = Color(0xFF91D8C2),
-        secondaryAccent = Color(0xFF5B9D8B),
-        backgroundTop = Color(0xFF0A1917),
-        backgroundBottom = Color(0xFF030A09),
-        cardBackground = Color(0xFF10211D)
-    ),
-    RAINY_WINDOW(
-        id = "rainy_window",
-        displayName = "Rainy Window",
-        subtitle = "Gentle raindrops sliding down the glass pane in calm twilight indigo",
-        primaryAccent = Color(0xFF93C5FD),
-        secondaryAccent = Color(0xFF60A5FA),
-        backgroundTop = Color(0xFF0A1322),
-        backgroundBottom = Color(0xFF03060C),
-        cardBackground = Color(0xFF111E30)
-    ),
-    DARK_BAMBOO(
-        id = "dark_bamboo",
-        displayName = "Dark Bamboo Forest",
-        subtitle = "Tall bamboo stalks swaying gently in midnight emerald tranquility",
-        primaryAccent = Color(0xFF86EFAC),
-        secondaryAccent = Color(0xFF22C55E),
-        backgroundTop = Color(0xFF06140A),
-        backgroundBottom = Color(0xFF010603),
-        cardBackground = Color(0xFF0E2213)
-    ),
-    MOUNTAIN_MIST(
-        id = "mountain_mist",
-        displayName = "Mountain Mist",
-        subtitle = "Serene layered mountain ridges fading into high-altitude morning fog",
-        primaryAccent = Color(0xFFCBD5E1),
-        secondaryAccent = Color(0xFF94A3B8),
-        backgroundTop = Color(0xFF0E1626),
-        backgroundBottom = Color(0xFF04070F),
-        cardBackground = Color(0xFF1B2538)
-    ),
-    QUIET_OCEAN(
-        id = "quiet_ocean",
-        displayName = "Quiet Ocean",
-        subtitle = "Deep rhythmic ocean horizon with calming ambient swell & stillness",
-        primaryAccent = Color(0xFF38BDF8),
-        secondaryAccent = Color(0xFF0EA5E9),
-        backgroundTop = Color(0xFF041525),
-        backgroundBottom = Color(0xFF020811),
-        cardBackground = Color(0xFF092036)
-    ),
-    STARRY_NIGHT(
-        id = "starry_night",
-        displayName = "Starry Night",
-        subtitle = "Celestial violet nebula with soft distant stars & deep space clarity",
-        primaryAccent = Color(0xFFA78BFA),
-        secondaryAccent = Color(0xFF818CF8),
-        backgroundTop = Color(0xFF0D091F),
-        backgroundBottom = Color(0xFF04030A),
-        cardBackground = Color(0xFF181033)
-    ),
-    COZY_STUDY(
-        id = "cozy_study",
-        displayName = "Cozy Study Room",
-        subtitle = "Warm amber lamplight, mahogany bookshelves & undisturbed evening focus",
-        primaryAccent = Color(0xFFFBBF24),
-        secondaryAccent = Color(0xFFD97706),
-        backgroundTop = Color(0xFF1C1309),
-        backgroundBottom = Color(0xFF0A0703),
-        cardBackground = Color(0xFF28190B)
-    ),
-    GREEN_GARDEN(
-        id = "green_garden",
-        displayName = "Green Garden",
-        subtitle = "Sun-dappled moss, fresh botanical leaves & restorative natural energy",
-        primaryAccent = Color(0xFFA3E635),
-        secondaryAccent = Color(0xFF65A30D),
-        backgroundTop = Color(0xFF0E190B),
-        backgroundBottom = Color(0xFF040A03),
-        cardBackground = Color(0xFF172911)
-    ),
-    SOFT_SUNSET(
-        id = "soft_sunset",
-        displayName = "Soft Sunset",
-        subtitle = "Gentle terracotta twilight dusk & peaceful reflections after a full day",
-        primaryAccent = Color(0xFFFB923C),
-        secondaryAccent = Color(0xFFF43F5E),
-        backgroundTop = Color(0xFF1C0E12),
-        backgroundBottom = Color(0xFF090406),
-        cardBackground = Color(0xFF2B141B)
-    );
+    // Backdrops may vary visually, but controls and surfaces always use Rhythm's
+    // shared teal/mint identity. This prevents each backdrop from recolouring the UI.
+    MINIMAL_OLED("minimal_oled", "Minimal OLED Black", "Pure black with a calm mint accent",
+        Color(0xFF9ADCC6), Color(0xFF70B9A4), Color(0xFF000000), Color(0xFF000000), Color(0xFF0A1110)),
+    MISTY_FOREST("misty_forest", "Misty Forest", "Soft mist and quiet evergreen atmosphere",
+        Color(0xFF9ADCC6), Color(0xFF70B9A4), Color(0xFF102B2C), Color(0xFF030A09), Color(0xFF0A1110)),
+    RAINY_WINDOW("rainy_window", "Rainy Window", "Gentle rain-inspired twilight atmosphere",
+        Color(0xFF9ADCC6), Color(0xFF70B9A4), Color(0xFF102B2C), Color(0xFF030A09), Color(0xFF0A1110)),
+    DARK_BAMBOO("dark_bamboo", "Dark Bamboo Forest", "Quiet botanical shapes in deep teal",
+        Color(0xFF9ADCC6), Color(0xFF70B9A4), Color(0xFF102B2C), Color(0xFF030A09), Color(0xFF0A1110)),
+    MOUNTAIN_MIST("mountain_mist", "Mountain Mist", "Layered mountain silhouettes and soft mist",
+        Color(0xFF9ADCC6), Color(0xFF70B9A4), Color(0xFF102B2C), Color(0xFF030A09), Color(0xFF0A1110)),
+    QUIET_OCEAN("quiet_ocean", "Quiet Ocean", "A still horizon in deep teal",
+        Color(0xFF9ADCC6), Color(0xFF70B9A4), Color(0xFF102B2C), Color(0xFF030A09), Color(0xFF0A1110)),
+    STARRY_NIGHT("starry_night", "Starry Night", "A restrained night-sky ambience",
+        Color(0xFF9ADCC6), Color(0xFF70B9A4), Color(0xFF102B2C), Color(0xFF030A09), Color(0xFF0A1110)),
+    COZY_STUDY("cozy_study", "Cozy Study Room", "A warm, quiet study atmosphere",
+        Color(0xFF9ADCC6), Color(0xFF70B9A4), Color(0xFF102B2C), Color(0xFF030A09), Color(0xFF0A1110)),
+    GREEN_GARDEN("green_garden", "Green Garden", "Soft botanical shapes and restorative stillness",
+        Color(0xFF9ADCC6), Color(0xFF70B9A4), Color(0xFF102B2C), Color(0xFF030A09), Color(0xFF0A1110)),
+    SOFT_SUNSET("soft_sunset", "Soft Sunset", "A muted twilight glow without saturated accents",
+        Color(0xFF9ADCC6), Color(0xFF70B9A4), Color(0xFF102B2C), Color(0xFF030A09), Color(0xFF0A1110));
 
     companion object {
         // Backward-compatibility aliases for existing calls
@@ -178,7 +100,6 @@ enum class FocusAestheticTheme(
         }
     }
 }
-
 /**
  * Unified Focus Background Layer supporting:
  * 1. Pure OLED Black
