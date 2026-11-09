@@ -68,6 +68,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -534,7 +536,10 @@ fun AlarmCard(
 
                 Switch(
                     checked = alarm.isEnabled,
-                    onCheckedChange = onToggleEnabled
+                    onCheckedChange = onToggleEnabled,
+                    modifier = Modifier.semantics {
+                        contentDescription = "Toggle ${alarm.title} alarm"
+                    }
                 )
             }
 
@@ -651,7 +656,7 @@ fun AlarmCard(
                     IconButton(onClick = onTest) {
                         Icon(
                             imageVector = Icons.Default.PlayArrow,
-                            contentDescription = "Test Alarm",
+                            contentDescription = "Test ${alarm.title} alarm",
                             tint = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(20.dp)
                         )
@@ -659,14 +664,14 @@ fun AlarmCard(
                     IconButton(onClick = onEdit) {
                         Icon(
                             imageVector = Icons.Default.Edit,
-                            contentDescription = "Edit Alarm",
+                            contentDescription = "Edit ${alarm.title} alarm",
                             modifier = Modifier.size(20.dp)
                         )
                     }
                     IconButton(onClick = onDelete) {
                         Icon(
                             imageVector = Icons.Default.Delete,
-                            contentDescription = "Delete Alarm",
+                            contentDescription = "Delete ${alarm.title} alarm",
                             tint = MaterialTheme.colorScheme.error,
                             modifier = Modifier.size(20.dp)
                         )

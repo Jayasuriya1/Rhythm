@@ -20,9 +20,15 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -552,7 +558,10 @@ fun MeditationScreen(
                         )
                         Switch(
                             checked = showBreathingAnimation,
-                            onCheckedChange = { showBreathingAnimation = it }
+                            onCheckedChange = { showBreathingAnimation = it },
+                            modifier = Modifier.semantics {
+                                contentDescription = "Toggle visual breathing rhythm guide"
+                            }
                         )
                     }
                 }
@@ -787,7 +796,8 @@ fun MeditationScreen(
                                 viewModel.setMeditationBreathingPacing(inhaleSeconds, holdInhaleSeconds, exhaleSeconds, holdExhaleSeconds)
                             },
                             valueRange = 2f..10f,
-                            steps = 7
+                            steps = 7,
+                            modifier = Modifier.semantics { contentDescription = "Inhale duration: $inhaleSeconds seconds" }
                         )
 
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
@@ -801,7 +811,8 @@ fun MeditationScreen(
                                 viewModel.setMeditationBreathingPacing(inhaleSeconds, holdInhaleSeconds, exhaleSeconds, holdExhaleSeconds)
                             },
                             valueRange = 0f..10f,
-                            steps = 9
+                            steps = 9,
+                            modifier = Modifier.semantics { contentDescription = "Hold after inhale duration: $holdInhaleSeconds seconds" }
                         )
 
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
@@ -815,7 +826,8 @@ fun MeditationScreen(
                                 viewModel.setMeditationBreathingPacing(inhaleSeconds, holdInhaleSeconds, exhaleSeconds, holdExhaleSeconds)
                             },
                             valueRange = 2f..10f,
-                            steps = 7
+                            steps = 7,
+                            modifier = Modifier.semantics { contentDescription = "Exhale duration: $exhaleSeconds seconds" }
                         )
 
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
@@ -829,7 +841,8 @@ fun MeditationScreen(
                                 viewModel.setMeditationBreathingPacing(inhaleSeconds, holdInhaleSeconds, exhaleSeconds, holdExhaleSeconds)
                             },
                             valueRange = 0f..10f,
-                            steps = 9
+                            steps = 9,
+                            modifier = Modifier.semantics { contentDescription = "Hold after exhale duration: $holdExhaleSeconds seconds" }
                         )
                     }
                 }
@@ -907,7 +920,14 @@ fun MeditationScreen(
                             containerColor = if (isSelected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
                             else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
                         ),
-                        modifier = Modifier.fillMaxWidth().testTag("technique_card_${tech.id}")
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("technique_card_${tech.id}")
+                            .semantics {
+                                role = Role.RadioButton
+                                selected = isSelected
+                                contentDescription = "${tech.title}, ${tech.defaultMinutes} minutes"
+                            }
                     ) {
                         Row(
                             modifier = Modifier.padding(14.dp),

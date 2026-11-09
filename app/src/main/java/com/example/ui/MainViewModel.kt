@@ -1882,43 +1882,35 @@ class MainViewModel(
         }
     }
 
-    fun setRemindersMasterEnabled(enabled: Boolean, context: Context? = null) {
-        viewModelScope.launch {
-            repository.saveSetting("reminders_master_enabled", enabled.toString())
-            if (context != null) {
-                if (enabled) {
-                    val activeReminders = repository.getEnabledRemindersSync()
-                    AlarmScheduler.scheduleAllEnabledAlarms(context, activeReminders)
-                } else {
-                    val allRemindersList = repository.getEnabledRemindersSync()
-                    for (rem in allRemindersList) {
-                        AlarmScheduler.cancelAlarm(context, rem.id)
-                    }
+    fun setRemindersMasterEnabled(enabled: Boolean, context: Context? = null): Job = viewModelScope.launch {
+        repository.saveSetting("reminders_master_enabled", enabled.toString())
+        if (context != null) {
+            if (enabled) {
+                val activeReminders = repository.getEnabledRemindersSync()
+                AlarmScheduler.scheduleAllEnabledAlarms(context, activeReminders)
+            } else {
+                val allRemindersList = repository.getEnabledRemindersSync()
+                for (rem in allRemindersList) {
+                    AlarmScheduler.cancelAlarm(context, rem.id)
                 }
             }
-            _userFeedbackMessage.value = if (enabled) "Reminders activated" else "All reminders paused"
         }
+        _userFeedbackMessage.value = if (enabled) "Reminders activated" else "All reminders paused"
     }
 
-    fun setQuietHoursEnabled(enabled: Boolean) {
-        viewModelScope.launch {
-            repository.saveSetting("quiet_hours_enabled", enabled.toString())
-            _userFeedbackMessage.value = if (enabled) "Quiet hours active" else "Quiet hours turned off"
-        }
+    fun setQuietHoursEnabled(enabled: Boolean): Job = viewModelScope.launch {
+        repository.saveSetting("quiet_hours_enabled", enabled.toString())
+        _userFeedbackMessage.value = if (enabled) "Quiet hours active" else "Quiet hours turned off"
     }
 
-    fun setQuietHoursTime(startMinutes: Int, endMinutes: Int) {
-        viewModelScope.launch {
-            repository.saveSetting("quiet_hours_start_minutes", startMinutes.toString())
-            repository.saveSetting("quiet_hours_end_minutes", endMinutes.toString())
-            _userFeedbackMessage.value = "Quiet hours schedule updated"
-        }
+    fun setQuietHoursTime(startMinutes: Int, endMinutes: Int): Job = viewModelScope.launch {
+        repository.saveSetting("quiet_hours_start_minutes", startMinutes.toString())
+        repository.saveSetting("quiet_hours_end_minutes", endMinutes.toString())
+        _userFeedbackMessage.value = "Quiet hours schedule updated"
     }
 
-    fun setQuietHoursUrgentBypass(bypass: Boolean) {
-        viewModelScope.launch {
-            repository.saveSetting("quiet_hours_urgent_bypass", bypass.toString())
-        }
+    fun setQuietHoursUrgentBypass(bypass: Boolean): Job = viewModelScope.launch {
+        repository.saveSetting("quiet_hours_urgent_bypass", bypass.toString())
     }
 
     fun syncFromRoutines(context: Context? = null) {

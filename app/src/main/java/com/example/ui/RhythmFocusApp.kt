@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.ui.unit.sp
 import androidx.compose.material.icons.Icons
@@ -225,12 +226,24 @@ fun RhythmFocusApp(viewModel: MainViewModel) {
                     snackbarHost = { SnackbarHost(snackbarHostState) },
                     contentWindowInsets = WindowInsets.safeDrawing
                 ) { innerPadding ->
-                    Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
-                        AppScreenContent(
-                            destination = currentDestination,
-                            viewModel = viewModel,
-                            isExpandedScreen = true
-                        )
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(innerPadding),
+                        contentAlignment = androidx.compose.ui.Alignment.TopCenter
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .widthIn(max = 840.dp),
+                            contentAlignment = androidx.compose.ui.Alignment.TopCenter
+                        ) {
+                            AppScreenContent(
+                                destination = currentDestination,
+                                viewModel = viewModel,
+                                isExpandedScreen = true
+                            )
+                        }
                     }
                 }
             }

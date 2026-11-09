@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -17,6 +18,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
@@ -287,14 +290,17 @@ fun RoutineAnchorItemCard(
             // Action row
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 Button(
                     onClick = onDoneNow,
                     shape = RoundedCornerShape(10.dp),
                     modifier = Modifier
                         .weight(1f)
+                        .heightIn(min = 48.dp)
                         .testTag("anchor_done_now_${anchor.id}")
+                        .semantics { contentDescription = "Log ${anchor.name} now" }
                 ) {
                     Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp))
                     Spacer(modifier = Modifier.width(4.dp))
@@ -306,7 +312,9 @@ fun RoutineAnchorItemCard(
                     shape = RoundedCornerShape(10.dp),
                     modifier = Modifier
                         .weight(1f)
+                        .heightIn(min = 48.dp)
                         .testTag("anchor_custom_time_${anchor.id}")
+                        .semantics { contentDescription = "Log custom time for ${anchor.name}" }
                 ) {
                     Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(16.dp))
                     Spacer(modifier = Modifier.width(4.dp))
@@ -316,7 +324,10 @@ fun RoutineAnchorItemCard(
                 OutlinedButton(
                     onClick = onSkipClick,
                     shape = RoundedCornerShape(10.dp),
-                    modifier = Modifier.testTag("anchor_skip_${anchor.id}")
+                    modifier = Modifier
+                        .heightIn(min = 48.dp)
+                        .testTag("anchor_skip_${anchor.id}")
+                        .semantics { contentDescription = "Skip ${anchor.name}" }
                 ) {
                     Text("Skip")
                 }

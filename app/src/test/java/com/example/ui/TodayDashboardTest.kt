@@ -7,8 +7,15 @@ import com.example.data.database.AppDatabase
 import com.example.data.entity.MedicationEntity
 import com.example.data.repository.AppRepository
 import com.example.util.DateTimeUtils
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.test.setMain
+import org.robolectric.shadows.ShadowLooper
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
@@ -88,15 +95,24 @@ class TodayDashboardTest {
         assertEquals("COMPLETED", entry?.status)
     }
 
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
     @Test
-    fun addWater_increasesTotalDailyHydration() = runBlocking {
-        viewModel.addWater(250)
-        viewModel.addWater(500)
+    fun addWater_increasesTotalDailyHydration() = kotlinx.coroutines.test.runTest {
+        val testDispatcher = kotlinx.coroutines.test.StandardTestDispatcher(testScheduler)
+        kotlinx.coroutines.Dispatchers.setMain(testDispatcher)
+        try {
+            viewModel.addWater(250)
+            viewModel.addWater(500)
+            testScheduler.advanceUntilIdle()
+            org.robolectric.shadows.ShadowLooper.idleMainLooper()
 
-        val today = DateTimeUtils.todayDateString()
-        val entries = repository.getWaterEntriesForDate(today).first()
-        assertEquals(2, entries.size)
-        val totalMl = entries.sumOf { it.volumeMl }
-        assertEquals(750, totalMl)
+            val today = DateTimeUtils.todayDateString()
+            val entries = repository.getWaterEntriesForDate(today).first()
+            assertEquals(2, entries.size)
+            val totalMl = entries.sumOf { it.volumeMl }
+            assertEquals(750, totalMl)
+        } finally {
+            kotlinx.coroutines.Dispatchers.resetMain()
+        }
     }
 }
