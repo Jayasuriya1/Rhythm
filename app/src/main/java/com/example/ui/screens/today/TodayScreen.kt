@@ -22,6 +22,8 @@ import androidx.compose.material.icons.filled.Bedtime
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Lightbulb
 import androidx.compose.material.icons.filled.LocalDrink
 import androidx.compose.material.icons.filled.Medication
@@ -101,6 +103,7 @@ fun TodayScreen(
 
     var showQuickCaptureDialog by remember { mutableStateOf(false) }
     var showQuickActionsDialog by remember { mutableStateOf(false) }
+    var isDetailsExpanded by remember { mutableStateOf(false) }
 
     val totalWaterMl = waterEntries.sumOf { it.volumeMl }
     val completedRoutines = routineEntries.count { it.status == "COMPLETED" }
@@ -122,6 +125,19 @@ fun TodayScreen(
                 ) {
                     item {
                         TodayGreetingHeader(selectedDate = selectedDate)
+                    }
+                    item {
+                        DailyPulseCard(
+                            sleepEntry = sleepEntry,
+                            healthCheckin = healthCheckin,
+                            routineCompleted = completedRoutines,
+                            routineTotal = routineAnchors.size,
+                            waterTotalMl = totalWaterMl,
+                            onViewSleep = { viewModel.navigateTo(AppDestination.HEALTH) },
+                            onViewHealth = { viewModel.navigateTo(AppDestination.HEALTH) },
+                            onViewRoutine = { viewModel.navigateTo(AppDestination.ROUTINE) },
+                            onViewWater = { viewModel.navigateTo(AppDestination.HEALTH) }
+                        )
                     }
                     item {
                         NextEventCircularArcCard(
@@ -163,25 +179,8 @@ fun TodayScreen(
                         )
                     }
                     item {
-                        SleepSummaryCard(
-                            sleep = sleepEntry,
-                            onLogSleep = { viewModel.navigateTo(AppDestination.HEALTH) }
-                        )
-                    }
-                    item {
-                        MoodEnergySummaryCard(
-                            health = healthCheckin,
-                            onLogHealth = { viewModel.navigateTo(AppDestination.HEALTH) }
-                        )
-                    }
-                    item {
                         TodayMindfulnessCard(
                             onStartMeditation = { viewModel.navigateTo(AppDestination.MEDITATION) }
-                        )
-                    }
-                    item {
-                        TodayRemindersQuickCard(
-                            onOpenReminderCenter = { viewModel.navigateTo(AppDestination.REMINDERS) }
                         )
                     }
                     item { Spacer(modifier = Modifier.height(80.dp)) }
@@ -202,6 +201,17 @@ fun TodayScreen(
                                 viewModel.navigateTo(AppDestination.STUDY)
                             },
                             onViewTasks = { viewModel.navigateTo(AppDestination.STUDY) }
+                        )
+                    }
+                    item {
+                        TodayNextMedicationActionCard(
+                            date = selectedDate,
+                            medications = activeMedications,
+                            intakes = medicationIntakes,
+                            onRecordIntake = { med, timeMin, status ->
+                                viewModel.recordMedicationIntake(med, timeMin, status, null)
+                            },
+                            onManageMedications = { viewModel.navigateTo(AppDestination.HEALTH) }
                         )
                     }
                     item {
@@ -233,11 +243,16 @@ fun TodayScreen(
                             onManageMedications = { viewModel.navigateTo(AppDestination.HEALTH) }
                         )
                     }
+                    item {
+                        TodayRemindersQuickCard(
+                            onOpenReminderCenter = { viewModel.navigateTo(AppDestination.REMINDERS) }
+                        )
+                    }
                     item { Spacer(modifier = Modifier.height(80.dp)) }
                 }
             }
         } else {
-            // Phone / Compact Single Column
+            // Phone / Compact Single Column (Modern Four Daily Moments Architecture)
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
@@ -247,6 +262,19 @@ fun TodayScreen(
             ) {
                 item {
                     TodayGreetingHeader(selectedDate = selectedDate)
+                }
+                item {
+                    DailyPulseCard(
+                        sleepEntry = sleepEntry,
+                        healthCheckin = healthCheckin,
+                        routineCompleted = completedRoutines,
+                        routineTotal = routineAnchors.size,
+                        waterTotalMl = totalWaterMl,
+                        onViewSleep = { viewModel.navigateTo(AppDestination.HEALTH) },
+                        onViewHealth = { viewModel.navigateTo(AppDestination.HEALTH) },
+                        onViewRoutine = { viewModel.navigateTo(AppDestination.ROUTINE) },
+                        onViewWater = { viewModel.navigateTo(AppDestination.HEALTH) }
+                    )
                 }
                 item {
                     NextEventCircularArcCard(
@@ -263,6 +291,17 @@ fun TodayScreen(
                     )
                 }
                 item {
+                    TodayNextMedicationActionCard(
+                        date = selectedDate,
+                        medications = activeMedications,
+                        intakes = medicationIntakes,
+                        onRecordIntake = { med, timeMin, status ->
+                            viewModel.recordMedicationIntake(med, timeMin, status, null)
+                        },
+                        onManageMedications = { viewModel.navigateTo(AppDestination.HEALTH) }
+                    )
+                }
+                item {
                     DailyPriorityStudyCard(
                         task = dailyPriorityTask,
                         onStartFocus = { task ->
@@ -274,80 +313,112 @@ fun TodayScreen(
                     )
                 }
                 item {
-                    RoutineSummaryCard(
-                        completedCount = completedRoutines,
-                        totalCount = routineAnchors.size,
-                        anchors = routineAnchors,
-                        entries = routineEntries,
-                        onDoneNow = { anchor -> viewModel.markRoutineDoneNow(anchor) },
-                        onViewRoutine = { viewModel.navigateTo(AppDestination.ROUTINE) }
-                    )
+                    // Progressive Disclosure Header
+                    Surface(
+                        shape = RoundedCornerShape(16.dp),
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { isDetailsExpanded = !isDetailsExpanded }
+                            .testTag("toggle_details_button")
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 14.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = if (isDetailsExpanded) "Hide Full Telemetry & Tools" else "View All Daily Telemetry & Tools",
+                                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                            Icon(
+                                imageVector = if (isDetailsExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                                contentDescription = if (isDetailsExpanded) "Collapse details" else "Expand details",
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    }
                 }
-                item {
-                    TodayBrainDumpCard(
-                        notes = brainDumpNotes,
-                        onQuickCapture = { showQuickCaptureDialog = true },
-                        onViewAllThoughts = { viewModel.navigateTo(AppDestination.BRAIN_DUMP) }
-                    )
-                }
-                item {
-                    SleepSummaryCard(
-                        sleep = sleepEntry,
-                        onLogSleep = { viewModel.navigateTo(AppDestination.HEALTH) }
-                    )
-                }
-                item {
-                    MoodEnergySummaryCard(
-                        health = healthCheckin,
-                        onLogHealth = { viewModel.navigateTo(AppDestination.HEALTH) }
-                    )
-                }
-                item {
-                    WaterTrackingCard(
-                        totalMl = totalWaterMl,
-                        targetMl = 2000,
-                        onAddWater = { amount -> viewModel.addWater(amount) },
-                        onViewWater = { viewModel.navigateTo(AppDestination.HEALTH) }
-                    )
-                }
-                item {
-                    MedicationOverviewCard(
-                        date = selectedDate,
-                        medications = activeMedications,
-                        intakes = medicationIntakes,
-                        onRecordIntake = { med, timeMin, status ->
-                            viewModel.recordMedicationIntake(med, timeMin, status, null)
-                        },
-                        onCorrectIntake = { intake, newStatus ->
-                            viewModel.correctMedicationIntake(intake, newStatus, null)
-                        },
-                        onManageMedications = { viewModel.navigateTo(AppDestination.HEALTH) }
-                    )
-                }
-                item {
-                    WearableHealthConnectCard(
-                        healthSummary = healthSummary,
-                        isHealthConnectAuthorized = healthConnectState.grantedPermissions.isNotEmpty(),
-                        isSyncing = healthConnectState.isSyncing,
-                        lastSyncTimestamp = healthConnectState.lastSyncTime,
-                        onRefreshSync = {
-                            coroutineScope.launch {
-                                val today = java.time.LocalDate.now()
-                                viewModel.healthConnectManager.syncDateRange(today, today)
-                            }
-                        },
-                        onNavigateHealth = { viewModel.navigateTo(AppDestination.HEALTH_CONNECT) }
-                    )
-                }
-                item {
-                    TodayMindfulnessCard(
-                        onStartMeditation = { viewModel.navigateTo(AppDestination.MEDITATION) }
-                    )
-                }
-                item {
-                    TodayRemindersQuickCard(
-                        onOpenReminderCenter = { viewModel.navigateTo(AppDestination.REMINDERS) }
-                    )
+                if (isDetailsExpanded) {
+                    item {
+                        WearableHealthConnectCard(
+                            healthSummary = healthSummary,
+                            isHealthConnectAuthorized = healthConnectState.grantedPermissions.isNotEmpty(),
+                            isSyncing = healthConnectState.isSyncing,
+                            lastSyncTimestamp = healthConnectState.lastSyncTime,
+                            onRefreshSync = {
+                                coroutineScope.launch {
+                                    val today = java.time.LocalDate.now()
+                                    viewModel.healthConnectManager.syncDateRange(today, today)
+                                }
+                            },
+                            onNavigateHealth = { viewModel.navigateTo(AppDestination.HEALTH_CONNECT) }
+                        )
+                    }
+                    item {
+                        SleepSummaryCard(
+                            sleep = sleepEntry,
+                            onLogSleep = { viewModel.navigateTo(AppDestination.HEALTH) }
+                        )
+                    }
+                    item {
+                        MoodEnergySummaryCard(
+                            health = healthCheckin,
+                            onLogHealth = { viewModel.navigateTo(AppDestination.HEALTH) }
+                        )
+                    }
+                    item {
+                        RoutineSummaryCard(
+                            completedCount = completedRoutines,
+                            totalCount = routineAnchors.size,
+                            anchors = routineAnchors,
+                            entries = routineEntries,
+                            onDoneNow = { anchor -> viewModel.markRoutineDoneNow(anchor) },
+                            onViewRoutine = { viewModel.navigateTo(AppDestination.ROUTINE) }
+                        )
+                    }
+                    item {
+                        TodayBrainDumpCard(
+                            notes = brainDumpNotes,
+                            onQuickCapture = { showQuickCaptureDialog = true },
+                            onViewAllThoughts = { viewModel.navigateTo(AppDestination.BRAIN_DUMP) }
+                        )
+                    }
+                    item {
+                        WaterTrackingCard(
+                            totalMl = totalWaterMl,
+                            targetMl = 2000,
+                            onAddWater = { amount -> viewModel.addWater(amount) },
+                            onViewWater = { viewModel.navigateTo(AppDestination.HEALTH) }
+                        )
+                    }
+                    item {
+                        MedicationOverviewCard(
+                            date = selectedDate,
+                            medications = activeMedications,
+                            intakes = medicationIntakes,
+                            onRecordIntake = { med, timeMin, status ->
+                                viewModel.recordMedicationIntake(med, timeMin, status, null)
+                            },
+                            onCorrectIntake = { intake, newStatus ->
+                                viewModel.correctMedicationIntake(intake, newStatus, null)
+                            },
+                            onManageMedications = { viewModel.navigateTo(AppDestination.HEALTH) }
+                        )
+                    }
+                    item {
+                        TodayMindfulnessCard(
+                            onStartMeditation = { viewModel.navigateTo(AppDestination.MEDITATION) }
+                        )
+                    }
+                    item {
+                        TodayRemindersQuickCard(
+                            onOpenReminderCenter = { viewModel.navigateTo(AppDestination.REMINDERS) }
+                        )
+                    }
                 }
                 item { Spacer(modifier = Modifier.height(80.dp)) }
             }
@@ -449,6 +520,394 @@ fun TodayScreen(
                 showQuickCaptureDialog = false
             }
         )
+    }
+}
+
+@Composable
+fun DailyPulseCard(
+    sleepEntry: SleepEntryEntity?,
+    healthCheckin: HealthCheckinEntity?,
+    routineCompleted: Int,
+    routineTotal: Int,
+    waterTotalMl: Int,
+    onViewSleep: () -> Unit,
+    onViewHealth: () -> Unit,
+    onViewRoutine: () -> Unit,
+    onViewWater: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)
+        ),
+        modifier = modifier
+            .fillMaxWidth()
+            .testTag("today_daily_pulse_card")
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.SelfImprovement,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Text(
+                        text = "Daily Pulse",
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f)
+                ) {
+                    Text(
+                        text = "$routineCompleted / $routineTotal Anchors",
+                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(14.dp))
+
+            // 2x2 Grid of calm metrics
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                // Metric 1: Sleep
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = MaterialTheme.colorScheme.surface,
+                    modifier = Modifier
+                        .weight(1f)
+                        .clickable(onClick = onViewSleep)
+                        .testTag("pulse_sleep_tile")
+                ) {
+                    Column(modifier = Modifier.padding(12.dp)) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Bedtime,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Text(
+                                text = "Sleep",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = if (sleepEntry != null) {
+                                "${sleepEntry.durationMinutes / 60}h ${sleepEntry.durationMinutes % 60}m"
+                            } else "Log Sleep",
+                            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Text(
+                            text = if (sleepEntry != null) {
+                                "Quality: ${sleepEntry.qualityRating}/5"
+                            } else "Tap to record",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+
+                // Metric 2: Mood & Energy
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = MaterialTheme.colorScheme.surface,
+                    modifier = Modifier
+                        .weight(1f)
+                        .clickable(onClick = onViewHealth)
+                        .testTag("pulse_mood_tile")
+                ) {
+                    Column(modifier = Modifier.padding(12.dp)) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Spa,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.tertiary,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Text(
+                                text = "Wellness",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = if (healthCheckin?.energy != null) {
+                                "Energy: ${healthCheckin.energy}/5"
+                            } else "Check In",
+                            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Text(
+                            text = if (healthCheckin?.mood != null) {
+                                "Mood: ${healthCheckin.mood}/5"
+                            } else "Tap to record",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                // Metric 3: Routines
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = MaterialTheme.colorScheme.surface,
+                    modifier = Modifier
+                        .weight(1f)
+                        .clickable(onClick = onViewRoutine)
+                        .testTag("pulse_routine_tile")
+                ) {
+                    Column(modifier = Modifier.padding(12.dp)) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Schedule,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.secondary,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Text(
+                                text = "Routines",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "$routineCompleted / $routineTotal Done",
+                            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Text(
+                            text = "View schedule",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+
+                // Metric 4: Hydration
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = MaterialTheme.colorScheme.surface,
+                    modifier = Modifier
+                        .weight(1f)
+                        .clickable(onClick = onViewWater)
+                        .testTag("pulse_water_tile")
+                ) {
+                    Column(modifier = Modifier.padding(12.dp)) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.LocalDrink,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Text(
+                                text = "Water",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "$waterTotalMl ml",
+                            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Text(
+                            text = "Tap to view",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun TodayNextMedicationActionCard(
+    date: String,
+    medications: List<MedicationEntity>,
+    intakes: List<MedicationIntakeEntity>,
+    onRecordIntake: (MedicationEntity, Int, String) -> Unit,
+    onManageMedications: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val dayAbbr = DateTimeUtils.getDayOfWeekAbbreviation(date)
+    val applicableMeds = medications.filter { it.isEffectiveOnDate(date) && it.isScheduledForDayOfWeek(dayAbbr) }
+    if (applicableMeds.isEmpty()) return
+
+    val doseSlots = applicableMeds.flatMap { med ->
+        med.getScheduledTimes().map { timeMinutes ->
+            val matchingIntake = intakes.firstOrNull {
+                it.medicationId == med.id && it.scheduledTimeMinutes == timeMinutes
+            }
+            ScheduledDoseSlot(med, timeMinutes, matchingIntake)
+        }
+    }.sortedBy { it.scheduledTimeMinutes }
+
+    val nextPendingSlot = doseSlots.firstOrNull { it.intake == null || it.intake.status == "UNRECORDED" }
+
+    Card(
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)
+        ),
+        modifier = modifier
+            .fillMaxWidth()
+            .testTag("today_next_medication_card")
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Medication,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Text(
+                        text = "Medication Schedule",
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        text = "${doseSlots.count { it.intake?.status == "TAKEN" }} / ${doseSlots.size} taken",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    OutlinedButton(
+                        onClick = onManageMedications,
+                        shape = RoundedCornerShape(8.dp),
+                        modifier = Modifier.testTag("manage_next_meds_button")
+                    ) {
+                        Text("Manage", style = MaterialTheme.typography.labelSmall)
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            if (nextPendingSlot != null) {
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = MaterialTheme.colorScheme.surface,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(12.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = nextPendingSlot.medication.name,
+                                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            val doseText = buildString {
+                                append(DateTimeUtils.formatMinutesToTime(nextPendingSlot.scheduledTimeMinutes))
+                                if (nextPendingSlot.medication.dosage.isNotBlank()) {
+                                    append(" • ")
+                                    append(nextPendingSlot.medication.dosage)
+                                }
+                            }
+                            Text(
+                                text = doseText,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+
+                        Button(
+                            onClick = {
+                                onRecordIntake(nextPendingSlot.medication, nextPendingSlot.scheduledTimeMinutes, "TAKEN")
+                            },
+                            shape = RoundedCornerShape(10.dp),
+                            modifier = Modifier.testTag("today_quick_take_dose_button")
+                        ) {
+                            Text("Take Dose", style = MaterialTheme.typography.labelMedium)
+                        }
+                    }
+                }
+            } else {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.padding(vertical = 4.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Check,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Text(
+                        text = "All scheduled doses recorded for today.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
     }
 }
 

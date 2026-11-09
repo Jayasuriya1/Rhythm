@@ -74,6 +74,7 @@ fun RhythmTopBar(
     onBrainDumpClick: (() -> Unit)? = null,
     onRemindersClick: (() -> Unit)? = null,
     onAlarmsClick: (() -> Unit)? = null,
+    onNavigateBack: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val isToday = selectedDate == DateTimeUtils.todayDateString()
@@ -81,6 +82,21 @@ fun RhythmTopBar(
     var showMoreMenu by remember { mutableStateOf(false) }
 
     TopAppBar(
+        navigationIcon = {
+            if (onNavigateBack != null) {
+                IconButton(
+                    onClick = onNavigateBack,
+                    modifier = Modifier.size(40.dp).testTag("top_bar_back_button")
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = "Back",
+                        tint = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+            }
+        },
         title = {
             Column {
                 Text(
@@ -199,7 +215,7 @@ fun RhythmTopBar(
                         expanded = showMoreMenu,
                         onDismissRequest = { showMoreMenu = false }
                     ) {
-                        if (onAlarmsClick != null && isDateRelevant) {
+                        if (onAlarmsClick != null) {
                             DropdownMenuItem(
                                 text = { Text("Alarms & QR Missions") },
                                 onClick = {

@@ -30,7 +30,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -46,7 +45,9 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -83,6 +84,16 @@ fun InteractiveSwipeToDismissSlider(
             .testTag("alarm_swipe_slider")
             .semantics {
                 role = Role.Button
+                contentDescription = "Slide or double-tap to dismiss alarm"
+                onClick("Dismiss alarm") {
+                    if (!hasDismissed) {
+                        hasDismissed = true
+                        onDismiss()
+                        true
+                    } else {
+                        false
+                    }
+                }
                 customActions = listOf(
                     CustomAccessibilityAction("Slide to Dismiss Alarm") {
                         if (!hasDismissed) {

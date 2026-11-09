@@ -109,47 +109,56 @@ class DomainViewModelsTest {
         assertTrue(task.isDailyPriority)
     }
 
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
     @Test
     fun healthViewModel_recordsSleepAndMedication() = runTest {
-        val viewModel = HealthViewModel(repository, context)
+        val testDispatcher = StandardTestDispatcher(testScheduler)
+        Dispatchers.setMain(testDispatcher)
+        try {
+            val viewModel = HealthViewModel(repository, context)
 
-        // Sleep
-        viewModel.saveSleepRecord(bedtimeMin = 1380, wakeTimeMin = 420, quality = 4, notes = "Restful sleep")
-        ShadowLooper.idleMainLooper()
+            // Sleep
+            viewModel.saveSleepRecord(bedtimeMin = 1380, wakeTimeMin = 420, quality = 4, notes = "Restful sleep").join()
+            testScheduler.advanceUntilIdle()
+            ShadowLooper.idleMainLooper()
 
-        val sleep = repository.getSleepForDate(viewModel.selectedDate.value).first()
-        assertNotNull(sleep)
-        assertEquals(480, sleep!!.durationMinutes) // 8 hours
-        assertEquals(4, sleep.qualityRating)
+            val sleep = repository.getSleepForDate(viewModel.selectedDate.value).first { it != null }
+            assertNotNull(sleep)
+            assertEquals(480, sleep!!.durationMinutes) // 8 hours
+            assertEquals(4, sleep.qualityRating)
 
-        // Medication
-        val med = MedicationEntity(
-            id = 0L,
-            name = "Vitamin D3",
-            dosage = "2000",
-            unit = "IU",
-            instructions = "Take with breakfast",
-            scheduledTimeMinutes = 510,
-            reminderEnabled = true,
-            isActive = true,
-            isArchived = false
-        )
-        val medId = repository.saveMedication(med)
-        val savedMed = repository.getMedicationById(medId)
-        assertNotNull(savedMed)
+            // Medication
+            val med = MedicationEntity(
+                id = 0L,
+                name = "Vitamin D3",
+                dosage = "2000",
+                unit = "IU",
+                instructions = "Take with breakfast",
+                scheduledTimeMinutes = 510,
+                reminderEnabled = true,
+                isActive = true,
+                isArchived = false
+            )
+            val medId = repository.saveMedication(med)
+            val savedMed = repository.getMedicationById(medId)
+            assertNotNull(savedMed)
 
-        // Record Intake
-        viewModel.recordMedicationIntake(
-            medication = savedMed!!,
-            scheduledTimeMinutes = 510,
-            status = "TAKEN",
-            notes = "With food"
-        )
-        ShadowLooper.idleMainLooper()
+            // Record Intake
+            viewModel.recordMedicationIntake(
+                medication = savedMed!!,
+                scheduledTimeMinutes = 510,
+                status = "TAKEN",
+                notes = "With food"
+            ).join()
+            testScheduler.advanceUntilIdle()
+            ShadowLooper.idleMainLooper()
 
-        val intakes = repository.getMedicationIntakesForDate(viewModel.selectedDate.value).first()
-        assertEquals(1, intakes.size)
-        assertEquals("TAKEN", intakes.first().status)
+            val intakes = repository.getMedicationIntakesForDate(viewModel.selectedDate.value).first { it.isNotEmpty() }
+            assertEquals(1, intakes.size)
+            assertEquals("TAKEN", intakes.first().status)
+        } finally {
+            Dispatchers.resetMain()
+        }
     }
 
     @Test

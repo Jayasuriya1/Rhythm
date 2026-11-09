@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.ui.unit.sp
 import androidx.compose.material.icons.Icons
@@ -79,6 +80,7 @@ fun RhythmFocusApp(viewModel: MainViewModel) {
     val selectedDate by viewModel.selectedDate.collectAsStateWithLifecycle()
     val userFeedbackMessage by viewModel.userFeedbackMessage.collectAsStateWithLifecycle()
     val isStudyFocusModeActive by viewModel.isStudyFocusModeActive.collectAsStateWithLifecycle()
+    val canNavigateBack by viewModel.canNavigateBack.collectAsStateWithLifecycle()
     val timerState by viewModel.timerState.collectAsStateWithLifecycle()
     var currentAestheticTheme by remember { mutableStateOf(FocusAestheticTheme.ZEN_FOREST) }
 
@@ -114,10 +116,16 @@ fun RhythmFocusApp(viewModel: MainViewModel) {
         }
     }
 
-    // Handle system back navigation to return to TODAY tab when not in focus mode
-    BackHandler(enabled = !isStudyFocusModeActive && currentDestination != AppDestination.TODAY) {
-        viewModel.navigateTo(AppDestination.TODAY)
+    // Handle system back navigation through hierarchical backstack when not in focus mode
+    BackHandler(enabled = !isStudyFocusModeActive && canNavigateBack) {
+        viewModel.navigateBack()
     }
+
+    val hasOwnTopBar = currentDestination in listOf(
+        AppDestination.HEALTH_CONNECT,
+        AppDestination.SLEEP_ANALYTICS,
+        AppDestination.HEART_RATE_ANALYTICS
+    )
 
     var showGlobalQuickCapture by remember { mutableStateOf(false) }
 
@@ -194,6 +202,56 @@ fun RhythmFocusApp(viewModel: MainViewModel) {
 
                 Scaffold(
                     topBar = {
+                        if (!hasOwnTopBar) {
+                            RhythmTopBar(
+                                title = currentDestination.label,
+                                selectedDate = selectedDate,
+                                onPreviousDay = {
+                                    val prevDate = adjustDate(selectedDate, -1)
+                                    viewModel.setSelectedDate(prevDate)
+                                },
+                                onNextDay = {
+                                    val nextDate = adjustDate(selectedDate, 1)
+                                    viewModel.setSelectedDate(nextDate)
+                                },
+                                onTodayClick = { viewModel.selectToday() },
+                                onSettingsClick = { viewModel.navigateTo(AppDestination.SETTINGS) },
+                                onBrainDumpClick = { showGlobalQuickCapture = true },
+                                onRemindersClick = { viewModel.navigateTo(AppDestination.REMINDERS) },
+                                onAlarmsClick = { viewModel.navigateTo(AppDestination.ALARMS) },
+                                onNavigateBack = if (canNavigateBack) { { viewModel.navigateBack() } } else null
+                            )
+                        }
+                    },
+                    snackbarHost = { SnackbarHost(snackbarHostState) },
+                    contentWindowInsets = WindowInsets.safeDrawing
+                ) { innerPadding ->
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(innerPadding),
+                        contentAlignment = androidx.compose.ui.Alignment.TopCenter
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .widthIn(max = 840.dp),
+                            contentAlignment = androidx.compose.ui.Alignment.TopCenter
+                        ) {
+                            AppScreenContent(
+                                destination = currentDestination,
+                                viewModel = viewModel,
+                                isExpandedScreen = true
+                            )
+                        }
+                    }
+                }
+            }
+        } else {
+            // Phone / Compact Layout: TopBar + Content + Bottom NavigationBar
+            Scaffold(
+                topBar = {
+                    if (!hasOwnTopBar) {
                         RhythmTopBar(
                             title = currentDestination.label,
                             selectedDate = selectedDate,
@@ -209,42 +267,10 @@ fun RhythmFocusApp(viewModel: MainViewModel) {
                             onSettingsClick = { viewModel.navigateTo(AppDestination.SETTINGS) },
                             onBrainDumpClick = { showGlobalQuickCapture = true },
                             onRemindersClick = { viewModel.navigateTo(AppDestination.REMINDERS) },
-                            onAlarmsClick = { viewModel.navigateTo(AppDestination.ALARMS) }
-                        )
-                    },
-                    snackbarHost = { SnackbarHost(snackbarHostState) },
-                    contentWindowInsets = WindowInsets.safeDrawing
-                ) { innerPadding ->
-                    Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
-                        AppScreenContent(
-                            destination = currentDestination,
-                            viewModel = viewModel,
-                            isExpandedScreen = true
+                            onAlarmsClick = { viewModel.navigateTo(AppDestination.ALARMS) },
+                            onNavigateBack = if (canNavigateBack) { { viewModel.navigateBack() } } else null
                         )
                     }
-                }
-            }
-        } else {
-            // Phone / Compact Layout: TopBar + Content + Bottom NavigationBar
-            Scaffold(
-                topBar = {
-                    RhythmTopBar(
-                        title = currentDestination.label,
-                        selectedDate = selectedDate,
-                        onPreviousDay = {
-                            val prevDate = adjustDate(selectedDate, -1)
-                            viewModel.setSelectedDate(prevDate)
-                        },
-                        onNextDay = {
-                            val nextDate = adjustDate(selectedDate, 1)
-                            viewModel.setSelectedDate(nextDate)
-                        },
-                        onTodayClick = { viewModel.selectToday() },
-                        onSettingsClick = { viewModel.navigateTo(AppDestination.SETTINGS) },
-                        onBrainDumpClick = { showGlobalQuickCapture = true },
-                        onRemindersClick = { viewModel.navigateTo(AppDestination.REMINDERS) },
-                        onAlarmsClick = { viewModel.navigateTo(AppDestination.ALARMS) }
-                    )
                 },
                 bottomBar = {
                     NavigationBar(
@@ -256,7 +282,7 @@ fun RhythmFocusApp(viewModel: MainViewModel) {
                     ) {
                         navItems.forEach { item ->
                             val isSelected = currentDestination == item.destination
-                            val displayLabel = if (item.destination == AppDestination.MEDITATION) "Mind" else item.label
+                            val displayLabel = item.label
                             NavigationBarItem(
                                 selected = isSelected,
                                 onClick = { viewModel.navigateTo(item.destination) },
@@ -338,19 +364,19 @@ fun AppScreenContent(
             AppDestination.HEALTH_CONNECT -> com.example.ui.screens.health.HealthConnectDashboardScreen(
                 viewModel = viewModel,
                 isExpandedScreen = isExpandedScreen,
-                onNavigateBack = { viewModel.navigateTo(AppDestination.TODAY) },
+                onNavigateBack = { viewModel.navigateBack() },
                 onNavigateSleepAnalytics = { viewModel.navigateTo(AppDestination.SLEEP_ANALYTICS) },
                 onNavigateHeartRateAnalytics = { viewModel.navigateTo(AppDestination.HEART_RATE_ANALYTICS) }
             )
             AppDestination.SLEEP_ANALYTICS -> com.example.ui.screens.health.SleepAnalyticsScreen(
                 viewModel = viewModel,
                 isExpandedScreen = isExpandedScreen,
-                onNavigateBack = { viewModel.navigateTo(AppDestination.HEALTH_CONNECT) }
+                onNavigateBack = { viewModel.navigateBack() }
             )
             AppDestination.HEART_RATE_ANALYTICS -> com.example.ui.screens.health.HeartRateAnalyticsScreen(
                 viewModel = viewModel,
                 isExpandedScreen = isExpandedScreen,
-                onNavigateBack = { viewModel.navigateTo(AppDestination.HEALTH_CONNECT) }
+                onNavigateBack = { viewModel.navigateBack() }
             )
             AppDestination.STUDY -> StudyScreen(viewModel = viewModel)
             AppDestination.MEDITATION -> com.example.ui.screens.meditation.MeditationScreen(viewModel = viewModel)

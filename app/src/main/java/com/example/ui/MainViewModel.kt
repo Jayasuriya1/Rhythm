@@ -117,6 +117,19 @@ class MainViewModel(
     private val _currentDestination = MutableStateFlow(AppDestination.TODAY)
     val currentDestination: StateFlow<AppDestination> = _currentDestination.asStateFlow()
 
+    private val backstack = ArrayDeque<AppDestination>().apply { add(AppDestination.TODAY) }
+    private val _canNavigateBack = MutableStateFlow(false)
+    val canNavigateBack: StateFlow<Boolean> = _canNavigateBack.asStateFlow()
+
+    private val topLevelDestinations = setOf(
+        AppDestination.TODAY,
+        AppDestination.ROUTINE,
+        AppDestination.HEALTH,
+        AppDestination.STUDY,
+        AppDestination.MEDITATION,
+        AppDestination.INSIGHTS
+    )
+
     private val _selectedDate = MutableStateFlow(DateTimeUtils.todayDateString())
     val selectedDate: StateFlow<String> = _selectedDate.asStateFlow()
 
@@ -589,9 +602,47 @@ class MainViewModel(
         }
     }
 
-    fun navigateTo(destination: AppDestination) {
+    fun navigateTo(destination: AppDestination, clearStack: Boolean = false) {
         val previous = _currentDestination.value
+        if (previous == destination && !clearStack) return
+
+        if (clearStack || destination == AppDestination.TODAY) {
+            backstack.clear()
+            backstack.add(AppDestination.TODAY)
+            if (destination != AppDestination.TODAY) {
+                backstack.add(destination)
+            }
+        } else if (destination in topLevelDestinations) {
+            // Top-level tabs replace any other top-level tab on top of TODAY to avoid circular loops
+            backstack.clear()
+            backstack.add(AppDestination.TODAY)
+            backstack.add(destination)
+        } else {
+            // Sub-screen (HEALTH_CONNECT, SLEEP_ANALYTICS, HEART_RATE_ANALYTICS, ALARMS, REMINDERS, BRAIN_DUMP, SETTINGS)
+            if (backstack.lastOrNull() != destination) {
+                backstack.addLast(destination)
+            }
+        }
+
         _currentDestination.value = destination
+        _canNavigateBack.value = backstack.size > 1
+        handleAudioLifecycleTransitions(previous, destination)
+    }
+
+    fun navigateBack(): Boolean {
+        if (backstack.size > 1) {
+            val previous = _currentDestination.value
+            backstack.removeLast()
+            val target = backstack.last()
+            _currentDestination.value = target
+            _canNavigateBack.value = backstack.size > 1
+            handleAudioLifecycleTransitions(previous, target)
+            return true
+        }
+        return false
+    }
+
+    private fun handleAudioLifecycleTransitions(previous: AppDestination, destination: AppDestination) {
         if (previous == AppDestination.STUDY && destination != AppDestination.STUDY) {
             com.example.util.FocusAudioLifecycleManager.onNavigatedAway(_timerState.value.isRunning)
         } else if (previous != AppDestination.STUDY && destination == AppDestination.STUDY) {
@@ -714,17 +765,13 @@ class MainViewModel(
     }
 
     // --- Water Actions ---
-    fun addWater(volumeMl: Int) {
-        viewModelScope.launch {
-            repository.addWater(_selectedDate.value, volumeMl)
-            _userFeedbackMessage.value = "+${volumeMl}ml water logged"
-        }
+    fun addWater(volumeMl: Int): Job = viewModelScope.launch {
+        repository.addWater(_selectedDate.value, volumeMl)
+        _userFeedbackMessage.value = "+${volumeMl}ml water logged"
     }
 
-    fun removeWaterEntry(id: Long) {
-        viewModelScope.launch {
-            repository.removeWaterEntry(id)
-        }
+    fun removeWaterEntry(id: Long): Job = viewModelScope.launch {
+        repository.removeWaterEntry(id)
     }
 
     // --- Medication Actions ---
@@ -1831,43 +1878,35 @@ class MainViewModel(
         }
     }
 
-    fun setRemindersMasterEnabled(enabled: Boolean, context: Context? = null) {
-        viewModelScope.launch {
-            repository.saveSetting("reminders_master_enabled", enabled.toString())
-            if (context != null) {
-                if (enabled) {
-                    val activeReminders = repository.getEnabledRemindersSync()
-                    AlarmScheduler.scheduleAllEnabledAlarms(context, activeReminders)
-                } else {
-                    val allRemindersList = repository.getEnabledRemindersSync()
-                    for (rem in allRemindersList) {
-                        AlarmScheduler.cancelAlarm(context, rem.id)
-                    }
+    fun setRemindersMasterEnabled(enabled: Boolean, context: Context? = null): Job = viewModelScope.launch {
+        repository.saveSetting("reminders_master_enabled", enabled.toString())
+        if (context != null) {
+            if (enabled) {
+                val activeReminders = repository.getEnabledRemindersSync()
+                AlarmScheduler.scheduleAllEnabledAlarms(context, activeReminders)
+            } else {
+                val allRemindersList = repository.getEnabledRemindersSync()
+                for (rem in allRemindersList) {
+                    AlarmScheduler.cancelAlarm(context, rem.id)
                 }
             }
-            _userFeedbackMessage.value = if (enabled) "Reminders activated" else "All reminders paused"
         }
+        _userFeedbackMessage.value = if (enabled) "Reminders activated" else "All reminders paused"
     }
 
-    fun setQuietHoursEnabled(enabled: Boolean) {
-        viewModelScope.launch {
-            repository.saveSetting("quiet_hours_enabled", enabled.toString())
-            _userFeedbackMessage.value = if (enabled) "Quiet hours active" else "Quiet hours turned off"
-        }
+    fun setQuietHoursEnabled(enabled: Boolean): Job = viewModelScope.launch {
+        repository.saveSetting("quiet_hours_enabled", enabled.toString())
+        _userFeedbackMessage.value = if (enabled) "Quiet hours active" else "Quiet hours turned off"
     }
 
-    fun setQuietHoursTime(startMinutes: Int, endMinutes: Int) {
-        viewModelScope.launch {
-            repository.saveSetting("quiet_hours_start_minutes", startMinutes.toString())
-            repository.saveSetting("quiet_hours_end_minutes", endMinutes.toString())
-            _userFeedbackMessage.value = "Quiet hours schedule updated"
-        }
+    fun setQuietHoursTime(startMinutes: Int, endMinutes: Int): Job = viewModelScope.launch {
+        repository.saveSetting("quiet_hours_start_minutes", startMinutes.toString())
+        repository.saveSetting("quiet_hours_end_minutes", endMinutes.toString())
+        _userFeedbackMessage.value = "Quiet hours schedule updated"
     }
 
-    fun setQuietHoursUrgentBypass(bypass: Boolean) {
-        viewModelScope.launch {
-            repository.saveSetting("quiet_hours_urgent_bypass", bypass.toString())
-        }
+    fun setQuietHoursUrgentBypass(bypass: Boolean): Job = viewModelScope.launch {
+        repository.saveSetting("quiet_hours_urgent_bypass", bypass.toString())
     }
 
     fun syncFromRoutines(context: Context? = null) {

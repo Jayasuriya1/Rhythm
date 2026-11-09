@@ -65,10 +65,12 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.ui.MainViewModel
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material3.RadioButton
+import androidx.compose.ui.semantics.Role
 import com.example.ui.theme.AppThemeMode
 
 @Composable
@@ -169,24 +171,29 @@ fun SettingsScreen(
                     )
 
                     themeOptions.forEach { (mode, label) ->
+                        val isSelected = (currentThemeMode == mode)
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clip(RoundedCornerShape(10.dp))
-                                .clickable { viewModel.setAppThemeMode(mode) }
-                                .padding(vertical = 6.dp, horizontal = 4.dp),
+                                .selectable(
+                                    selected = isSelected,
+                                    onClick = { viewModel.setAppThemeMode(mode) },
+                                    role = Role.RadioButton
+                                )
+                                .padding(vertical = 10.dp, horizontal = 8.dp),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
                             RadioButton(
-                                selected = (currentThemeMode == mode),
-                                onClick = { viewModel.setAppThemeMode(mode) },
+                                selected = isSelected,
+                                onClick = null,
                                 modifier = Modifier.testTag("theme_radio_${mode.name.lowercase()}")
                             )
                             Text(
                                 text = label,
                                 style = MaterialTheme.typography.bodyMedium.copy(
-                                    fontWeight = if (currentThemeMode == mode) FontWeight.SemiBold else FontWeight.Normal
+                                    fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal
                                 ),
                                 color = MaterialTheme.colorScheme.onSurface
                             )

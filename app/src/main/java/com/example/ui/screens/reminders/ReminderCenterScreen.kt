@@ -18,9 +18,12 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -193,7 +196,9 @@ fun ReminderCenterScreen(
                         Switch(
                             checked = masterEnabled,
                             onCheckedChange = { viewModel.setRemindersMasterEnabled(it, context) },
-                            modifier = Modifier.testTag("master_reminder_switch")
+                            modifier = Modifier
+                                .testTag("master_reminder_switch")
+                                .semantics { contentDescription = "Toggle all reminders master switch" }
                         )
                     }
 
@@ -381,7 +386,9 @@ fun ReminderCenterScreen(
                         Switch(
                             checked = quietHoursEnabled,
                             onCheckedChange = { viewModel.setQuietHoursEnabled(it) },
-                            modifier = Modifier.testTag("quiet_hours_switch")
+                            modifier = Modifier
+                                .testTag("quiet_hours_switch")
+                                .semantics { contentDescription = "Toggle quiet hours" }
                         )
                     }
 
@@ -428,7 +435,9 @@ fun ReminderCenterScreen(
                             Switch(
                                 checked = quietUrgentBypass,
                                 onCheckedChange = { viewModel.setQuietHoursUrgentBypass(it) },
-                                modifier = Modifier.testTag("quiet_urgent_bypass_switch")
+                                modifier = Modifier
+                                    .testTag("quiet_urgent_bypass_switch")
+                                    .semantics { contentDescription = "Toggle bypass quiet hours for critical medications" }
                             )
                         }
                     }
@@ -701,7 +710,9 @@ fun ReminderItemCard(
                 Switch(
                     checked = reminder.isEnabled,
                     onCheckedChange = onToggle,
-                    modifier = Modifier.testTag("reminder_switch_${reminder.id}")
+                    modifier = Modifier
+                        .testTag("reminder_switch_${reminder.id}")
+                        .semantics { contentDescription = "Toggle ${reminder.title} reminder" }
                 )
             }
 
@@ -768,19 +779,28 @@ fun ReminderItemCard(
                     IconButton(
                         onClick = onEdit,
                         modifier = Modifier
-                            .size(36.dp)
+                            .size(48.dp)
                             .testTag("edit_reminder_${reminder.id}")
                     ) {
-                        Icon(Icons.Default.Edit, contentDescription = "Edit Reminder", modifier = Modifier.size(18.dp))
+                        Icon(
+                            imageVector = Icons.Default.Edit,
+                            contentDescription = "Edit ${reminder.title} reminder",
+                            modifier = Modifier.size(20.dp)
+                        )
                     }
 
                     IconButton(
                         onClick = onDelete,
                         modifier = Modifier
-                            .size(36.dp)
+                            .size(48.dp)
                             .testTag("delete_reminder_${reminder.id}")
                     ) {
-                        Icon(Icons.Default.Delete, contentDescription = "Delete Reminder", tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(18.dp))
+                        Icon(
+                            imageVector = Icons.Default.Delete,
+                            contentDescription = "Delete ${reminder.title} reminder",
+                            tint = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.size(20.dp)
+                        )
                     }
                 }
             }
@@ -800,7 +820,8 @@ fun CategoryFilterChip(
         label = { Text(label) },
         leadingIcon = if (isSelected) {
             { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }
-        } else null
+        } else null,
+        modifier = Modifier.heightIn(min = 48.dp)
     )
 }
 
