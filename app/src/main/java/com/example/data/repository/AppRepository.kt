@@ -132,6 +132,10 @@ class AppRepository(private val database: AppDatabase) {
         return medicationDao.getIntakesForDate(date)
     }
 
+    fun getMedicationIntakesBetween(startDate: String, endDate: String): Flow<List<MedicationIntakeEntity>> {
+        return medicationDao.getIntakesBetweenDates(startDate, endDate)
+    }
+
     fun getRecentIntakeHistory(limit: Int = 100): Flow<List<MedicationIntakeEntity>> {
         return medicationDao.getRecentIntakeHistory(limit)
     }
