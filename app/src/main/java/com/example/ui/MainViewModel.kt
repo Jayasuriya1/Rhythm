@@ -417,6 +417,10 @@ class MainViewModel(
     private val _userFeedbackMessage = MutableStateFlow<String?>(null)
     val userFeedbackMessage: StateFlow<String?> = _userFeedbackMessage.asStateFlow()
 
+    // Database Integrity Stats
+    private val _databaseIntegrityStats = MutableStateFlow<com.example.util.DatabaseIntegrityStats?>(null)
+    val databaseIntegrityStats: StateFlow<com.example.util.DatabaseIntegrityStats?> = _databaseIntegrityStats.asStateFlow()
+
     init {
         try {
             appContext?.let { com.example.util.FocusAudioLifecycleManager.initialize(it) }
@@ -1937,9 +1941,6 @@ class MainViewModel(
     }
 
     // --- Settings, Backup & Database Integrity ---
-    private val _databaseIntegrityStats = MutableStateFlow<com.example.util.DatabaseIntegrityStats?>(null)
-    val databaseIntegrityStats: StateFlow<com.example.util.DatabaseIntegrityStats?> = _databaseIntegrityStats.asStateFlow()
-
     fun refreshDatabaseIntegrityStats() {
         viewModelScope.launch {
             _databaseIntegrityStats.value = repository.getDatabaseIntegrityStats()
@@ -2041,6 +2042,27 @@ class MainViewModel(
 
     fun getRecentHealthConnectSummaries(limit: Int = 7): kotlinx.coroutines.flow.Flow<List<com.example.data.entity.HealthConnectDailySummaryEntity>> {
         return repository.getRecentHealthConnectSummaries(limit)
+    }
+
+    // Range query helpers for Insights
+    fun getSleepBetween(startDate: String, endDate: String): kotlinx.coroutines.flow.Flow<List<com.example.data.entity.SleepEntryEntity>> {
+        return repository.getSleepBetween(startDate, endDate)
+    }
+
+    fun getRoutineEntriesBetween(startDate: String, endDate: String): kotlinx.coroutines.flow.Flow<List<com.example.data.entity.RoutineEntryEntity>> {
+        return repository.getRoutineEntriesBetween(startDate, endDate)
+    }
+
+    fun getHealthBetween(startDate: String, endDate: String): kotlinx.coroutines.flow.Flow<List<com.example.data.entity.HealthCheckinEntity>> {
+        return repository.getHealthBetween(startDate, endDate)
+    }
+
+    fun getMedicationIntakesBetween(startDate: String, endDate: String): kotlinx.coroutines.flow.Flow<List<com.example.data.entity.MedicationIntakeEntity>> {
+        return repository.getMedicationIntakesBetween(startDate, endDate)
+    }
+
+    fun getStudySessionsBetween(startDate: String, endDate: String): kotlinx.coroutines.flow.Flow<List<com.example.data.entity.StudySessionEntity>> {
+        return repository.getStudySessionsBetween(startDate, endDate)
     }
 
     fun clearAllUserData() {
