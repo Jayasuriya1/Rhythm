@@ -765,17 +765,13 @@ class MainViewModel(
     }
 
     // --- Water Actions ---
-    fun addWater(volumeMl: Int) {
-        viewModelScope.launch {
-            repository.addWater(_selectedDate.value, volumeMl)
-            _userFeedbackMessage.value = "+${volumeMl}ml water logged"
-        }
+    fun addWater(volumeMl: Int): Job = viewModelScope.launch {
+        repository.addWater(_selectedDate.value, volumeMl)
+        _userFeedbackMessage.value = "+${volumeMl}ml water logged"
     }
 
-    fun removeWaterEntry(id: Long) {
-        viewModelScope.launch {
-            repository.removeWaterEntry(id)
-        }
+    fun removeWaterEntry(id: Long): Job = viewModelScope.launch {
+        repository.removeWaterEntry(id)
     }
 
     // --- Medication Actions ---

@@ -95,24 +95,19 @@ class TodayDashboardTest {
         assertEquals("COMPLETED", entry?.status)
     }
 
-    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
     @Test
-    fun addWater_increasesTotalDailyHydration() = kotlinx.coroutines.test.runTest {
-        val testDispatcher = kotlinx.coroutines.test.StandardTestDispatcher(testScheduler)
-        kotlinx.coroutines.Dispatchers.setMain(testDispatcher)
-        try {
-            viewModel.addWater(250)
-            viewModel.addWater(500)
-            testScheduler.advanceUntilIdle()
-            org.robolectric.shadows.ShadowLooper.idleMainLooper()
-
-            val today = DateTimeUtils.todayDateString()
-            val entries = repository.getWaterEntriesForDate(today).first()
-            assertEquals(2, entries.size)
-            val totalMl = entries.sumOf { it.volumeMl }
-            assertEquals(750, totalMl)
-        } finally {
-            kotlinx.coroutines.Dispatchers.resetMain()
+    fun addWater_increasesTotalDailyHydration() = runBlocking {
+        viewModel.addWater(250)
+        viewModel.addWater(500)
+        repeat(5) {
+            ShadowLooper.runUiThreadTasksIncludingDelayedTasks()
+            ShadowLooper.idleMainLooper()
         }
+
+        val today = DateTimeUtils.todayDateString()
+        val entries = repository.getWaterEntriesForDate(today).first { it.size == 2 }
+        assertEquals(2, entries.size)
+        val totalMl = entries.sumOf { it.volumeMl }
+        assertEquals(750, totalMl)
     }
 }
