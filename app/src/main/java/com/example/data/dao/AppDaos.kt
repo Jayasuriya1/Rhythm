@@ -175,6 +175,9 @@ interface MedicationDao {
     @Query("SELECT * FROM medication_intakes WHERE date = :date ORDER BY scheduledTimeMinutes ASC")
     fun getIntakesForDate(date: String): Flow<List<MedicationIntakeEntity>>
 
+    @Query("SELECT * FROM medication_intakes WHERE date >= :startDate AND date <= :endDate ORDER BY date ASC, scheduledTimeMinutes ASC")
+    fun getIntakesBetweenDates(startDate: String, endDate: String): Flow<List<MedicationIntakeEntity>>
+
     @Query("SELECT * FROM medication_intakes ORDER BY date DESC, scheduledTimeMinutes DESC LIMIT :limit")
     fun getRecentIntakeHistory(limit: Int = 100): Flow<List<MedicationIntakeEntity>>
 
